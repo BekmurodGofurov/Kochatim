@@ -193,3 +193,19 @@ def get_seedling_count(t_id):
         }
     else:
         return {'sifat_1': 0, 'sifat_2': 0, 'sifat_3': 0}
+
+def add_new_img(t_id, photo_id):
+    """Nav uchun rasm URL (file_id) ni saqlash"""
+    try:
+        cur.execute("INSERT INTO img (t_id, i_url) VALUES (?, ?)", (t_id, photo_id))
+        db.commit()
+        return True
+    except Exception as e:
+        print(f"Rasm saqlashda xato: {e}")
+        return False
+
+def get_img_url(t_id):
+    """Navga tegishli rasm URLini olish"""
+    cur.execute("SELECT i_url FROM img WHERE t_id = ?", (t_id,))
+    result = cur.fetchone()
+    return result[0] if result else None

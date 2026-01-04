@@ -2,7 +2,7 @@ from aiogram.types import Message, ReplyKeyboardRemove
 from loader import dp
 from aiogram.dispatcher import FSMContext
 from states.state_one import type_state
-from data.database import get_all_cat, get_cat_id, new_ty, get_a_ty
+from data.database import get_all_cat, get_cat_id, new_ty, get_a_ty, add_new_img
 from keyboards.default.main_keyboards import cat_keyboard, new_tree
 import datetime
 
@@ -49,15 +49,23 @@ async def add_t_name(message: Message, state: FSMContext):
 
 @dp.message_handler(state=type_state.t_def)
 async def add_def(message: Message, state: FSMContext):
-    deff = message.text
+    await state.update_data(t_def=message.text)
+    await message.answer("Endi ushbu nav uchun rasm yuboring:")
+    await type_state.t_img.set()  # Rasm holatiga o'tamiz
+
+
+@dp.message_handler(content_types=['photo'], state=type_state.t_img)
+async def add_img(message: Message, state: FSMContext):
     data = await state.get_data()
-    t_name = data["t_name"]
-    c_id = data["c_id"]
-    now = datetime.datetime.now()
-    t_id = int(now.timestamp())
     u_id = message.from_user.id
-    new_ty(t_id, c_id, u_id, t_name, deff)
-    await message.answer(f"Siz yuborgan Nav malumotlar omboriga qo'shildi!")
-    await message.answer(f"Siz enid shu sortga ko'chat qosha olsiz", reply_markup=new_tree)
-    await type_state.c_id.set()
-    await state.reset_state(with_data=True)
+    t_id = int(datetime.datetime.now().timestamp())
+    photo_id = message.photo[-1].file_id  # Eng sifatli rasm ID si
+
+    # 1. Nav ma'lumotlarini saqlash
+    new_ty(t_id, data["c_id"], u_id, data["t_name"], data["t_def"])
+
+    # 2. Rasmni saqlash (Clean Code: faqat funksiya chaqiriladi)
+    add_new_img(t_id, photo_id)
+
+    await message.answer("Nav va rasm muvaffaqiyatli saqlandi!", reply_markup=new_tree)
+    await state.finish()

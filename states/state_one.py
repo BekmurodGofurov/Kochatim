@@ -5,10 +5,10 @@ class cat_state(StatesGroup):
   c_name = State()
   
 class type_state(StatesGroup):
-  c_id = State()
-  t_id = State()
-  t_name = State()
-  t_def = State()
+    c_id = State()
+    t_name = State()
+    t_def = State()
+    t_img = State() # Yangi rasm holati
 
 class sel_state(StatesGroup):
   c_id = State()
