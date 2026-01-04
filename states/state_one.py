@@ -1,0 +1,24 @@
+from aiogram.dispatcher.filters.state import State, StatesGroup
+
+class cat_state(StatesGroup):
+  c_id = State()
+  c_name = State()
+  
+class type_state(StatesGroup):
+  c_id = State()
+  t_id = State()
+  t_name = State()
+  t_def = State()
+
+class sel_state(StatesGroup):
+  c_id = State()
+  t_id = State()
+  s_id = State()
+  cuol_1 = State()
+  cuol_2 = State()
+  cuol_3 = State()
+
+class img_state(StatesGroup):
+  t_id = State()
+  i_id = State()
+  i_ulr = State()
