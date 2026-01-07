@@ -58,14 +58,18 @@ async def add_def(message: Message, state: FSMContext):
 async def add_img(message: Message, state: FSMContext):
     data = await state.get_data()
     u_id = message.from_user.id
-    t_id = int(datetime.datetime.now().timestamp())
-    photo_id = message.photo[-1].file_id  # Eng sifatli rasm ID si
+    photo_id = message.photo[-1].file_id
 
-    # 1. Nav ma'lumotlarini saqlash
-    new_ty(t_id, data["c_id"], u_id, data["t_name"], data["t_def"])
+    # t_id endi bazadan qaytib keladi
+    t_id = new_ty(
+        c_id=data["c_id"],
+        u_id=u_id,
+        t_name=data["t_name"],
+        deff=data["t_def"]
+    )
 
-    # 2. Rasmni saqlash (Clean Code: faqat funksiya chaqiriladi)
+    # Qaytib kelgan t_id orqali rasmni saqlaymiz
     add_new_img(t_id, photo_id)
 
-    await message.answer("Nav va rasm muvaffaqiyatli saqlandi!", reply_markup=new_tree)
+    await message.answer("Yangi nav va rasm saqlandi!", reply_markup=new_tree)
     await state.finish()

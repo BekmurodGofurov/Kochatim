@@ -5,7 +5,7 @@ from loader import dp
 from aiogram.dispatcher import FSMContext
 from states.state_one import sel_state
 from data.database import get_all_cat, get_cat_id, get_all_ty
-from keyboards.default.main_keyboards import cat_keyboard, ty_keyboard
+from keyboards.default.main_keyboards import cat_keyboard, ty_keyboard, main_manu
 from data.database import new_seedling  , get_type_id
 
 
@@ -84,20 +84,18 @@ async def add_q3(message: Message, state: FSMContext):
     try:
         q3 = int(message.text)
         data = await state.get_data()
-
         u_id = message.from_user.id
-        t_id = data['t_id']
-        q1 = data['cuol_1']
-        q2 = data['cuol_2']
 
-        # Ma'lumotni bazaga yozish (yoki yangilash)
-        new_seedling(u_id, t_id, q1, q2, q3)
+        # new_seedling funksiyasiga faqat kerakli ma'lumotlarni beramiz
+        new_seedling(
+            u_id=u_id,
+            t_id=data['t_id'],
+            q1=data['cuol_1'],
+            q2=data['cuol_2'],
+            q3=q3
+        )
 
-        await message.answer("✅ Ko'chat inventarizatsiyasi muvaffaqiyatli saqlandi!")
-        await state.reset_state(with_data=True)
-
+        await message.answer("Ko'chatlar soni yangilandi!", reply_markup=main_manu)
+        await state.finish()
     except ValueError:
-        await message.answer("Iltimos, son kiriting.")
-    except Exception as e:
-        await message.answer(f"Xatolik yuz berdi: {e}")
-        await state.reset_state(with_data=True)
+        await message.answer("Iltimos, faqat son kiriting.")

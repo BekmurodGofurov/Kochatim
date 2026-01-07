@@ -14,12 +14,10 @@ async def add_c(message: Message):
 async def add_by(message: Message, state: FSMContext):
     text = message.text
     await state.update_data(c_name=text)
-    now = datetime.datetime.now()
-    c_id = int(now.timestamp())
     data = await state.get_data()
     c_name = data.get("c_name")
     u_id = message.from_user.id
-    if new_cat(c_id, u_id, c_name):
+    if new_cat(u_id, c_name):
         await message.answer(f"Siz yuborgan Gruh malumotlar omboriga qo'shildi!!", reply_markup=ReplyKeyboardRemove())
     else:
         await message.answer(f"Siz yuborgan Gruh nomi allaqachon mavjud!\n\nIltimos bohsqa bir nom bering", reply_markup=ReplyKeyboardRemove())

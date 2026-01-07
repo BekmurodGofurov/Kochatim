@@ -39,8 +39,16 @@ async def bot_echo(message: Message):
 
         xabar = f"🌳 <b>{t_name} Navining to'liq ma'lumoti:</b>\n\n"
         if umumiy_son > 0:
-            xabar += f"📦 <b>Inventar soni:</b> {umumiy_son} ta\n"
-            # ... (qolgan sonlar qismi o'zgarmaydi)
+            xabar += "📦 **Inventar soni:**\n"
+            if sonlar['sifat_1'] > 0:
+                xabar += f"🥇 1-sifat ko'chatlar soni: **{sonlar['sifat_1']} ta**\n"
+            if sonlar['sifat_2'] > 0:
+                xabar += f"🥈 2-sifat ko'chatlar soni: **{sonlar['sifat_2']} ta**\n"
+            if sonlar['sifat_3'] > 0:
+                xabar += f"🥉 3-sifat ko'chatlar soni: **{sonlar['sifat_3']} ta**\n"
+            xabar += f"\n**Jami inventar:** {umumiy_son} ta\n"
+        else:
+            xabar += "📦 **Inventar:** Hozircha bu navda ko'chat qo'shilmagan.\n"
 
         xabar += f"\n📝 <b>Tavsif:</b>\n{t_deff}"
 

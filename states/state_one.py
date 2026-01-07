@@ -22,3 +22,11 @@ class img_state(StatesGroup):
   t_id = State()
   i_id = State()
   i_ulr = State()
+
+class sale_state(StatesGroup):
+    c_id = State()
+    t_id = State()
+    q1 = State()
+    q2 = State()
+    q3 = State()
+    price = State()

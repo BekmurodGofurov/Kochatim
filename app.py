@@ -7,10 +7,10 @@ from utils.set_bot_commands import set_default_commands
 
 
 async def on_startup(dispatcher):
-  await set_default_commands(dispatcher)
-  await db.db_start()
-  print("Created sqlite")
-  await on_startup_notify(dispatcher)
+    await set_default_commands(dispatcher)
+    await db.db_start()
+    print("PostgreSQL connected (Neon.tech)")  # Xabar o'zgardi
+    await on_startup_notify(dispatcher)
 
 
 if __name__ == '__main__':
