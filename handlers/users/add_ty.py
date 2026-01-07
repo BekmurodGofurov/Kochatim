@@ -6,8 +6,6 @@ from data.database import get_all_cat, get_cat_id, new_ty, get_a_ty, add_new_img
 from keyboards.default.main_keyboards import cat_keyboard, new_tree
 import datetime
 
-
-
 @dp.message_handler(lambda message: message.text == "Yangi Nav")
 async def cat_handler(message: Message):
     cat = get_all_cat(message.from_user.id)
@@ -51,7 +49,7 @@ async def add_t_name(message: Message, state: FSMContext):
 async def add_def(message: Message, state: FSMContext):
     await state.update_data(t_def=message.text)
     await message.answer("Endi ushbu nav uchun rasm yuboring:")
-    await type_state.t_img.set()  # Rasm holatiga o'tamiz
+    await type_state.t_img.set()
 
 
 @dp.message_handler(content_types=['photo'], state=type_state.t_img)
@@ -60,7 +58,6 @@ async def add_img(message: Message, state: FSMContext):
     u_id = message.from_user.id
     photo_id = message.photo[-1].file_id
 
-    # t_id endi bazadan qaytib keladi
     t_id = new_ty(
         c_id=data["c_id"],
         u_id=u_id,
@@ -68,7 +65,6 @@ async def add_img(message: Message, state: FSMContext):
         deff=data["t_def"]
     )
 
-    # Qaytib kelgan t_id orqali rasmni saqlaymiz
     add_new_img(t_id, photo_id)
 
     await message.answer("Yangi nav va rasm saqlandi!", reply_markup=new_tree)

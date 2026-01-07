@@ -1,15 +1,12 @@
-# data.database ga endi new_seedling funksiyasi ham qo'shilishi kerak
-
 from aiogram.types import Message, ReplyKeyboardRemove
 from loader import dp
 from aiogram.dispatcher import FSMContext
 from states.state_one import sel_state
 from data.database import get_all_cat, get_cat_id, get_all_ty
 from keyboards.default.main_keyboards import cat_keyboard, ty_keyboard, main_manu
-from data.database import new_seedling  , get_type_id
+from data.database import new_seedling, get_type_id
 
 
-# Foydalanuvchi biron tugmani bosganda ishga tushadi (masalan, "Ko'chat qo'shish")
 @dp.message_handler(text="Ko'chat Qo'shish")
 async def start_sel(message: Message):
     cats = get_all_cat(message.from_user.id)
@@ -18,7 +15,6 @@ async def start_sel(message: Message):
     await sel_state.c_id.set()
 
 
-# Gruhni tekshirish va Navni chiqarish (Types)
 @dp.message_handler(state=sel_state.c_id)
 async def select_category(message: Message, state: FSMContext):
     u_id = message.from_user.id
@@ -37,7 +33,6 @@ async def select_category(message: Message, state: FSMContext):
         await message.answer("Iltimos, mavjud Gruh nomini tanlang.")
 
 
-# Navni tanlash va 1-sifat sonini so'rash
 @dp.message_handler(state=sel_state.t_id)
 async def select_type(message: Message, state: FSMContext):
     u_id = message.from_user.id
@@ -66,7 +61,6 @@ async def add_q1(message: Message, state: FSMContext):
         await message.answer("Iltimos, son kiriting.")
 
 
-# 2-sifat sonini kiritish
 @dp.message_handler(state=sel_state.cuol_2)
 async def add_q2(message: Message, state: FSMContext):
     try:
@@ -78,7 +72,6 @@ async def add_q2(message: Message, state: FSMContext):
         await message.answer("Iltimos, son kiriting.")
 
 
-# 3-sifat sonini kiritish va DBga saqlash
 @dp.message_handler(state=sel_state.cuol_3)
 async def add_q3(message: Message, state: FSMContext):
     try:
@@ -86,7 +79,6 @@ async def add_q3(message: Message, state: FSMContext):
         data = await state.get_data()
         u_id = message.from_user.id
 
-        # new_seedling funksiyasiga faqat kerakli ma'lumotlarni beramiz
         new_seedling(
             u_id=u_id,
             t_id=data['t_id'],

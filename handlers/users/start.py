@@ -17,6 +17,6 @@ async def bot_start(message: types.Message):
         await message.answer(f"Sizni botda qayta ko'rib turganimda judaham hursandman, {name}!!",reply_markup=main_manu)
     else:
         if new_user(user_id, name):
-            await message.answer(f"Assalomu alekum {name}! Sizni uchbu botda ko'rib turganimdan judahma hursandamn. O'zingiz hoxlagan pastdagi tugmalardan foydalanishingiz mukun.\n\nYangi gruh yaratish uchun /gruh - foydalaning!",reply_markup=main_manu)
+            await message.answer(f"Assalomu alekum {name}! Sizni uchbu botda ko'rib turganimdan judahma hursandamn. O'zingiz hoxlagan pastdagi tugmalardan foydalanishingiz mukun.",reply_markup=main_manu)
         else:
             await message.answer("Qandeydur xatolik yuz berdi. Iltimos keyinroq qayta urinib ko'ring!")

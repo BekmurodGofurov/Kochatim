@@ -12,8 +12,9 @@ async def bot_echo(message: Message):
     if text in cats:
         c_id = get_cat_id(u_id, text)
         ty = get_all_ty(c_id, u_id)
+        n= len(ty)
         keyboard = ty_keyboard(ty)
-        await message.answer(f"Sizdagi '{text}' Gruhiga tegishli navlar:", reply_markup=keyboard)
+        await message.answer(f"Sizdagi <b>'{text}'</b> gurhga tegizli valar <b>{n}ta</b>", reply_markup=keyboard)
         return
 
 
@@ -27,7 +28,7 @@ async def bot_echo(message: Message):
 
     if t_id:
         t_info = get_type_info(t_id)
-        photo_url = get_img_url(t_id)  # Bazadan rasm ID sini olamiz
+        photo_url = get_img_url(t_id)
 
         if t_info:
             t_name, t_deff = t_info
@@ -39,24 +40,22 @@ async def bot_echo(message: Message):
 
         xabar = f"🌳 <b>{t_name} Navining to'liq ma'lumoti:</b>\n\n"
         if umumiy_son > 0:
-            xabar += "📦 **Inventar soni:**\n"
+            xabar += "📦 <b>Inventar soni:</b>\n"
             if sonlar['sifat_1'] > 0:
-                xabar += f"🥇 1-sifat ko'chatlar soni: **{sonlar['sifat_1']} ta**\n"
+                xabar += f"🥇 1-sifat ko'chatlar soni: <b>{sonlar['sifat_1']}</b> ta\n"
             if sonlar['sifat_2'] > 0:
-                xabar += f"🥈 2-sifat ko'chatlar soni: **{sonlar['sifat_2']} ta**\n"
+                xabar += f"🥈 2-sifat ko'chatlar soni: <b>{sonlar['sifat_2']}</b> ta\n"
             if sonlar['sifat_3'] > 0:
-                xabar += f"🥉 3-sifat ko'chatlar soni: **{sonlar['sifat_3']} ta**\n"
-            xabar += f"\n**Jami inventar:** {umumiy_son} ta\n"
+                xabar += f"🥉 3-sifat ko'chatlar soni: <b>{sonlar['sifat_3']}</b> ta\n"
+            xabar += f"\nJami inventar: <b>{umumiy_son}</b> ta\n"
         else:
-            xabar += "📦 **Inventar:** Hozircha bu navda ko'chat qo'shilmagan.\n"
+            xabar += "📦 Inventar: Hozircha bu navda ko'chat qo'shilmagan.\n"
 
         xabar += f"\n📝 <b>Tavsif:</b>\n{t_deff}"
 
         if photo_url:
-            # Rasm bo'lsa, rasm bilan caption yuboramiz
             await message.answer_photo(photo=photo_url, caption=xabar)
         else:
-            # Rasm yo'q bo'lsa, faqat tekst
             await message.answer(xabar)
         return
-    await message.answer(f"Afsuski, siz yubotgan '{text}' haqida bizda hech qanday ma'lumot yo'q.")
+    await message.answer(f"Afsuski, siz yubotgan <b>'{text}'</b> haqida bizda hech qanday ma'lumot yo'q.")

@@ -24,14 +24,20 @@ new_tree = ReplyKeyboardMarkup(one_time_keyboard=True, keyboard=[
 
 main_manu = ReplyKeyboardMarkup(one_time_keyboard=True, keyboard=[
   [
-      KeyboardButton(text="Yangi Gruh"),
+      KeyboardButton(text="Ko'rish"),
       KeyboardButton(text="Yangi Nav"),
   ],
   [
-      KeyboardButton(text="Gruh"),
+      KeyboardButton(text="Yangi Gruh"),
       KeyboardButton(text="Ko'chat Qo'shish"),
   ],
   [
       KeyboardButton(text="Sotish"),
   ],
+], resize_keyboard=True)
+
+new_type = ReplyKeyboardMarkup(one_time_keyboard=True, keyboard=[
+  [
+    KeyboardButton(text="Yangi Navh"),
+  ]
 ], resize_keyboard=True)
