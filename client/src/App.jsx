@@ -1,6 +1,9 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Sidebarr from './components/Sidebar.jsx'
 import Inventory from './pages/Inventory.jsx';
+import Dashboard from './pages/Dashboard.jsx'; // Dashboardni import qilamiz
+import Sales from './pages/Sales.jsx';
+import Settings from './pages/Settings.jsx';
 
 function App() {
   return (
@@ -9,10 +12,12 @@ function App() {
         <Sidebarr />
         <div className="flex-1">
           <Routes>
-            <Route path="/" element={<div className="p-20 text-center opacity-20 font-black text-5xl">DASHBOARD</div>} />
+            {/* Endi bu yerda oddiy matn emas, biz yaratgan Dashboard komponenti chiqadi */}
+            <Route path="/" element={<Dashboard />} />
+            
             <Route path="/inventory" element={<Inventory />} />
-            <Route path="/sales" element={<div className="p-20 text-center opacity-20 font-black text-5xl">SOTUVLAR</div>} />
-            <Route path="/settings" element={<div className="p-20 text-center opacity-20 font-black text-5xl">SOZLAMALAR</div>} />
+            <Route path="/sales" element={<Sales />} />
+            <Route path="/settings" element={<Settings />} />
           </Routes>
         </div>
       </div>
