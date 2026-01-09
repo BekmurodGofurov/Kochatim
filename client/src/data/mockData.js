@@ -1,5 +1,44 @@
 // src/data/mockData.js
 
+export const DASHBOARD_DATA = [
+  {
+    id: "olma",
+    groupName: "Olma",
+    totalValue: 850,
+    color: "#10b981", // Yashil
+    sorts: [
+      { name: "Semerenka", nav1: 120, nav2: 50, nav3: 30 },
+      { name: "Golden", nav1: 200, nav2: 40, nav3: 10 },
+      { name: "Besh yulduz", nav1: 150, nav2: 30, nav3: 20 },
+      { name: "Krepis", nav1: 180, nav2: 15, nav3: 5 }
+    ]
+  },
+  {
+    id: "orik",
+    groupName: "O‘rik",
+    totalValue: 620,
+    color: "#f59e0b", // To'q sariq
+    sorts: [
+      { name: "Oq o‘rik", nav1: 100, nav2: 40, nav3: 10 },
+      { name: "Subhon", nav1: 150, nav2: 20, nav3: 5 },
+      { name: "Lola o‘rik", nav1: 120, nav2: 30, nav3: 15 },
+      { name: "Qandak", nav1: 90, nav2: 30, nav3: 10 }
+    ]
+  },
+  {
+    id: "shaftoli",
+    groupName: "Shaftoli",
+    totalValue: 740,
+    color: "#ec4899", // Pushti
+    sorts: [
+      { name: "Oqolyori", nav1: 110, nav2: 40, nav3: 10 },
+      { name: "Champion", nav1: 200, nav2: 50, nav3: 20 },
+      { name: "Qora lupchak", nav1: 130, nav2: 20, nav3: 5 },
+      { name: "Anjur shaftoli", nav1: 120, nav2: 30, nav3: 5 }
+    ]
+  }
+];
+
 export const SALES_HISTORY = [
   { id: 1, name: 'Olma (Golden)', price: 250000, qty: 10, date: '2024-05-15', category: 'Mevali' },
   { id: 2, name: 'Gilos (Sariq)', price: 140000, qty: 4, date: '2024-05-15', category: 'Mevali' },
