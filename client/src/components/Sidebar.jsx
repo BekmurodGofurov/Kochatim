@@ -17,7 +17,7 @@ export default function Sidebar() {
         <div className="bg-green-600 p-2.5 rounded-2xl shadow-lg shadow-green-200 rotate-3">
           <Leaf className="text-white" size={24} />
         </div>
-        <span className="text-2xl font-black tracking-tighter text-slate-800">GREEN-ERP</span>
+        <span className="text-2xl font-black tracking-tighter text-slate-800">Ko'chatim</span>
       </div>
 
       <nav className="space-y-3 flex-1">

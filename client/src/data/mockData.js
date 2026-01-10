@@ -4,40 +4,116 @@ export const DASHBOARD_DATA = [
   {
     id: "olma",
     groupName: "Olma",
-    totalValue: 850,
-    color: "#10b981", // Yashil
+    totalValue: 1250,
+    mainImage: "https://zamin.uz/uploads/posts/2025-03/640336f4e4_olma-apple-yabloko.webp",
+    color: "#ef4444",
     sorts: [
-      { name: "Semerenka", nav1: 120, nav2: 50, nav3: 30 },
-      { name: "Golden", nav1: 200, nav2: 40, nav3: 10 },
-      { name: "Besh yulduz", nav1: 150, nav2: 30, nav3: 20 },
-      { name: "Krepis", nav1: 180, nav2: 15, nav3: 5 }
+      { 
+        id: 101,
+        name: "Semerenka", 
+        nav1: 350, nav2: 120, nav3: 45,
+        images: [
+          "https://healthy-food-near-me.com/wp-content/uploads/2022/09/apple-variety-semerenko-characteristic-with-photo-and-video.webp",
+          "https://www.buxstat.uz/images/news/olma1.jpg",
+          "https://www.ziyouz.uz/wp-content/uploads/2015/07/olma.jpg"
+        ],
+        description: "Semerenka - qishki nav, mevalari yashil, nordon-shirin. Uzoq masofaga tashishga chidamli va 6 oygacha sifatini yo'qotmaydi."
+      },
+      { 
+        id: 102,
+        name: "Golden Delicious", 
+        nav1: 280, nav2: 60, nav3: 15,
+        images: [
+          "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Golden_Delicious_apples.jpg/2560px-Golden_Delicious_apples.jpg",
+          "https://data.daryo.uz/media/2023/04/643ecb7c8989f.jpg"
+        ],
+        description: "Tilla-sariq rangli, juda shirin va xushbo'y olma. Bolalar uchun eng sevimli nav hisoblanadi."
+      },
+      { 
+        id: 103,
+        name: "Pink Lady", 
+        nav1: 150, nav2: 30, nav3: 10,
+        images: ["https://images.unsplash.com/photo-1584306235453-43214b736706?w=600"],
+        description: "Eksport uchun eng ko'p talab qilinadigan premium navlardan biri. Qizg'ish-pushti rangda."
+      },
+      { 
+        id: 104,
+        name: "Fuji", 
+        nav1: 180, nav2: 10, nav3: 0,
+        images: ["https://images.unsplash.com/photo-1590005354167-6da97870c91d?w=600"],
+        description: "Yaponiyada yaratilgan, suvli va qattiq olma navi. Shakar miqdori juda yuqori."
+      }
     ]
   },
   {
     id: "orik",
-    groupName: "O‘rik",
-    totalValue: 620,
-    color: "#f59e0b", // To'q sariq
+    groupName: "O'rik",
+    totalValue: 980,
+    mainImage: "https://makepedia.uz/wp-content/uploads/2020/01/tushda-orik.jpg",
+    color: "#f59e0b",
     sorts: [
-      { name: "Oq o‘rik", nav1: 100, nav2: 40, nav3: 10 },
-      { name: "Subhon", nav1: 150, nav2: 20, nav3: 5 },
-      { name: "Lola o‘rik", nav1: 120, nav2: 30, nav3: 15 },
-      { name: "Qandak", nav1: 90, nav2: 30, nav3: 10 }
+      { 
+        id: 201,
+        name: "Qandak", 
+        nav1: 400, nav2: 80, nav3: 20,
+        images: [
+          "https://images.unsplash.com/photo-1543528176-51368a6e01a0?w=600",
+          "https://images.unsplash.com/photo-1501199532022-dc3b16bd3db5?w=600"
+        ],
+        description: "O'rta Osiyo iqlimiga mos eng shirin o'rik navi. Asosan quritish (turshak) uchun ishlatiladi."
+      },
+      { 
+        id: 202,
+        name: "Subhon", 
+        nav1: 220, nav2: 40, nav3: 10,
+        images: ["https://images.unsplash.com/photo-1629986345991-3893663a879d?w=600"],
+        description: "Yirik mevali, sershira nav. Yangiligida iste'mol qilish uchun juda qulay."
+      },
+      { 
+        id: 203,
+        name: "Oq O'rik", 
+        nav1: 180, nav2: 25, nav3: 5,
+        images: ["https://images.unsplash.com/photo-1543528176-51368a6e01a0?w=600"],
+        description: "Rangi och-sariq, mazasi o'ziga xos mayin. Konserva sanoatida ko'p foydalaniladi."
+      }
     ]
   },
   {
     id: "shaftoli",
     groupName: "Shaftoli",
     totalValue: 740,
-    color: "#ec4899", // Pushti
+    mainImage: "https://img.pikbest.com/wp/202409/peach-fruits-gray-textured-table-adorned-with-luscious-in-a-string-bag_9912549.jpg!w700wp",
+    color: "#f43f5e",
     sorts: [
-      { name: "Oqolyori", nav1: 110, nav2: 40, nav3: 10 },
-      { name: "Champion", nav1: 200, nav2: 50, nav3: 20 },
-      { name: "Qora lupchak", nav1: 130, nav2: 20, nav3: 5 },
-      { name: "Anjur shaftoli", nav1: 120, nav2: 30, nav3: 5 }
+      { 
+        id: 301,
+        name: "Lola", 
+        nav1: 300, nav2: 50, nav3: 10,
+        images: [
+          "https://images.unsplash.com/photo-1595124253349-20f0e6c7393a?w=600",
+          "https://images.unsplash.com/photo-1626014303757-6bcbe77bc88f?w=600"
+        ],
+        description: "O'rtapishar nav, mevalari yumshoq va mayin tukli. Soki (sharbat) tayyorlash uchun ideal."
+      },
+      { 
+        id: 302,
+        name: "Anjir Shaftoli", 
+        nav1: 250, nav2: 10, nav3: 0,
+        images: ["https://images.unsplash.com/photo-1622340322700-476c59709f6e?w=600"],
+        description: "Yassi shaklli, o'ziga xos xushbo'y hidli nav. Hozirgi kunda bozorda eng xaridorgir."
+      },
+      { 
+        id: 303,
+        name: "Nektarin", 
+        nav1: 100, nav2: 20, nav3: 0,
+        images: ["https://images.unsplash.com/photo-1598413159048-5228c2e6f477?w=600"],
+        description: "Tuksiz, silliq po'stloqli shaftoli. Qattiqroq bo'lgani uchun uzoq muddat saqlash mumkin."
+      }
     ]
   }
 ];
+
+
 
 export const SALES_HISTORY = [
   { id: 1, name: 'Olma (Golden)', price: 250000, qty: 10, date: '2024-05-15', category: 'Mevali' },
