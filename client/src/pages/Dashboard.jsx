@@ -10,6 +10,9 @@ const Dashboard = () => {
 
   const COLORS = ['#3b82f6', '#fbbf24', '#c084fc', '#f87171', '#34d399'];
 
+  // Barcha guruhlardagi jami ko'chatlarni hisoblash
+  const grandTotal = DASHBOARD_DATA.reduce((sum, item) => sum + item.totalValue, 0);
+
   const handleGroupClick = (group) => {
     setLoading(true);
     setSelectedGroup(null);
@@ -56,36 +59,46 @@ const Dashboard = () => {
           ))}
         </div>
 
-        <div className="w-full lg:w-1/2 h-[400px] order-1 lg:order-2">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={mainPieData}
-                cx="50%"
-                cy="50%"
-                outerRadius={160}
-                dataKey="value"
-                stroke="#fff"
-                strokeWidth={4}
-              >
-                {mainPieData.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={entry.color} 
-                    onClick={() => handleGroupClick(entry.original)}
-                    className="outline-none cursor-pointer"
-                  />
-                ))}
-              </Pie>
-              {/* Asosiy Pie Tooltip: Masalan "Olma: 45%" */}
-              <Tooltip 
-                formatter={(value, name) => [
-                  `${((value / mainPieData.reduce((a, b) => a + b.value, 0)) * 100).toFixed(1)}%`, 
-                  name
-                ]} 
-              />
-            </PieChart>
-          </ResponsiveContainer>
+        <div className="w-full lg:w-1/2 order-1 lg:order-2 flex flex-col items-center">
+          <div className="h-[400px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={mainPieData}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={160}
+                  dataKey="value"
+                  stroke="#fff"
+                  strokeWidth={4}
+                >
+                  {mainPieData.map((entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={entry.color} 
+                      onClick={() => handleGroupClick(entry.original)}
+                      className="outline-none cursor-pointer"
+                    />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  formatter={(value, name) => [
+                    `${((value / mainPieData.reduce((a, b) => a + b.value, 0)) * 100).toFixed(1)}%`, 
+                    name
+                  ]} 
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* JAMI KO'CHATLAR SONI QISMI */}
+          <div className="mt-4 p-6 bg-white border-2 border-blue-100 rounded-[25px] w-full max-w-[300px] text-center shadow-sm">
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Barcha guruhlar bo'yicha</p>
+            <h3 className="text-lg font-bold text-gray-800">Jami ko'chat:</h3>
+            <p className="text-4xl font-black text-blue-600 tracking-tighter">
+              {grandTotal.toLocaleString()} <small className="text-sm font-bold uppercase text-gray-400">ta</small>
+            </p>
+          </div>
         </div>
       </div>
 
@@ -110,11 +123,9 @@ const Dashboard = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {selectedGroup.sorts.map((sort, idx) => (
                     <div key={idx} className="bg-gray-50 p-6 rounded-[25px] border border-gray-100">
-                      {/* Sort nomi kattalashtirildi */}
                       <p className="text-lg font-black uppercase tracking-tight mb-1" style={{ color: COLORS[idx % COLORS.length] }}>
                         {sort.name}
                       </p>
-                      {/* Jami soni biroz kichraytirildi */}
                       <div className="text-2xl font-bold text-gray-700 mb-4">
                         {(sort.nav1 + sort.nav2 + sort.nav3).toLocaleString()} <span className="text-xs font-normal text-gray-400">dona jami</span>
                       </div>
@@ -147,7 +158,6 @@ const Dashboard = () => {
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      {/* Tooltip: Endi "Golden: 40.5%" ko'rinishida chiqadi */}
                       <Tooltip 
                         formatter={(value, name) => [
                           `${((value / selectedGroup.totalValue) * 100).toFixed(1)}%`, 
