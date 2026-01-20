@@ -2,14 +2,20 @@ from aiogram.types import Message, ReplyKeyboardRemove
 from loader import dp
 from aiogram.dispatcher import FSMContext
 from states.state_one import sel_state
-from data.database import get_all_cat, get_cat_id, get_all_ty
+
+from data.database import (
+    get_all_cat,
+    get_cat_id,
+    get_all_ty,
+    new_seedling,
+    get_type_id,
+)
 from keyboards.default.main_keyboards import cat_keyboard, ty_keyboard, main_manu
-from data.database import new_seedling, get_type_id
 
 
-@dp.message_handler(text="Ko'chat Qo'shish")
+@dp.message_handler(text="Ko'chat qo'shish")
 async def start_sel(message: Message):
-    cats = get_all_cat(message.from_user.id)
+    cats = await get_all_cat(message.from_user.id)
     keyboard = cat_keyboard(cats)
     await message.answer("Ko'chat sonini kiritmoqchi bo'lgan **Gruh**ni tanlang:", reply_markup=keyboard)
     await sel_state.c_id.set()
@@ -18,17 +24,19 @@ async def start_sel(message: Message):
 @dp.message_handler(state=sel_state.c_id)
 async def select_category(message: Message, state: FSMContext):
     u_id = message.from_user.id
-    c_name = message.text
+    c_name = (message.text or "").strip()
 
-    c_id = get_cat_id(u_id, c_name)
+    c_id = await get_cat_id(u_id, c_name)
 
     if c_id:
-        await state.update_data(c_id=c_id)
-        types = get_all_ty(c_id, u_id)
+        await state.update_data(c_id=int(c_id))
+
+        # MUHIM: get_all_ty(u_id, c_id)
+        types = await get_all_ty(u_id, int(c_id))
         keyboard = ty_keyboard(types)
 
         await message.answer(f"Tanlangan Gruh: **{c_name}**. Endi **Nav**ni tanlang:", reply_markup=keyboard)
-        await sel_state.t_id.set()  # Keyingi state ga o'tamiz
+        await sel_state.t_id.set()
     else:
         await message.answer("Iltimos, mavjud Gruh nomini tanlang.")
 
@@ -36,15 +44,20 @@ async def select_category(message: Message, state: FSMContext):
 @dp.message_handler(state=sel_state.t_id)
 async def select_type(message: Message, state: FSMContext):
     u_id = message.from_user.id
-    t_name = message.text
+    t_name = (message.text or "").strip()
+
     data = await state.get_data()
-    c_id = data['c_id']
-    t_id = get_type_id(c_id, u_id, t_name)
+    c_id = int(data["c_id"])
+
+    # MUHIM: get_type_id(u_id, c_id, t_name)
+    t_id = await get_type_id(u_id, c_id, t_name)
 
     if t_id:
-        await state.update_data(t_id=t_id)
-        await message.answer("Iltimos, **1-sifat ko'chatlar sonini** kiriting (raqamda):",
-                             reply_markup=ReplyKeyboardRemove())
+        await state.update_data(t_id=int(t_id))
+        await message.answer(
+            "Iltimos, **1-sifat ko'chatlar sonini** kiriting (raqamda):",
+            reply_markup=ReplyKeyboardRemove(),
+        )
         await sel_state.cuol_1.set()
     else:
         await message.answer("Iltimos, mavjud Nav nomini tanlang.")
@@ -79,12 +92,12 @@ async def add_q3(message: Message, state: FSMContext):
         data = await state.get_data()
         u_id = message.from_user.id
 
-        new_seedling(
-            u_id=u_id,
-            t_id=data['t_id'],
-            q1=data['cuol_1'],
-            q2=data['cuol_2'],
-            q3=q3
+        await new_seedling(
+            u_id=int(u_id),
+            t_id=int(data["t_id"]),
+            q1=int(data["cuol_1"]),
+            q2=int(data["cuol_2"]),
+            q3=int(q3),
         )
 
         await message.answer("Ko'chatlar soni yangilandi!", reply_markup=main_manu)

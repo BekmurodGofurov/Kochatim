@@ -6,9 +6,9 @@ from data.database import get_all_cat, get_cat_id, get_all_ty, get_type_id, add_
 from keyboards.default.main_keyboards import cat_keyboard, ty_keyboard, main_manu
 
 
-@dp.message_handler(text="Sotish")
+@dp.message_handler(text="Sotuv")
 async def start_sale(message: Message):
-    cats = get_all_cat(message.from_user.id)
+    cats = await get_all_cat(message.from_user.id)
     if not cats:
         await message.answer("Sizda hali guruhlar yo'q.")
         return
@@ -18,10 +18,10 @@ async def start_sale(message: Message):
 
 @dp.message_handler(state=sale_state.c_id)
 async def sale_cat(message: Message, state: FSMContext):
-    c_id = get_cat_id(message.from_user.id, message.text)
+    c_id = await get_cat_id(message.from_user.id, message.text)
     if c_id:
         await state.update_data(c_id=c_id)
-        types = get_all_ty(c_id, message.from_user.id)
+        types = await get_all_ty(c_id, message.from_user.id)
         await message.answer("Navni tanlang:", reply_markup=ty_keyboard(types))
         await sale_state.t_id.set()
     else:
@@ -31,7 +31,7 @@ async def sale_cat(message: Message, state: FSMContext):
 @dp.message_handler(state=sale_state.t_id)
 async def sale_type(message: Message, state: FSMContext):
     data = await state.get_data()
-    t_id = get_type_id(data['c_id'], message.from_user.id, message.text)
+    t_id = await get_type_id(data['c_id'], message.from_user.id, message.text)
     if t_id:
         await state.update_data(t_id=t_id)
         await message.answer("1-navdan necha dona sotildi?", reply_markup=ReplyKeyboardRemove())
@@ -67,7 +67,7 @@ async def sale_final(message: Message, state: FSMContext):
         price = float(message.text)
         data = await state.get_data()
 
-        success = add_sale(
+        success = await add_sale(
             message.from_user.id, data['c_id'], data['t_id'],
             data['q1'], data['q2'], data['q3'], price
         )

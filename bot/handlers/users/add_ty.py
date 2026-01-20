@@ -1,71 +1,123 @@
-from aiogram.types import Message, ReplyKeyboardRemove
-from loader import dp
+from aiogram import types
 from aiogram.dispatcher import FSMContext
-from states.state_one import type_state
-from data.database import get_all_cat, get_cat_id, new_ty, get_a_ty, add_new_img
-from keyboards.default.main_keyboards import cat_keyboard, new_tree
-import datetime
+from aiogram.dispatcher.filters import Text
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 
-@dp.message_handler(lambda message: message.text == "Yangi Nav")
-async def cat_handler(message: Message):
-    cat = get_all_cat(message.from_user.id)
-    keyboard = cat_keyboard(cat)
-    await message.answer(f"Iltimos quyda berilgan guruhlardan birini tanlang!", reply_markup=keyboard)
-    await type_state.c_id.set()
-
-@dp.message_handler(state=type_state.c_id)
-async def add_cid(message: Message, state: FSMContext):
-    text = message.text
-    cats = get_all_cat(message.from_user.id)
-    keyboard = cat_keyboard(cats)
-    in_cat = False
-    for cat in cats:
-        if cat == text:
-            in_cat = True
-            break
-    if in_cat:
-        cat_id  = get_cat_id(message.from_user.id, text)
-        await state.update_data(c_id=cat_id)
-        await message.answer("Iltimos Nav nomini yuboring", reply_markup=ReplyKeyboardRemove())
-        await type_state.t_name.set()
-
-    else:
-        await message.answer("Iltimos faqat sizdagi mavjud bo'lgan gruh nomini tanlang! ", reply_markup=keyboard)
-        await type_state.c_id.set()
-
-@dp.message_handler(state=type_state.t_name)
-async def add_t_name(message: Message, state: FSMContext):
-    text = message.text
-    if get_a_ty(text, message.from_user.id):
-        await state.update_data(t_name=text)
-        await message.reply("Ushubu ko'chat navi haqida tafsilot bering: ", reply_markup=ReplyKeyboardRemove())
-        await type_state.t_def.set()
-    else:
-        await message.answer(f"Siz yuborgan ko'chat navi allaqachon sizda mavjud!\n\nIltimos boshqa bir ko'chat navini kiriting!",reply_markup=ReplyKeyboardRemove())
-        await type_state.t_name.set()
+from loader import dp
+from data.database import get_all_cat, get_cat_id, new_ty, add_new_img
+from keyboards.default.main_keyboards import cat_keyboard, main_manu
 
 
-@dp.message_handler(state=type_state.t_def)
-async def add_def(message: Message, state: FSMContext):
-    await state.update_data(t_def=message.text)
-    await message.answer("Endi ushbu nav uchun rasm yuboring:")
-    await type_state.t_img.set()
+ST_ADD_TY_CAT = "add_ty:cat"
+ST_ADD_TY_NAME = "add_ty:name"
+ST_ADD_TY_DEFF = "add_ty:deff"
+ST_ADD_TY_IMG = "add_ty:img"
+
+@dp.message_handler(Text(equals="Yangi Nav"), state="*")
+async def add_ty_start(message: types.Message, state: FSMContext):
+    await state.finish()
+    u_id = message.from_user.id
+
+    cats = await get_all_cat(u_id)  # LIST[str]
+    if not cats:
+        await message.answer("Sizda hali guruh yo‘q. Avval 'Yangi Guruh' qo‘shing.", reply_markup=main_manu)
+        return
+
+    await message.answer("Iltimos guruhlardan birini tanlang:", reply_markup=cat_keyboard(cats))
+    await state.set_state(ST_ADD_TY_CAT)
 
 
-@dp.message_handler(content_types=['photo'], state=type_state.t_img)
-async def add_img(message: Message, state: FSMContext):
+@dp.message_handler(state=ST_ADD_TY_CAT)
+async def add_ty_pick_cat(message: types.Message, state: FSMContext):
+    u_id = message.from_user.id
+    c_name = (message.text or "").strip()
+
+    cats = await get_all_cat(u_id)
+    if c_name not in cats:
+        await message.answer(
+            "Iltimos faqat sizdagi mavjud bo‘lgan guruh nomini tanlang!",
+            reply_markup=cat_keyboard(cats),
+        )
+        return
+
+    c_id = await get_cat_id(u_id, c_name)
+    if not c_id:
+        await message.answer("Guruh topilmadi. Qaytadan urinib ko‘ring.", reply_markup=main_manu)
+        await state.finish()
+        return
+
+    await state.update_data(c_id=int(c_id), c_name=c_name)
+    await message.answer("Yangi nav nomini yuboring (matn).",reply_markup=ReplyKeyboardRemove())
+    await state.set_state(ST_ADD_TY_NAME)
+
+
+@dp.message_handler(state=ST_ADD_TY_NAME, content_types=types.ContentType.TEXT)
+async def add_ty_name(message: types.Message, state: FSMContext):
+    t_name = (message.text or "").strip()
+    if not t_name:
+        await message.answer("Nav nomi bo‘sh bo‘lmasin. Qayta yuboring.")
+        return
+
+    await state.update_data(t_name=t_name)
+    await message.answer("Ko'chat haqida malumot qoldiring!")
+    await state.set_state(ST_ADD_TY_DEFF)
+
+
+@dp.message_handler(state=ST_ADD_TY_DEFF, content_types=types.ContentType.TEXT)
+async def add_ty_deff(message: types.Message, state: FSMContext):
+    txt = (message.text or "").strip()
+
+    deff = None if txt == "⏭ O‘tkazib yuborish" else (txt or None)
+
     data = await state.get_data()
     u_id = message.from_user.id
+    c_id = data.get("c_id")
+    t_name = data.get("t_name")
+
+    if not c_id or not t_name:
+        await message.answer("Xatolik. Qaytadan boshlang.", reply_markup=main_manu)
+        await state.finish()
+        return
+
+    created = await new_ty(u_id=int(u_id), c_id=int(c_id), t_name=t_name, deff=deff)
+
+    # backend javobidan t_id ni olish
+    t_id = None
+    if isinstance(created, dict):
+        if created.get("t_id") is not None:
+            t_id = created.get("t_id")
+        elif isinstance(created.get("type"), dict) and created["type"].get("t_id") is not None:
+            t_id = created["type"].get("t_id")
+
+    if not t_id:
+        await message.answer("Nav yaratildi, lekin t_id topilmadi. Backend javobini tekshiring.", reply_markup=main_manu)
+        await state.finish()
+        return
+
+    await state.update_data(t_id=int(t_id))
+    await message.answer("Nav yaratildi ✅ Endi rasm yuboring (photo).", reply_markup=ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton("⬅️ Orqaga")]],
+        resize_keyboard=True
+    ))
+    await state.set_state(ST_ADD_TY_IMG)
+
+
+@dp.message_handler(state=ST_ADD_TY_IMG, content_types=types.ContentType.PHOTO)
+async def add_ty_add_img(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    t_id = data.get("t_id")
+    if not t_id:
+        await message.answer("Xatolik. Qaytadan boshlang.", reply_markup=main_manu)
+        await state.finish()
+        return
+
     photo_id = message.photo[-1].file_id
+    await add_new_img(int(t_id), photo_id)
 
-    t_id = new_ty(
-        c_id=data["c_id"],
-        u_id=u_id,
-        t_name=data["t_name"],
-        deff=data["t_def"]
-    )
-
-    add_new_img(t_id, photo_id)
-
-    await message.answer("Yangi nav va rasm saqlandi!", reply_markup=new_tree)
+    await message.answer("Rasm saqlandi ✅", reply_markup=main_manu)
     await state.finish()
+
+
+@dp.message_handler(state=ST_ADD_TY_IMG)
+async def add_ty_need_photo(message: types.Message, state: FSMContext):
+    await message.answer("Iltimos rasm yuboring (photo).")

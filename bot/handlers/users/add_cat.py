@@ -1,26 +1,36 @@
-from aiogram.types import Message, ReplyKeyboardRemove
-from loader import dp
+from aiogram.types import Message
 from aiogram.dispatcher import FSMContext
-from states.state_one import cat_state
-from data.database import new_cat
-from keyboards.default.main_keyboards import new_type,main_manu
-import datetime
+from aiogram.dispatcher.filters import Text
 
-@dp.message_handler(lambda message: message.text == "Yangi Gruh")
-async def add_c(message: Message):
-  await message.answer(f"Gruhga nom bering!", reply_markup=ReplyKeyboardRemove())
-  await cat_state.c_name.set()
+from loader import dp
+from states.state_one import cat_state
+from data.database import new_cat, get_all_cat
+from keyboards.default.main_keyboards import cat_keyboard, main_manu
+
+
+@dp.message_handler(Text(equals="Yangi Gruh"), state="*")
+async def add_cat_start(message: Message, state: FSMContext):
+    await state.finish()
+    await message.answer("Yangi guruh nomini yuboring:")
+    await cat_state.c_name.set()
+
 
 @dp.message_handler(state=cat_state.c_name)
-async def add_by(message: Message, state: FSMContext):
-    text = message.text
-    await state.update_data(c_name=text)
-    data = await state.get_data()
-    c_name = data.get("c_name")
+async def add_cat_save(message: Message, state: FSMContext):
     u_id = message.from_user.id
-    if new_cat(u_id, c_name):
-        await message.answer(f"Siz yuborgan Gruh malumotlar omboriga qo'shildi!!", reply_markup = new_type)
+    c_name = (message.text or "").strip()
+
+    if not c_name:
+        await message.answer("Guruh nomi bo‘sh bo‘lmasin. Qayta yuboring:")
+        return
+
+    await new_cat(u_id=int(u_id), c_name=c_name)
+
+    # xohlasa: yangilangan ro'yxatni ko'rsatamiz
+    cats = await get_all_cat(u_id)
+    if cats:
+        await message.answer("✅ Guruh qo‘shildi. Guruhlar:", reply_markup=cat_keyboard(cats))
     else:
-        await message.answer(f"Siz yuborgan Gruh nomi allaqachon mavjud!\n\nIltimos bohsqa bir nom bering", reply_markup=main_manu)
-        await cat_state.c_name.set()
-    await state.reset_state(with_data=True)
+        await message.answer("✅ Guruh qo‘shildi.", reply_markup=main_manu)
+
+    await state.finish()

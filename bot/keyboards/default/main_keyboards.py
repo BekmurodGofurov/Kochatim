@@ -1,43 +1,102 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
+
+# Contact so'rash keyboard
+contact_kb = ReplyKeyboardMarkup(
+    keyboard=[[KeyboardButton(text="📞 Telefon raqamni yuborish", request_contact=True)]],
+    resize_keyboard=True,
+)
+
+
+# Asosiy menu (main)
+main_manu = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="Ko'rish"),
+            KeyboardButton(text="Ko'chat qo'shish")
+        ],
+        [
+            KeyboardButton(text="Yangi Guruh"), 
+            KeyboardButton(text="Yangi Nav")
+        ],
+        [
+            KeyboardButton(text="Sotuv")
+        ],
+    ],
+    resize_keyboard=True,
+)
+
+
+new_cat = ReplyKeyboardMarkup( keyboard=[
+        [
+            KeyboardButton(text="Yangi Guruh")
+        ]
+    ],resize_keyboard=True,
+)
+# add_cat.py import qiladigan keyboard
+new_type = ReplyKeyboardMarkup( keyboard=[
+        [
+            KeyboardButton(text="Yangi Nav")
+        ]
+    ],resize_keyboard=True,
+)
+new_tree = ReplyKeyboardMarkup( keyboard=[
+        [
+            KeyboardButton(text="Ko'chat qo'shish")
+        ]
+    ],resize_keyboard=True,
+)
+
+
+def _as_text(item):
+    """
+    item string bo‘lsa → o‘zi
+    item dict bo‘lsa → c_name yoki t_name
+    """
+    if isinstance(item, str):
+        return item
+
+    if isinstance(item, dict):
+        return item.get("c_name") or item.get("t_name")
+
+    return None
+
+
 def cat_keyboard(arr):
-    categories_keyboard = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+    kb = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+
     new_cat_button = KeyboardButton(text="Yangi Gruh")
-    for name in arr:
-        categories_keyboard.insert(KeyboardButton(text=name))
-    categories_keyboard.row(new_cat_button)
-    return categories_keyboard
+
+    if not arr:
+        kb.add(new_cat_button)
+        return kb
+
+    buttons = []
+    for item in arr:
+        text = _as_text(item)
+        if text:
+            buttons.append(KeyboardButton(text=text))
+
+    kb.add(*buttons)
+    kb.add(new_cat_button)
+    return kb
+
 
 def ty_keyboard(arr):
-    types_keyboard = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-    new_cat_button = KeyboardButton(text="Yangi Nav")
-    for name in arr:
-        types_keyboard.insert(KeyboardButton(text=name))
-    types_keyboard.row(new_cat_button)
-    return types_keyboard
+    kb = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
 
-new_tree = ReplyKeyboardMarkup(one_time_keyboard=True, keyboard=[
-  [
-    KeyboardButton(text="Ko'chat Qo'shish"),
-  ]
-], resize_keyboard=True)
+    new_ty_button = KeyboardButton(text="Yangi Nav")
 
-main_manu = ReplyKeyboardMarkup(one_time_keyboard=True, keyboard=[
-  [
-      KeyboardButton(text="Ko'rish"),
-      KeyboardButton(text="Yangi Nav"),
-  ],
-  [
-      KeyboardButton(text="Yangi Gruh"),
-      KeyboardButton(text="Ko'chat Qo'shish"),
-  ],
-  [
-      KeyboardButton(text="Sotish"),
-  ],
-], resize_keyboard=True)
+    if not arr:
+        kb.add(new_ty_button)
+        return kb
 
-new_type = ReplyKeyboardMarkup(one_time_keyboard=True, keyboard=[
-  [
-    KeyboardButton(text="Yangi Navh"),
-  ]
-], resize_keyboard=True)
+    buttons = []
+    for item in arr:
+        text = _as_text(item)
+        if text:
+            buttons.append(KeyboardButton(text=text))
+
+    kb.add(*buttons)
+    kb.add(new_ty_button)
+    return kb
