@@ -1,176 +1,367 @@
-import React, { useState, useRef } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { LayoutDashboard, Loader2 } from 'lucide-react';
-import { DASHBOARD_DATA } from '../data/mockData';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { LayoutDashboard } from "lucide-react";
+
+import Loader from "../components/Loader"; // sizda bor loader
+import PieCard from "../components/PieCard";
+import "./DashboardStyle.css";
+
+const API_BASE = "http://127.0.0.1:8000";
+
+function getToken() {
+  return localStorage.getItem("session_token");
+}
+
+async function apiGetDashboard() {
+  const token = getToken();
+  const res = await fetch(`${API_BASE}/api/me/dashboard`, {
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const json = await res.json();
+  if (!res.ok || !json.ok) {
+    throw new Error(json?.error?.message || "Server error");
+  }
+  return json.data;
+}
+
+const COLORS = ["#3b82f6", "#fbbf24", "#c084fc", "#f87171", "#34d399"];
 
 const Dashboard = () => {
+  const [dashboard, setDashboard] = useState(null);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [pageError, setPageError] = useState("");
+
   const [selectedGroup, setSelectedGroup] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+
   const detailsRef = useRef(null);
 
-  const COLORS = ['#3b82f6', '#fbbf24', '#c084fc', '#f87171', '#34d399'];
+  useEffect(() => {
+    let alive = true;
 
-  // Barcha guruhlardagi jami ko'chatlarni hisoblash
-  const grandTotal = DASHBOARD_DATA.reduce((sum, item) => sum + item.totalValue, 0);
+    (async () => {
+      try {
+        setPageLoading(true);
+        setPageError("");
+        const data = await apiGetDashboard();
+        if (!alive) return;
+
+        setDashboard(data);
+      } catch (e) {
+        if (!alive) return;
+        setPageError(e.message || "Xatolik");
+      } finally {
+        if (!alive) return;
+        setPageLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Backend -> eski struktura (UI o'zgarmasligi uchun)
+  const groups = useMemo(() => {
+    if (!dashboard) return [];
+
+    const cats = dashboard.categories || [];
+    const types = dashboard.types || [];
+    const seedlings = dashboard.seedlings || [];
+
+    const seedMap = new Map();
+    for (const s of seedlings) {
+      seedMap.set(Number(s.t_id), {
+        q1: Number(s.quality_1 || 0),
+        q2: Number(s.quality_2 || 0),
+        q3: Number(s.quality_3 || 0),
+      });
+    }
+
+    return cats.map((c) => {
+      const c_id = Number(c.c_id);
+      const c_name = String(c.c_name || "");
+
+      const myTypes = types.filter((t) => Number(t.c_id) === c_id);
+
+      const sorts = myTypes.map((t) => {
+        const t_id = Number(t.t_id);
+        const name = String(t.t_name || "");
+        const q = seedMap.get(t_id) || { q1: 0, q2: 0, q3: 0 };
+
+        return {
+          t_id,
+          name,
+          nav1: q.q1,
+          nav2: q.q2,
+          nav3: q.q3,
+        };
+      });
+
+      const totalValue = sorts.reduce(
+        (sum, x) => sum + x.nav1 + x.nav2 + x.nav3,
+        0
+      );
+
+      return {
+        id: c_id,
+        groupName: c_name,
+        totalValue,
+        sorts,
+      };
+    });
+  }, [dashboard]);
+
+  // default selectedGroup
+  useEffect(() => {
+    if (!groups.length) return;
+    if (selectedGroup) return;
+    setSelectedGroup(groups[0]);
+  }, [groups, selectedGroup]);
+
+  const grandTotal = useMemo(() => {
+    return groups.reduce((sum, g) => sum + Number(g.totalValue || 0), 0);
+  }, [groups]);
+
+  const mainPieData = useMemo(() => {
+    return groups.map((item, index) => ({
+      name: item.groupName,
+      value: item.totalValue,
+      color: COLORS[index % COLORS.length],
+      original: item,
+    }));
+  }, [groups]);
 
   const handleGroupClick = (group) => {
-    setLoading(true);
+    setDetailLoading(true);
     setSelectedGroup(null);
-    
+
     setTimeout(() => {
       setSelectedGroup(group);
-      setLoading(false);
+      setDetailLoading(false);
       if (detailsRef.current) {
-        detailsRef.current.scrollIntoView({ behavior: 'smooth' });
+        detailsRef.current.scrollIntoView({ behavior: "smooth" });
       }
     }, 400);
   };
 
-  const mainPieData = DASHBOARD_DATA.map((item, index) => ({
-    name: item.groupName,
-    value: item.totalValue,
-    color: COLORS[index % COLORS.length],
-    original: item
-  }));
+  const selectedPieData = useMemo(() => {
+    if (!selectedGroup) return [];
+    return (selectedGroup.sorts || []).map((s) => ({
+      name: s.name,
+      value:
+        (Number(s.nav1) || 0) + (Number(s.nav2) || 0) + (Number(s.nav3) || 0),
+    }));
+  }, [selectedGroup]);
+
+  if (pageLoading) {
+    return (
+      <div className="dashboard-page">
+        <div className="dashboard-page-loader">
+          <Loader />
+        </div>
+      </div>
+    );
+  }
+
+  if (pageError) {
+    return (
+      <div className="dashboard-page">
+        <div className="dashboard-error">
+          <div className="dashboard-error-title">Xatolik</div>
+          <div className="dashboard-error-text">{pageError}</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 space-y-8 bg-[#F8FAFC] min-h-screen pb-20">
-      
-      {/* 1. ASOSIY QISM */}
-      <div className="bg-white p-10 rounded-[30px] shadow-md border border-gray-100 flex flex-col lg:flex-row items-center gap-10">
-        <div className="w-full lg:w-1/2 space-y-4 order-2 lg:order-1">
-          <h2 className="text-2xl font-black text-gray-800 uppercase mb-6 flex items-center gap-2">
-            <LayoutDashboard className="text-blue-500" /> Guruhlar hisoboti
+    <div className="dashboard-page">
+      {/* 1) ASOSIY QISM */}
+      <div className="dashboard-card dashboard-main">
+        <div className="dashboard-main-left">
+          <h2 className="dashboard-title">
+            <LayoutDashboard className="dashboard-title-icon" />
+            <span>
+              Sizda <b>{groups.length}</b> ta guruh bor
+            </span>
           </h2>
-          {mainPieData.map((item, index) => (
-            <div 
-              key={index} 
-              onClick={() => handleGroupClick(item.original)}
-              className={`flex justify-between items-center p-5 rounded-2xl cursor-pointer transition-all border ${
-                selectedGroup?.id === item.original.id ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-transparent hover:bg-gray-100'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: item.color }}></div>
-                <span className="font-bold text-gray-700">{item.name}</span>
-              </div>
-              <span className="font-black text-lg">{item.value.toLocaleString()} dona</span>
-            </div>
-          ))}
+
+          <div className="dashboard-group-list">
+            {mainPieData.map((item, index) => {
+              const active = selectedGroup?.id === item.original.id;
+              return (
+                <button
+                  type="button"
+                  key={`${item.name}-${index}`}
+                  onClick={() => handleGroupClick(item.original)}
+                  className={`dashboard-group-row ${active ? "is-active" : ""}`}
+                >
+                  <span className="dashboard-group-left">
+                    <span
+                      className="dashboard-dot"
+                      style={{ backgroundColor: item.color }}
+                    />
+                    <span className="dashboard-group-name">{item.name}</span>
+                  </span>
+
+                  <span className="dashboard-group-value">
+                    {Number(item.value || 0).toLocaleString()} ta
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        <div className="w-full lg:w-1/2 order-1 lg:order-2 flex flex-col items-center">
-          <div className="h-[400px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={mainPieData}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={160}
-                  dataKey="value"
-                  stroke="#fff"
-                  strokeWidth={4}
-                >
-                  {mainPieData.map((entry, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={entry.color} 
-                      onClick={() => handleGroupClick(entry.original)}
-                      className="outline-none cursor-pointer"
-                    />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  formatter={(value, name) => [
-                    `${((value / mainPieData.reduce((a, b) => a + b.value, 0)) * 100).toFixed(1)}%`, 
-                    name
-                  ]} 
-                />
-              </PieChart>
-            </ResponsiveContainer>
+        <div className="dashboard-main-right">
+          <div className="dashboard-pie-wrap">
+            {/* MAIN PIE -> PieCard (UI o'zgarmaydi) */}
+            <PieCard
+              data={mainPieData}
+              colors={COLORS}
+              outerRadius={160}
+              stroke="#fff"
+              strokeWidth={4}
+              cellClassName="dashboard-pie-cell"
+              onSliceClick={(payload) => {
+                // payload original group bo'lishi kerak
+                if (payload && payload.id) handleGroupClick(payload);
+              }}
+              tooltipFormatter={(value, name) => {
+                const total = mainPieData.reduce(
+                  (a, b) => a + (b.value || 0),
+                  0
+                );
+                const pct = total ? ((value / total) * 100).toFixed(1) : "0.0";
+                return [`${pct}%`, name];
+              }}
+            />
           </div>
 
-          {/* JAMI KO'CHATLAR SONI QISMI */}
-          <div className="mt-4 p-6 bg-white border-2 border-blue-100 rounded-[25px] w-full max-w-[300px] text-center shadow-sm">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Barcha guruhlar bo'yicha</p>
-            <h3 className="text-lg font-bold text-gray-800">Jami ko'chat:</h3>
-            <p className="text-4xl font-black text-blue-600 tracking-tighter">
-              {grandTotal.toLocaleString()} <small className="text-sm font-bold uppercase text-gray-400">ta</small>
+          {/* JAMI */}
+          <div className="dashboard-total-card">
+            <p className="dashboard-total-caption">BARCHA GURUHLAR BO'YICHA</p>
+            <h3 className="dashboard-total-title">Jami ko'chat:</h3>
+            <p className="dashboard-total-value">
+              {Number(grandTotal || 0).toLocaleString()}
+              <span className="dashboard-total-unit"> TA</span>
             </p>
           </div>
         </div>
       </div>
 
-      {/* 2. BATAHSIL MA'LUMOT BO'LIMI */}
-      <div ref={detailsRef} className="min-h-[450px] scroll-mt-10">
-        {loading && (
-          <div className="flex flex-col items-center justify-center py-20 text-blue-500">
-            <Loader2 className="animate-spin mb-4" size={48} />
-            <p className="font-bold uppercase tracking-widest text-xs">Yuklanmoqda...</p>
+      {/* 2) BATAFSIL QISM */}
+      <div ref={detailsRef} className="dashboard-details">
+        {detailLoading && (
+          <div className="dashboard-detail-loader">
+            <Loader />
+            <p className="dashboard-detail-loader-text">Yuklanmoqda...</p>
           </div>
         )}
 
-        {selectedGroup && !loading && (
-          <div className="bg-white p-10 rounded-[30px] shadow-md border border-gray-100 animate-in fade-in zoom-in duration-300">
-            <div className="flex flex-col lg:flex-row gap-12">
-              
-              {/* Chap: Sortlar va Navlar */}
-              <div className="flex-1 space-y-6">
-                <h3 className="text-3xl font-black text-gray-800 border-b pb-4">
-                  {selectedGroup.groupName} <span className="text-gray-400 font-light">/ Sortlar soni</span>
+        {selectedGroup && !detailLoading && (
+          <div className="dashboard-card dashboard-detail-card">
+            <div className="dashboard-detail-layout">
+              {/* Chap */}
+              <div className="dashboard-detail-left">
+                <h3 className="dashboard-detail-title">
+                  {selectedGroup.groupName}
+                  <span className="dashboard-detail-subtitle">
+                    {" "}
+                    / Sortlar soni -{" "}
+                    <b>{(selectedGroup.sorts || []).length}</b>
+                  </span>
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {selectedGroup.sorts.map((sort, idx) => (
-                    <div key={idx} className="bg-gray-50 p-6 rounded-[25px] border border-gray-100">
-                      <p className="text-lg font-black uppercase tracking-tight mb-1" style={{ color: COLORS[idx % COLORS.length] }}>
-                        {sort.name}
-                      </p>
-                      <div className="text-2xl font-bold text-gray-700 mb-4">
-                        {(sort.nav1 + sort.nav2 + sort.nav3).toLocaleString()} <span className="text-xs font-normal text-gray-400">dona jami</span>
+
+                <div className="dashboard-sort-grid">
+                  {(selectedGroup.sorts || []).map((sort, idx) => {
+                    const total =
+                      (Number(sort.nav1) || 0) +
+                      (Number(sort.nav2) || 0) +
+                      (Number(sort.nav3) || 0);
+
+                    return (
+                      <div key={`${sort.t_id}-${idx}`} className="dashboard-sort-card">
+                        <p
+                          className="dashboard-sort-name"
+                          style={{ color: COLORS[idx % COLORS.length] }}
+                        >
+                          {sort.name}
+                        </p>
+
+                        <div className="dashboard-sort-total">
+                          {total.toLocaleString()}
+                          <span className="dashboard-sort-total-suffix">
+                            {" "}
+                            dona jami
+                          </span>
+                        </div>
+
+                        <div className="dashboard-sort-divider" />
+
+                        <div className="dashboard-sort-qualities">
+                          <div className="dashboard-sort-q">
+                            <p className="dashboard-sort-q-label">1-NAV</p>
+                            <p className="dashboard-sort-q-value">
+                              {(Number(sort.nav1) || 0).toLocaleString()}
+                            </p>
+                          </div>
+
+                          <div className="dashboard-sort-q">
+                            <p className="dashboard-sort-q-label">2-NAV</p>
+                            <p className="dashboard-sort-q-value muted-2">
+                              {(Number(sort.nav2) || 0).toLocaleString()}
+                            </p>
+                          </div>
+
+                          <div className="dashboard-sort-q">
+                            <p className="dashboard-sort-q-label">3-NAV</p>
+                            <p className="dashboard-sort-q-value muted-3">
+                              {(Number(sort.nav3) || 0).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex justify-between border-t pt-4 text-center">
-                        <div><p className="text-[10px] text-gray-400 font-bold uppercase">1-Nav</p><p className="font-bold">{sort.nav1}</p></div>
-                        <div><p className="text-[10px] text-gray-400 font-bold uppercase">2-Nav</p><p className="font-bold text-gray-500">{sort.nav2}</p></div>
-                        <div><p className="text-[10px] text-gray-400 font-bold uppercase">3-Nav</p><p className="font-bold text-gray-400">{sort.nav3}</p></div>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* O'ng: Sortlar Pie Chart */}
-              <div className="w-full lg:w-80 flex flex-col items-center justify-center bg-gray-50 rounded-[30px] p-8 h-fit">
-                <h4 className="text-[10px] font-black text-gray-400 uppercase mb-4 tracking-widest text-center leading-tight">
-                  {selectedGroup.groupName} bo'yicha ulush (%)
+              {/* O'ng */}
+              <div className="dashboard-detail-right">
+                <h4 className="dashboard-right-caption">
+                  {selectedGroup.groupName} BO'YICHA ULUSH (%)
                 </h4>
-                <div className="h-60 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={selectedGroup.sorts.map(s => ({ name: s.name, value: s.nav1 + s.nav2 + s.nav3 }))}
-                        outerRadius={80}
-                        stroke="#fff"
-                        strokeWidth={2}
-                        dataKey="value"
-                      >
-                        {selectedGroup.sorts.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        formatter={(value, name) => [
-                          `${((value / selectedGroup.totalValue) * 100).toFixed(1)}%`, 
-                          name
-                        ]} 
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <p className="mt-4 text-3xl font-black text-gray-800">{selectedGroup.totalValue.toLocaleString()}</p>
-                <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest text-center">Jami {selectedGroup.groupName}</p>
-              </div>
 
+                <div className="dashboard-right-pie">
+                  {/* RIGHT PIE -> PieCard (UI o'zgarmaydi) */}
+                  <PieCard
+                    data={selectedPieData}
+                    colors={COLORS}
+                    outerRadius={80}
+                    stroke="#fff"
+                    strokeWidth={2}
+                    dataKey="value"
+                    labelLine={false}
+                    tooltipFormatter={(value, name) => {
+                      const total = Number(selectedGroup.totalValue || 0);
+                      const pct = total ? ((value / total) * 100).toFixed(1) : "0.0";
+                      return [`${pct}%`, name];
+                    }}
+                  />
+                </div>
+
+                <p className="dashboard-right-total">
+                  {Number(selectedGroup.totalValue || 0).toLocaleString()}
+                </p>
+                <p className="dashboard-right-total-label">
+                  JAMI {selectedGroup.groupName}
+                </p>
+              </div>
             </div>
           </div>
         )}

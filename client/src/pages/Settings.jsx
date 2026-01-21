@@ -1,8 +1,9 @@
+// src/pages/Settings.jsx
 import React, { useEffect, useState } from "react";
 import { User, Shield, Bot, Smartphone, LogOut, Info } from "lucide-react";
 
-import "./Settings.css";      // sizning eski style
-import "./SettingsLoader.css";    // yangi: faqat loading uchun
+import Loader from "../components/Loader";
+import "./Settings.css"; // sizning eski style
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
@@ -76,23 +77,14 @@ export default function Settings() {
     window.location.href = "/login";
   };
 
-  // ✅ DATA KELGUNCHA: butun page o‘rniga loader
+  // ✅ DATA KELGUNCHA: bitta Loader component
   if (loading) {
-    return (
-      <div className="pageLoader">
-        <div className="spinner" />
-        <div className="loaderText">Loading...</div>
-      </div>
-    );
+    return <Loader text="Loading..." />;
   }
 
-  // ✅ Error bo‘lsa ham loader o‘rniga error chiqadi (page ochilmaydi)
+  // ✅ Error bo‘lsa: oddiy xabar
   if (errMsg) {
-    return (
-      <div className="pageLoader">
-        <div className="loaderText">{errMsg}</div>
-      </div>
-    );
+    return <Loader text={errMsg} />;
   }
 
   // UI: sizdagi layout o‘zgarmaydi, faqat qiymatlar backenddan
@@ -121,7 +113,7 @@ export default function Settings() {
           <div className="profileGrid">
             <div>
               <label className="fieldLabel">Telefon raqam</label>
-              <div className="readOnlyField">{phone}</div>
+              <div className="readOnlyField">+{phone}</div>
             </div>
 
             <div>
@@ -137,7 +129,10 @@ export default function Settings() {
 
           <div className="infoBox">
             <Info size={20} className="infoIcon" />
-            <p>Shaxsiy ma'lumotlarni o'zgartirish uchun tizim administratoriga murojaat qiling.</p>
+            <p>
+              Shaxsiy ma'lumotlarni o'zgartirish uchun tizim administratoriga
+              murojaat qiling.
+            </p>
           </div>
         </div>
 
