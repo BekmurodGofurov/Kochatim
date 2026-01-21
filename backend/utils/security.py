@@ -5,10 +5,19 @@ import secrets
 import json
 from urllib.parse import parse_qsl
 
+def random_token(nbytes: int = 64) -> str:
+    """
+    Kriptografik xavfsiz token.
+    nbytes=64 => 128 hex belgili string.
+    """
+    return secrets.token_hex(nbytes)
 
-def sha256_hex(s: str) -> str:
-    return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
+def sha256_hex(value: str) -> str:
+    """
+    Tokenni DBda saqlash uchun hash.
+    """
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 def generate_token(length_bytes: int = 32) -> str:
     return secrets.token_urlsafe(length_bytes)

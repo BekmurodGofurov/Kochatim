@@ -1,9 +1,27 @@
-from flask import request
+from flask import request, g 
 from api import api_bp
 from middleware.require_api_key import require_api_key
+from middleware.require_session import require_session
 from utils.errors import ok, fail
 from db import execute, fetch_one
 
+@api_bp.get("/me")
+@require_session
+def get_me():
+    u_id = int(g.u_id)
+
+    row = fetch_one(
+        """
+        SELECT u_id, u_name, u_phone, u_username, u_age, added_at, updated_at
+        FROM users
+        WHERE u_id=%s
+        """,
+        (u_id,),
+    )
+    if not row:
+        return fail("User not found", 404, code="NOT_FOUND")
+
+    return ok(row)
 
 @api_bp.post("/users/ensure")
 @require_api_key

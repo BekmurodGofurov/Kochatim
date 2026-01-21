@@ -2,8 +2,16 @@
 from datetime import datetime, timezone, timedelta
 
 
-def utcnow():
+# backend/utils/time.py
+from datetime import datetime, timedelta, timezone
+
+
+def utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def utcnow_plus_seconds(seconds: int) -> datetime:
+    return utcnow() + timedelta(seconds=int(seconds))
 
 
 def utc_in_seconds(seconds: int):

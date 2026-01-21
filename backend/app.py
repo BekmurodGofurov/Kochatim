@@ -1,9 +1,9 @@
 # backend/app.py
 from dotenv import load_dotenv
 load_dotenv()
-
 import os
-from flask import Flask
+
+from flask import Flask, request, make_response
 from config import Config
 from utils.errors import ok, fail
 from extensions import init_pool
@@ -41,6 +41,29 @@ def create_app() -> Flask:
 
 
 app = create_app()
+
+@app.before_request
+def _cors_preflight():
+    if request.method == "OPTIONS":
+        resp = make_response("", 204)
+        origin = request.headers.get("Origin", "*")
+        resp.headers["Access-Control-Allow-Origin"] = origin
+        resp.headers["Vary"] = "Origin"
+        resp.headers["Access-Control-Allow-Credentials"] = "true"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-API-KEY"
+        resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        return resp
+
+
+@app.after_request
+def _add_cors_headers(resp):
+    origin = request.headers.get("Origin", "*")
+    resp.headers["Access-Control-Allow-Origin"] = origin
+    resp.headers["Vary"] = "Origin"
+    resp.headers["Access-Control-Allow-Credentials"] = "true"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-API-KEY"
+    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    return resp
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "8000"))
