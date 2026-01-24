@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from "react";
 import { User, Shield, Bot, Smartphone, LogOut, Info } from "lucide-react";
 
-import Loader from "../components/Loader";
-import "./Settings.css"; // sizning eski style
+import Loader from "../../components/loader/Loader.jsx";
+import "./Settings.scss";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
@@ -79,15 +79,14 @@ export default function Settings() {
 
   // ✅ DATA KELGUNCHA: bitta Loader component
   if (loading) {
-    return <Loader text="Loading..." />;
+    return <Loader text="Yuklanmoqda..." />;
   }
 
-  // ✅ Error bo‘lsa: oddiy xabar
+  // ✅ Error bo‘lsa ham Loader orqali ko‘rsatamiz (bir xil ko‘rinish)
   if (errMsg) {
     return <Loader text={errMsg} />;
   }
 
-  // UI: sizdagi layout o‘zgarmaydi, faqat qiymatlar backenddan
   const name = me?.u_name || "-";
   const username = me?.u_username ? `@${me.u_username}` : "-";
   const phone = me?.u_phone || "-";
@@ -96,7 +95,6 @@ export default function Settings() {
 
   return (
     <div className="settingsPage">
-      {/* LEFT: Profile info */}
       <div className="leftColumn">
         <div className="card profileCard">
           <div className="profileHeader">
@@ -136,7 +134,6 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Security section */}
         <div className="card securityCard">
           <h3 className="sectionTitle">
             <Shield className="securityIcon" /> Tizim himoyasi
@@ -149,7 +146,6 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* RIGHT: Telegram Bot info */}
       <div className="rightColumn">
         <div className="card botCard">
           <div className="botHeader">

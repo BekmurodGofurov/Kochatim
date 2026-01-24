@@ -1,51 +1,53 @@
-from flask import request
+# backend/api/images.py
+from flask import Response
 from api import api_bp
-from middleware.require_api_key import require_api_key
-from utils.errors import ok, fail
-from db import execute, fetch_one
+from config import Config   # ✅ TO‘G‘RI IMPORT
+import requests
+
+TELEGRAM_API = "https://api.telegram.org"
 
 
-@api_bp.post("/img")
-@require_api_key
-def upsert_img():
-    data = request.get_json(silent=True) or {}
-    t_id = data.get("t_id")
-    i_url = (data.get("i_url") or "").strip()
+@api_bp.get("/img/<file_id>")
+def proxy_telegram_image(file_id: str):
+    """
+    Telegram file_id -> real image (binary)
+    Frontend <img src="/api/img/<file_id>" /> ishlaydi
+    """
 
-    try:
-        t_id = int(t_id)
-    except Exception:
-        return fail("t_id(int) required", 400)
+    BOT_TOKEN = Config.BOT_TOKEN  # ✅ TO‘G‘RI O‘QISH
 
-    if not i_url:
-        return fail("i_url required", 400)
+    if not BOT_TOKEN:
+        return Response("BOT_TOKEN not configured", status=500)
 
-    # Sizning table: img(i_id serial, t_id int, i_url text, ...)
-    # 1 type = 1 img logika: bor bo'lsa update, bo'lmasa insert
-    row = fetch_one("SELECT i_id FROM img WHERE t_id=%s ORDER BY i_id DESC LIMIT 1", (t_id,))
-    if row:
-        execute(
-            "UPDATE img SET i_url=%s, updated_at=NOW() WHERE t_id=%s",
-            (i_url, t_id),
-        )
-    else:
-        execute(
-            "INSERT INTO img (t_id, i_url) VALUES (%s, %s)",
-            (t_id, i_url),
-        )
+    # 1) file_id -> file_path
+    tg_get_file_url = f"{TELEGRAM_API}/bot{BOT_TOKEN}/getFile"
+    r = requests.get(tg_get_file_url, params={"file_id": file_id}, timeout=10)
 
-    return ok({"saved": True, "t_id": t_id})
+    if r.status_code != 200:
+        return Response("Telegram getFile failed", status=502)
 
+    data = r.json()
+    if not data.get("ok"):
+        return Response("Invalid file_id", status=404)
 
-@api_bp.get("/img/by-type")
-@require_api_key
-def get_img_by_type():
-    t_id = request.args.get("t_id", type=int)
-    if not t_id:
-        return fail("t_id query param required", 400)
+    file_path = data["result"].get("file_path")
+    if not file_path:
+        return Response("File path not found", status=404)
 
-    row = fetch_one("SELECT i_url FROM img WHERE t_id=%s ORDER BY i_id DESC LIMIT 1", (t_id,))
-    if not row:
-        return ok(None)
+    # 2) file_path -> real binary
+    tg_file_url = f"{TELEGRAM_API}/file/bot{BOT_TOKEN}/{file_path}"
+    img_resp = requests.get(tg_file_url, stream=True, timeout=15)
 
-    return ok(row.get("i_url"))
+    if img_resp.status_code != 200:
+        return Response("Image fetch failed", status=502)
+
+    content_type = img_resp.headers.get("Content-Type", "image/jpeg")
+
+    return Response(
+        img_resp.content,
+        status=200,
+        content_type=content_type,
+        headers={
+            "Cache-Control": "public, max-age=86400"
+        },
+    )

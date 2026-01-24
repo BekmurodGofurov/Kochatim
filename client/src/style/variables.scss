@@ -1,0 +1,43 @@
+/* Typography */
+$font-base: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+
+/* Page */
+$page-bg: #f8fafc;
+
+/* Surfaces */
+$surface-main: #ffffff;
+$surface-soft: #f9fafb;
+$surface-row: #f3f4f6;
+$surface-row-hover: #eef2f7;
+$surface-row-active: #eff6ff;
+
+/* Text */
+$text-main: #1f2937;
+$text-strong: #111827;
+$text-muted: #9ca3af;
+
+/* Borders */
+$border-main: #eef2f7;
+$border-strong: #e5e7eb;
+$border-active: #bfdbfe;
+
+/* Accent (brand rang, nomi rang emas, MAQSAD) */
+$accent-main: #2563eb;
+// $accent-soft: #3b82f6;
+$accent-soft: #60a5fa;   // oldin: #3b82f6
+
+/* State (yumshoqroq qizil) */
+$danger-text: #ef4444;   // oldin: #991b1b (juda agressiv)
+$danger-border: #fecaca; // oldin: #fee2e2
+
+
+
+/* Radius */
+$radius-pill: 999px;
+$radius-card: 30px;
+$radius-card-md: 25px;
+$radius-card-sm: 18px;
+
+/* Shadow */
+$shadow-main: 0 10px 20px rgba(15, 23, 42, 0.06);
+$shadow-soft: 0 4px 10px rgba(15, 23, 42, 0.05);

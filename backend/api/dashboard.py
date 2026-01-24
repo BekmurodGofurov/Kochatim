@@ -21,11 +21,26 @@ def dashboard_me():
         (u_id,),
     )
 
+    # MUHIM: img jadvali types bilan t_id orqali bog'langan
+    # i_url -> Telegram file_id (AgACAg...)
     types = fetch_all(
         """
-        SELECT t.t_id, t.c_id, c.c_name, t.t_name, t.deff
+        SELECT
+            t.t_id,
+            t.c_id,
+            c.c_name,
+            t.t_name,
+            t.deff,
+            img.i_url
         FROM types t
         LEFT JOIN categories c ON c.c_id = t.c_id
+        LEFT JOIN LATERAL (
+            SELECT i_url
+            FROM img
+            WHERE t_id = t.t_id
+            ORDER BY i_id DESC
+            LIMIT 1
+        ) img ON TRUE
         WHERE t.u_id=%s
         ORDER BY t.t_id DESC
         """,

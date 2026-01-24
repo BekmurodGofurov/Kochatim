@@ -1,11 +1,12 @@
+// src/pages/Dashboard/Dashboard.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { LayoutDashboard } from "lucide-react";
 
-import Loader from "../components/Loader"; // sizda bor loader
-import PieCard from "../components/PieCard";
-import "./DashboardStyle.css";
+import Loader from "../../components/loader/Loader.jsx";
+import PieCard from "../../components/pieCard/PieCard.jsx";
+import "./DashboardStyle.scss";
 
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 function getToken() {
   return localStorage.getItem("session_token");
@@ -13,23 +14,33 @@ function getToken() {
 
 async function apiGetDashboard() {
   const token = getToken();
+
   const res = await fetch(`${API_BASE}/api/me/dashboard`, {
+    method: "GET",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
   });
 
-  const json = await res.json();
-  if (!res.ok || !json.ok) {
-    throw new Error(json?.error?.message || "Server error");
+  const json = await res.json().catch(() => null);
+
+  if (!res.ok || !json || json.ok !== true) {
+    const code = json?.error?.code;
+    const msg = json?.error?.message || "Server bilan bog‘lanib bo‘lmadi";
+
+    if (res.status === 401 || code === "UNAUTHORIZED") {
+      localStorage.removeItem("session_token");
+    }
+    throw new Error(msg);
   }
+
   return json.data;
 }
 
 const COLORS = ["#3b82f6", "#fbbf24", "#c084fc", "#f87171", "#34d399"];
 
-const Dashboard = () => {
+export default function Dashboard() {
   const [dashboard, setDashboard] = useState(null);
   const [pageLoading, setPageLoading] = useState(true);
   const [pageError, setPageError] = useState("");
@@ -48,11 +59,10 @@ const Dashboard = () => {
         setPageError("");
         const data = await apiGetDashboard();
         if (!alive) return;
-
         setDashboard(data);
       } catch (e) {
         if (!alive) return;
-        setPageError(e.message || "Xatolik");
+        setPageError(e?.message || "Xatolik");
       } finally {
         if (!alive) return;
         setPageLoading(false);
@@ -64,7 +74,6 @@ const Dashboard = () => {
     };
   }, []);
 
-  // Backend -> eski struktura (UI o'zgarmasligi uchun)
   const groups = useMemo(() => {
     if (!dashboard) return [];
 
@@ -92,48 +101,36 @@ const Dashboard = () => {
         const name = String(t.t_name || "");
         const q = seedMap.get(t_id) || { q1: 0, q2: 0, q3: 0 };
 
-        return {
-          t_id,
-          name,
-          nav1: q.q1,
-          nav2: q.q2,
-          nav3: q.q3,
-        };
+        return { t_id, name, nav1: q.q1, nav2: q.q2, nav3: q.q3 };
       });
 
-      const totalValue = sorts.reduce(
-        (sum, x) => sum + x.nav1 + x.nav2 + x.nav3,
-        0
-      );
+      const totalValue = sorts.reduce((sum, x) => sum + x.nav1 + x.nav2 + x.nav3, 0);
 
-      return {
-        id: c_id,
-        groupName: c_name,
-        totalValue,
-        sorts,
-      };
+      return { id: c_id, groupName: c_name, totalValue, sorts };
     });
   }, [dashboard]);
 
-  // default selectedGroup
   useEffect(() => {
     if (!groups.length) return;
     if (selectedGroup) return;
     setSelectedGroup(groups[0]);
   }, [groups, selectedGroup]);
 
-  const grandTotal = useMemo(() => {
-    return groups.reduce((sum, g) => sum + Number(g.totalValue || 0), 0);
-  }, [groups]);
+  const grandTotal = useMemo(
+    () => groups.reduce((sum, g) => sum + Number(g.totalValue || 0), 0),
+    [groups]
+  );
 
-  const mainPieData = useMemo(() => {
-    return groups.map((item, index) => ({
-      name: item.groupName,
-      value: item.totalValue,
-      color: COLORS[index % COLORS.length],
-      original: item,
-    }));
-  }, [groups]);
+  const mainPieData = useMemo(
+    () =>
+      groups.map((item, index) => ({
+        name: item.groupName,
+        value: item.totalValue,
+        color: COLORS[index % COLORS.length],
+        original: item,
+      })),
+    [groups]
+  );
 
   const handleGroupClick = (group) => {
     setDetailLoading(true);
@@ -142,9 +139,7 @@ const Dashboard = () => {
     setTimeout(() => {
       setSelectedGroup(group);
       setDetailLoading(false);
-      if (detailsRef.current) {
-        detailsRef.current.scrollIntoView({ behavior: "smooth" });
-      }
+      if (detailsRef.current) detailsRef.current.scrollIntoView({ behavior: "smooth" });
     }, 400);
   };
 
@@ -152,8 +147,7 @@ const Dashboard = () => {
     if (!selectedGroup) return [];
     return (selectedGroup.sorts || []).map((s) => ({
       name: s.name,
-      value:
-        (Number(s.nav1) || 0) + (Number(s.nav2) || 0) + (Number(s.nav3) || 0),
+      value: (Number(s.nav1) || 0) + (Number(s.nav2) || 0) + (Number(s.nav3) || 0),
     }));
   }, [selectedGroup]);
 
@@ -180,7 +174,6 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-page">
-      {/* 1) ASOSIY QISM */}
       <div className="dashboard-card dashboard-main">
         <div className="dashboard-main-left">
           <h2 className="dashboard-title">
@@ -193,6 +186,7 @@ const Dashboard = () => {
           <div className="dashboard-group-list">
             {mainPieData.map((item, index) => {
               const active = selectedGroup?.id === item.original.id;
+
               return (
                 <button
                   type="button"
@@ -201,10 +195,7 @@ const Dashboard = () => {
                   className={`dashboard-group-row ${active ? "is-active" : ""}`}
                 >
                   <span className="dashboard-group-left">
-                    <span
-                      className="dashboard-dot"
-                      style={{ backgroundColor: item.color }}
-                    />
+                    <span className="dashboard-dot" style={{ backgroundColor: item.color }} />
                     <span className="dashboard-group-name">{item.name}</span>
                   </span>
 
@@ -219,7 +210,6 @@ const Dashboard = () => {
 
         <div className="dashboard-main-right">
           <div className="dashboard-pie-wrap">
-            {/* MAIN PIE -> PieCard (UI o'zgarmaydi) */}
             <PieCard
               data={mainPieData}
               colors={COLORS}
@@ -227,22 +217,18 @@ const Dashboard = () => {
               stroke="#fff"
               strokeWidth={4}
               cellClassName="dashboard-pie-cell"
-              onSliceClick={(payload) => {
-                // payload original group bo'lishi kerak
-                if (payload && payload.id) handleGroupClick(payload);
+              onSliceClick={(entry) => {
+                const group = entry?.original;
+                if (group) handleGroupClick(group);
               }}
               tooltipFormatter={(value, name) => {
-                const total = mainPieData.reduce(
-                  (a, b) => a + (b.value || 0),
-                  0
-                );
-                const pct = total ? ((value / total) * 100).toFixed(1) : "0.0";
+                const total = mainPieData.reduce((a, b) => a + (b.value || 0), 0);
+                const pct = total ? ((Number(value) / total) * 100).toFixed(1) : "0.0";
                 return [`${pct}%`, name];
               }}
             />
           </div>
 
-          {/* JAMI */}
           <div className="dashboard-total-card">
             <p className="dashboard-total-caption">BARCHA GURUHLAR BO'YICHA</p>
             <h3 className="dashboard-total-title">Jami ko'chat:</h3>
@@ -254,26 +240,22 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* 2) BATAFSIL QISM */}
       <div ref={detailsRef} className="dashboard-details">
         {detailLoading && (
           <div className="dashboard-detail-loader">
-            <Loader />
-            <p className="dashboard-detail-loader-text">Yuklanmoqda...</p>
+            <Loader/>
           </div>
         )}
 
         {selectedGroup && !detailLoading && (
           <div className="dashboard-card dashboard-detail-card">
             <div className="dashboard-detail-layout">
-              {/* Chap */}
               <div className="dashboard-detail-left">
                 <h3 className="dashboard-detail-title">
                   {selectedGroup.groupName}
                   <span className="dashboard-detail-subtitle">
                     {" "}
-                    / Sortlar soni -{" "}
-                    <b>{(selectedGroup.sorts || []).length}</b>
+                    / Sortlar soni - <b>{(selectedGroup.sorts || []).length}</b>
                   </span>
                 </h3>
 
@@ -295,10 +277,7 @@ const Dashboard = () => {
 
                         <div className="dashboard-sort-total">
                           {total.toLocaleString()}
-                          <span className="dashboard-sort-total-suffix">
-                            {" "}
-                            dona jami
-                          </span>
+                          <span className="dashboard-sort-total-suffix"> dona jami</span>
                         </div>
 
                         <div className="dashboard-sort-divider" />
@@ -331,25 +310,21 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              {/* O'ng */}
               <div className="dashboard-detail-right">
                 <h4 className="dashboard-right-caption">
                   {selectedGroup.groupName} BO'YICHA ULUSH (%)
                 </h4>
 
                 <div className="dashboard-right-pie">
-                  {/* RIGHT PIE -> PieCard (UI o'zgarmaydi) */}
                   <PieCard
                     data={selectedPieData}
                     colors={COLORS}
                     outerRadius={80}
                     stroke="#fff"
                     strokeWidth={2}
-                    dataKey="value"
-                    labelLine={false}
                     tooltipFormatter={(value, name) => {
                       const total = Number(selectedGroup.totalValue || 0);
-                      const pct = total ? ((value / total) * 100).toFixed(1) : "0.0";
+                      const pct = total ? ((Number(value) / total) * 100).toFixed(1) : "0.0";
                       return [`${pct}%`, name];
                     }}
                   />
@@ -358,9 +333,7 @@ const Dashboard = () => {
                 <p className="dashboard-right-total">
                   {Number(selectedGroup.totalValue || 0).toLocaleString()}
                 </p>
-                <p className="dashboard-right-total-label">
-                  JAMI {selectedGroup.groupName}
-                </p>
+                <p className="dashboard-right-total-label">JAMI {selectedGroup.groupName}</p>
               </div>
             </div>
           </div>
@@ -368,6 +341,4 @@ const Dashboard = () => {
       </div>
     </div>
   );
-};
-
-export default Dashboard;
+}

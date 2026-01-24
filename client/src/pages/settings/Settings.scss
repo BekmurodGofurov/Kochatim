@@ -1,0 +1,280 @@
+// src/pages/Settings.scss
+@use "../../style/variables" as *;
+
+.settingsPage {
+  padding: 24px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  font-family: $font-base;
+
+  @media (min-width: 1024px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .leftColumn {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+
+    @media (min-width: 1024px) {
+      grid-column: span 2 / span 2;
+    }
+  }
+
+  .rightColumn {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .card {
+    background: $surface-main;
+    border: 1px solid $border-strong;
+    border-radius: $radius-card-sm;
+    box-shadow: $shadow-soft;
+  }
+
+  /* Profile */
+  .profileCard {
+    padding: 32px;
+
+    .profileHeader {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 32px;
+
+      .avatarCircle {
+        width: 80px;
+        height: 80px;
+        border-radius: $radius-pill;
+
+        // green yo‘q => accent asosida
+        background: $surface-row-active;
+        color: $accent-main;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .profileTitle {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 700;
+        color: $text-main;
+      }
+
+      .profileSubtitle {
+        margin: 0;
+        color: $text-muted;
+        font-weight: 500;
+      }
+    }
+
+    .profileGrid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+
+      @media (min-width: 768px) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .fieldLabel {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        color: $text-muted;
+        margin-bottom: 4px;
+      }
+
+      .readOnlyField {
+        width: 100%;
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid $border-main;
+        background: $surface-soft;
+        color: $text-main;
+      }
+    }
+
+    .infoBox {
+      margin-top: 32px;
+      padding: 16px;
+      border-radius: 12px;
+
+      // blue-50 yo‘q => surface-row-active ishlatamiz
+      background: $surface-row-active;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+
+      color: $accent-main;
+      font-size: 14px;
+
+      .infoIcon {
+        flex-shrink: 0;
+      }
+    }
+  }
+
+  /* Security */
+  .securityCard {
+    padding: 32px;
+
+    .sectionTitle {
+      margin: 0 0 24px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 18px;
+      font-weight: 700;
+      color: $text-strong;
+
+      .securityIcon {
+        color: $accent-soft;
+      }
+    }
+
+    .statusRow {
+      padding: 16px;
+      background: $surface-soft;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+
+      .statusLabel {
+        color: $text-main;
+      }
+
+      .statusBadge {
+        // green yo‘q => accent asosida “active”
+        background: $surface-row-active;
+        color: $accent-main;
+        padding: 4px 12px;
+        border-radius: $radius-pill;
+        font-weight: 700;
+        border: 1px solid $border-active;
+      }
+    }
+  }
+
+  /* Bot card */
+  .botCard {
+    padding: 24px;
+    font-size: 14px;
+
+    .botHeader {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 24px;
+
+      .botIcon {
+        color: $accent-soft;
+      }
+
+      .botTitle {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+        color: $text-main;
+      }
+    }
+
+    .botContent {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+
+      .metaLabel {
+        color: $text-muted;
+        font-size: 12px;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .monoBox {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+        background: $surface-soft;
+        padding: 8px;
+        border-radius: 6px;
+        border: 1px solid $border-main;
+        color: $text-main;
+      }
+
+      .toggleRow {
+        padding: 12px;
+        background: $surface-soft;
+        border-radius: 12px;
+        color: $accent-main;
+
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+
+        border: 1px solid $border-main;
+
+        .toggleLabel {
+          font-weight: 500;
+        }
+
+        .toggleState {
+          font-weight: 700;
+          font-size: 12px;
+        }
+      }
+
+      .disabledButton {
+        width: 100%;
+        padding: 12px 0;
+        border: none;
+        border-radius: 12px;
+
+        background: $surface-row;
+        color: $text-muted;
+
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  /* Logout */
+  .logoutButton {
+    width: 100%;
+    padding: 16px 0;
+    border: none;
+    border-radius: $radius-card-sm;
+
+    background: $surface-soft;
+    color: $danger-text;
+
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    transition: background 150ms ease, color 150ms ease;
+    cursor: pointer;
+
+    &:hover {
+      background: $danger-border;
+      color: $surface-soft;
+      border: 2px solid $danger-text;
+    
+  }
+  }
+}

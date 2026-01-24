@@ -39,7 +39,7 @@ export default function Sidebar() {
       
       <div className="mt-auto p-4 bg-slate-50 rounded-3xl border border-dashed border-slate-200 text-center">
         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Premium Plan</p>
-        <p className="text-[10px] text-slate-500 mt-1 italic">V1.0.4 build</p>
+        <p className="text-[10px] text-slate-500 mt-1 italic">V1.2.2 build</p>
       </div>
     </div>
   );

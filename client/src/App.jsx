@@ -1,10 +1,10 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Sidebar from "./components/Sidebar";
-import Dashboard from "./pages/Dashboard";
-import Inventory from "./pages/Inventory";
-import Sales from "./pages/Sales";
-import Settings from "./pages/Settings";
-import Login from "./pages/Login";
+import Sidebar from "./components/sidebar/Sidebar.jsx";
+import Dashboard from "./pages/dashboard/Dashboard";
+import Inventory from "./pages/inventory/Inventory";
+import Sales from "./pages/sales/Sales.jsx";
+import Settings from "./pages/settings/Settings.jsx";
+import Login from "./pages/login/Login.jsx";
 import RequireAuth from "./auth/RequireAuth";
 
 export default function App() {

@@ -1,0 +1,45 @@
+@use "../../style/variables" as *;
+
+.pie-card {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box; // ✅ padding bilan 100% height buzilmasin
+
+  background: $surface-main;
+  border: 1px solid $border-strong;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: $shadow-soft;
+
+  font-family: $font-base;
+
+  &__title {
+    font-size: 16px;
+    font-weight: 700;
+    color: $text-main;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+
+  &__chart {
+    width: 100%;
+    height: 100%;          // ✅ ResponsiveContainer uchun shart
+    min-height: 0;         // ✅ flex ichida shrink muammosini oldini oladi
+    position: relative;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__center-text {
+    font-size: 14px;
+    font-weight: 700;
+    fill: $text-strong;
+  }
+
+  &__empty {
+    font-size: 14px;
+    color: $text-muted;
+  }
+}

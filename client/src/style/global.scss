@@ -1,0 +1,14 @@
+/* src/style/global.scss */
+@use "./variables" as v;
+
+:root {
+  font-family: v.$font-base;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}

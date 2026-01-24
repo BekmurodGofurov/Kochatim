@@ -1,3 +1,5 @@
+@use "../../style/variables" as *;
+
 .app-loader {
   width: 100%;
   min-height: 300px;
@@ -5,13 +7,14 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  font-family: $font-base;
 }
 
 .app-loader-spinner {
   width: 48px;
   height: 48px;
-  border: 5px solid #e5e7eb;
-  border-top-color: #2563eb;
+  border: 5px solid $border-strong;
+  border-top-color: $accent-main;
   border-radius: 50%;
   animation: appLoaderSpin 0.9s linear infinite;
   margin-bottom: 16px;
@@ -22,14 +25,10 @@
   font-weight: 800;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #2563eb;
+  color: $accent-main;
 }
 
 @keyframes appLoaderSpin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }

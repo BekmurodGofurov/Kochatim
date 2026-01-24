@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { History, TrendingUp, Calendar, Wallet } from 'lucide-react';
 // Ma'lumotlarni import qilamiz
-import { SALES_HISTORY, MONTHLY_PIE_DATA } from '../data/mockData';
+import { SALES_HISTORY, MONTHLY_PIE_DATA } from '../../data/mockData';
 
 const Sales = () => {
   const [visibleCount, setVisibleCount] = useState(10);
