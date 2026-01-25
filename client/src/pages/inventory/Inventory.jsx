@@ -1,10 +1,11 @@
-// src/pages/Inventory/Inventory.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Plus, ArrowLeft, X } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
 
 import Loader from "../../components/loader/Loader";
 import GroupCard from "../../components/groupCard/GroupCard";
 import SortCard from "../../components/sortCard/SortCard";
+import "./Inventory.scss";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
@@ -41,10 +42,7 @@ async function apiGetDashboard() {
 
 function toWebImgUrl(raw) {
   if (!raw) return "";
-  if (
-    typeof raw === "string" &&
-    (raw.startsWith("http://") || raw.startsWith("https://"))
-  ) {
+  if (typeof raw === "string" && (raw.startsWith("http://") || raw.startsWith("https://"))) {
     return raw;
   }
   return `${API_BASE}/api/img/${encodeURIComponent(String(raw))}`;
@@ -64,14 +62,20 @@ function pickImagesFromType(t) {
 }
 
 export default function Inventory() {
+  const navigate = useNavigate();
+  const params = useParams();
+  const uId = params.uId; // string
+  const cIdParam = params.cId; // string | undefined
+  const tIdParam = params.tId; // string | undefined
+
+  const cId = cIdParam ? Number(cIdParam) : null;
+  const tId = tIdParam ? Number(tIdParam) : null;
+
   const [dashboard, setDashboard] = useState(null);
   const [pageLoading, setPageLoading] = useState(true);
   const [pageError, setPageError] = useState("");
 
-  const [selectedGroup, setSelectedGroup] = useState(null);
-  const [selectedSort, setSelectedSort] = useState(null);
-
-  // 10s (siz aytgandek)
+  // 10s aylanish (guruh card rasmlari)
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 10000);
@@ -102,6 +106,7 @@ export default function Inventory() {
     };
   }, []);
 
+  // Backend -> Inventory UI format
   const groups = useMemo(() => {
     if (!dashboard) return [];
 
@@ -161,36 +166,42 @@ export default function Inventory() {
     });
   }, [dashboard]);
 
+  // URL params bo‘yicha tanlangan group/sort topish
+  const selectedGroup = useMemo(() => {
+    if (!cId) return null;
+    return groups.find((g) => Number(g.id) === Number(cId)) || null;
+  }, [groups, cId]);
+
+  const selectedSort = useMemo(() => {
+    if (!selectedGroup || !tId) return null;
+    return (selectedGroup.sorts || []).find((s) => Number(s.id) === Number(tId)) || null;
+  }, [selectedGroup, tId]);
+
   if (pageLoading) return <Loader text="Yuklanmoqda..." />;
   if (pageError) return <Loader text={pageError} />;
 
-  // 1) Groups view
-  if (!selectedGroup) {
+  // ✅ 1) GROUPS VIEW (URL: /u/:uId/inventory)
+  if (!cId) {
     return (
-      <div className="p-8 lg:p-12 max-w-[1400px] mx-auto animate-in fade-in duration-500">
-        <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
-          <div>
-            <div className="inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-[10px] font-black uppercase tracking-widest mb-3 italic">
-              Zaxira Nazorati
-            </div>
-            <h1 className="text-5xl font-black text-slate-900 tracking-tighter">
-              Omborxona
-            </h1>
+      <div className="inv-page">
+        <header className="inv-header">
+          <div className="inv-header__left">
+            <div className="inv-badge">Zaxira Nazorati</div>
+            <h1 className="inv-title">Omborxona</h1>
           </div>
 
-          <button className="bg-[#43a047] text-white px-8 py-4 rounded-2xl font-black flex items-center gap-3 hover:shadow-xl hover:bg-green-700 transition-all active:scale-95 uppercase text-sm">
-            <Plus size={20} strokeWidth={3} /> Yangi nav qo'shish
+          <button type="button" className="inv-btn inv-btn--primary">
+            <Plus size={20} strokeWidth={3} />
+            <span>Yangi nav qo'shish</span>
           </button>
         </header>
 
-        <div className="flex items-center gap-2 mb-8">
-          <h2 className="text-xl font-black text-slate-400 uppercase tracking-widest italic">
-            Guruhlar
-          </h2>
-          <div className="h-[2px] flex-1 bg-slate-100" />
+        <div className="inv-section">
+          <h2 className="inv-section__title">Guruhlar</h2>
+          <div className="inv-section__line" />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+        <div className="inv-grid inv-grid--groups">
           {groups.map((group, idx) => (
             <GroupCard
               key={group.id}
@@ -198,7 +209,7 @@ export default function Inventory() {
               index={idx}
               tick={tick}
               toWebImgUrl={toWebImgUrl}
-              onClick={() => setSelectedGroup(group)}
+              onClick={() => navigate(`/u/${uId}/inventory/group/${group.id}`)}
             />
           ))}
         </div>
@@ -206,121 +217,126 @@ export default function Inventory() {
     );
   }
 
-  // 2) Sorts view
+  // ✅ Agar URL’da cId bor, lekin group topilmasa
+  if (cId && !selectedGroup) {
+    return (
+      <div className="inv-page inv-page--detail">
+        <button
+          type="button"
+          className="inv-back"
+          onClick={() => navigate(`/u/${uId}/inventory`)}
+        >
+          <ArrowLeft size={18} strokeWidth={3} />
+          <span>Guruhlarga qaytish</span>
+        </button>
+
+        <Loader text="Guruh topilmadi" />
+      </div>
+    );
+  }
+
+  // ✅ 2) SORTS VIEW (URL: /u/:uId/inventory/group/:cId)
   return (
-    <div className="p-8 lg:p-12 max-w-[1400px] mx-auto animate-in slide-in-from-right duration-500">
+    <div className="inv-page inv-page--detail">
       <button
-        onClick={() => {
-          setSelectedGroup(null);
-          setSelectedSort(null);
-        }}
-        className="mb-10 flex items-center gap-3 font-black text-slate-400 hover:text-green-600 transition-colors uppercase text-xs tracking-widest"
+        type="button"
+        className="inv-back"
+        onClick={() => navigate(`/u/${uId}/inventory`)}
       >
-        <ArrowLeft size={18} strokeWidth={3} /> Guruhlarga qaytish
+        <ArrowLeft size={18} strokeWidth={3} />
+        <span>Guruhlarga qaytish</span>
       </button>
 
-      <div className="mb-12">
-        <h2 className="text-4xl font-black text-slate-900 uppercase italic">
-          {selectedGroup.groupName}{" "}
-          <span className="text-green-600">Navlari</span>
+      <div className="inv-detailHead">
+        <h2 className="inv-detailTitle">
+          {selectedGroup.groupName} <span>Navlari</span>
         </h2>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+      <div className="inv-grid inv-grid--sorts">
         {selectedGroup.sorts.map((sort) => (
           <SortCard
             key={sort.id}
             sort={sort}
             toWebImgUrl={toWebImgUrl}
-            onClick={() => setSelectedSort(sort)}
+            onClick={() => navigate(`/u/${uId}/inventory/group/${selectedGroup.id}/sort/${sort.id}`)}
           />
         ))}
       </div>
 
-      {/* Modal (o'zgarmagan, faqat image url toWebImgUrl bilan) */}
+      {/* ✅ MODAL (URL: /u/:uId/inventory/group/:cId/sort/:tId) */}
       {selectedSort && (
-        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center p-6">
-          <div className="bg-white w-full max-w-6xl h-[85vh] rounded-[45px] overflow-hidden flex flex-col md:flex-row shadow-2xl animate-in zoom-in duration-300">
-            <div className="w-full md:w-[60%] h-full bg-black relative">
-              <img
-                src={toWebImgUrl(selectedSort.images?.[0])}
-                className="w-full h-full object-contain"
-                alt="Sort"
-              />
+        <div className="inv-modal" role="dialog" aria-modal="true">
+          <div className="inv-modal__panel">
+            <div className="inv-modal__media">
+              <img src={toWebImgUrl(selectedSort.images?.[0])} alt={selectedSort.name} />
             </div>
 
-            <div className="w-full md:w-[40%] p-12 overflow-y-auto flex flex-col bg-white">
-              <div className="flex justify-between items-start mb-6">
-                <h2 className="text-4xl font-black text-slate-900 uppercase italic tracking-tighter leading-none">
-                  {selectedSort.name}
-                </h2>
+            <div className="inv-modal__body">
+              <div className="inv-modal__top">
+                <h2 className="inv-modal__title">{selectedSort.name}</h2>
                 <button
-                  onClick={() => setSelectedSort(null)}
-                  className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                  type="button"
+                  className="inv-modal__close"
+                  onClick={() => navigate(`/u/${uId}/inventory/group/${selectedGroup.id}`)}
                 >
-                  <X size={28} />
+                  <X size={26} />
                 </button>
               </div>
 
-              <div className="h-1.5 w-20 bg-green-500 rounded-full mb-10" />
+              <div className="inv-modal__accent" />
 
-              <div className="space-y-4 mb-10">
-                <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">
-                  Sifat bo'yicha zaxira
-                </h4>
+              <div className="inv-modal__block">
+                <div className="inv-modal__kicker">Sifat bo'yicha zaxira</div>
 
-                <div className="grid grid-cols-1 gap-3">
-                  <div className="p-4 bg-green-50 rounded-2xl flex justify-between items-center border border-green-100">
-                    <span className="font-black text-green-700">1-NAV</span>
-                    <span className="text-2xl font-black text-green-800">
-                      {selectedSort.nav1} ta
-                    </span>
+                <div className="inv-modal__stats">
+                  <div className="inv-stat inv-stat--a">
+                    <div className="inv-stat__label">1-NAV</div>
+                    <div className="inv-stat__value">{selectedSort.nav1} ta</div>
                   </div>
 
-                  <div className="p-4 bg-orange-50 rounded-2xl flex justify-between items-center border border-orange-100">
-                    <span className="font-black text-orange-600">2-NAV</span>
-                    <span className="text-2xl font-black text-orange-700">
-                      {selectedSort.nav2} ta
-                    </span>
+                  <div className="inv-stat inv-stat--b">
+                    <div className="inv-stat__label">2-NAV</div>
+                    <div className="inv-stat__value">{selectedSort.nav2} ta</div>
                   </div>
 
-                  <div className="p-4 bg-slate-50 rounded-2xl flex justify-between items-center border border-slate-200">
-                    <span className="font-black text-slate-500">3-NAV</span>
-                    <span className="text-2xl font-black text-slate-800">
-                      {selectedSort.nav3} ta
-                    </span>
+                  <div className="inv-stat inv-stat--c">
+                    <div className="inv-stat__label">3-NAV</div>
+                    <div className="inv-stat__value">{selectedSort.nav3} ta</div>
                   </div>
                 </div>
               </div>
 
-              <div className="flex-1">
-                <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
-                  Nav haqida ma'lumot
-                </h4>
-                <p className="text-lg font-bold text-slate-600 leading-relaxed italic">
-                  {selectedSort.description ||
-                    "Ushbu nav haqida qo'shimcha ma'lumot mavjud emas."}
+              <div className="inv-modal__block inv-modal__block--grow">
+                <div className="inv-modal__kicker">Nav haqida ma'lumot</div>
+                <p className="inv-modal__text">
+                  {selectedSort.description || "Ushbu nav haqida qo'shimcha ma'lumot mavjud emas."}
                 </p>
               </div>
 
-              <div className="mt-12 pt-8 border-t border-slate-100 flex justify-between items-center">
-                <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    Umumiy soni
-                  </p>
-                  <p className="text-4xl font-black text-slate-900">
+              <div className="inv-modal__footer">
+                <div className="inv-modal__total">
+                  <div className="inv-modal__totalLabel">Umumiy soni</div>
+                  <div className="inv-modal__totalValue">
                     {Number(selectedSort.nav1 || 0) +
                       Number(selectedSort.nav2 || 0) +
                       Number(selectedSort.nav3 || 0)}
-                  </p>
+                  </div>
                 </div>
 
-                <button className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black hover:bg-green-600 transition-all uppercase text-xs tracking-widest">
+                <button type="button" className="inv-btn inv-btn--dark">
                   Tahrirlash
                 </button>
               </div>
             </div>
           </div>
+
+          <button
+            type="button"
+            className="inv-modal__backdrop"
+            onClick={() => navigate(`/u/${uId}/inventory/group/${selectedGroup.id}`)}
+            aria-label="Close modal"
+          />
         </div>
       )}
     </div>

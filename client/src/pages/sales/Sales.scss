@@ -1,0 +1,246 @@
+/* src/pages/sales/Sales.scss */
+@use "../../style/variables.scss" as *;
+
+.sales-page {
+  padding: 24px;
+  min-height: 100vh;
+  background: $page-bg;
+
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 28px;
+
+  @media (min-width: 1024px) {
+    grid-template-columns: 1.2fr 0.8fr;
+    align-items: start;
+  }
+}
+
+.sales-card {
+  background: $surface-main;
+  border: 1px solid $border-main;
+  border-radius: 35px;
+  box-shadow: $shadow-soft;
+  padding: 28px;
+}
+
+.sales-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+
+  &--spaced {
+    justify-content: space-between;
+  }
+
+  &__left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  &__icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 22px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    &--green {
+      background: $positive-soft;
+      color: $positive-main;
+    }
+
+    &--blue {
+      background: $accent-soft;
+      color: $accent-main;
+    }
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    color: $text-strong;
+  }
+
+  &__subtitle {
+    margin-top: 4px;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: $text-muted;
+  }
+}
+
+/* LEFT */
+.sales-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.sales-more {
+  margin-top: 15px;
+  width: 100%;
+  padding: 16px 18px;
+
+  border: 2px dashed $border-strong;
+  border-radius: 22px;
+  background: transparent;
+
+  cursor: pointer;
+
+  color: $text-muted;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+
+  transition: border-color 0.2s ease, color 0.2s ease;
+
+  &:hover {
+    border-color: $positive-main;
+    color: $positive-main;
+  }
+}
+
+/* RIGHT (Pie) */
+.sales-pieWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.sales-pieOuter {
+  background: $surface-soft;
+  border-radius: 30px;
+  padding: 18px;
+}
+
+/* MUHIM:
+   - doira buzilmasligi uchun chart maydon KVADRAT bo'ladi
+   - overflow hidden YO'Q (chet kesilmasin)
+*/
+.sales-pieChart {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+
+  aspect-ratio: 1 / 1;
+  height: auto;
+
+  background: $surface-main;
+  border: 1px solid $border-strong;
+  border-radius: 26px;
+  box-shadow: $shadow-soft;
+
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.sales-total {
+  text-align: center;
+  padding-top: 4px;
+
+  &__kicker {
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: $text-muted;
+  }
+
+  &__value {
+    margin-top: 6px;
+    font-size: 30px;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    color: $text-strong;
+  }
+
+  &__unit {
+    margin-top: 2px;
+    font-size: 14px;
+    font-weight: 900;
+    color: $positive-main;
+  }
+}
+
+/* Breakdown */
+.sales-breakdown {
+  margin-top: 8px;
+
+  &__title {
+    margin: 8px 0 14px 0;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: $text-muted;
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+}
+
+.sales-breakRow__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sales-breakRow__name {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sales-breakRow__label {
+  font-size: 16px;
+  font-weight: 900;
+  color: $text-strong;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
+}
+
+.sales-breakRow__sum {
+  font-size: 16px;
+  font-weight: 900;
+  color: $text-strong;
+  white-space: nowrap;
+}
+
+.sales-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.sales-bar {
+  width: 100%;
+  height: 10px;
+  background: $surface-row;
+  border-radius: $radius-pill;
+  overflow: hidden;
+}
+
+.sales-bar__fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.6s ease;
+}

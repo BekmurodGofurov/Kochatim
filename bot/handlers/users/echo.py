@@ -18,8 +18,7 @@ async def bot_echo(message: Message):
     u_id = message.from_user.id
     text = (message.text or "").strip()
 
-    # 1) CATEGORY TANLASH (Olma bosilsa -> shu category ichidagi navlar chiqadi)
-    cats = await get_all_cat(u_id)  # LIST[str]
+    cats = await get_all_cat(u_id) 
 
     if text in cats:
         c_id = await get_cat_id(u_id, text)
@@ -27,8 +26,7 @@ async def bot_echo(message: Message):
             await message.answer(f"Guruh topilmadi: <b>{text}</b>")
             return
 
-        # MUHIM: parametr tartibi (u_id, c_id)
-        ty = await get_all_ty(u_id, int(c_id))  # LIST[str]
+        ty = await get_all_ty(u_id, int(c_id))  
         n = len(ty)
 
         keyboard = ty_keyboard(ty) if ty else None

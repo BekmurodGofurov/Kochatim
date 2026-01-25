@@ -27,7 +27,12 @@ def add_sale():
     q1 = int(data.get("q1_sold", 0) or 0)
     q2 = int(data.get("q2_sold", 0) or 0)
     q3 = int(data.get("q3_sold", 0) or 0)
+
     price = data.get("price")
+    try:
+        price = int(price)
+    except Exception:
+        return fail("price(int) required", 400)
 
     execute(
         "INSERT INTO sales (u_id,c_id,t_id,q1_sold,q2_sold,q3_sold,price) VALUES (%s,%s,%s,%s,%s,%s,%s)",
@@ -51,9 +56,70 @@ def add_sale():
 @api_bp.get("/sales")
 @require_session
 def list_sales_me():
+    """
+    Web ishlatadi:
+    - history: sotuvlar ro'yxati (UI uchun name/category/date/qty/price)
+    - pie: kategoriya bo'yicha tushum yig'indisi
+    """
     u_id = g.u_id
-    rows = fetch_all(
-        "SELECT sale_id,c_id,t_id,q1_sold,q2_sold,q3_sold,price,sold_at FROM sales WHERE u_id=%s ORDER BY sale_id DESC LIMIT 200",
+
+    # 1) HISTORY (200 ta)
+    history = fetch_all(
+        """
+        SELECT
+            s.sale_id,
+            s.price,
+            s.sold_at,
+            s.q1_sold,
+            s.q2_sold,
+            s.q3_sold,
+            c.c_id,
+            c.c_name,
+            t.t_id,
+            t.t_name
+        FROM sales s
+        LEFT JOIN categories c ON c.c_id = s.c_id
+        LEFT JOIN types t ON t.t_id = s.t_id
+        WHERE s.u_id=%s
+        ORDER BY s.sale_id DESC
+        LIMIT 200
+        """,
         (u_id,),
     )
-    return ok(rows)
+
+    # UI'ga qulay fieldlar
+    history_ui = []
+    for r in history:
+        qty = int(r.get("q1_sold") or 0) + int(r.get("q2_sold") or 0) + int(r.get("q3_sold") or 0)
+        history_ui.append(
+            {
+                "id": r.get("sale_id"),
+                "name": r.get("t_name") or "—",
+                "category": r.get("c_name") or "—",
+                "date": r.get("sold_at"),   # ISO bo‘lib ketadi
+                "qty": qty,
+                "price": int(r.get("price") or 0),
+            }
+        )
+
+    # 2) PIE (kategoriya bo‘yicha tushum)
+    pie = fetch_all(
+        """
+        SELECT
+            c.c_name AS name,
+            COALESCE(SUM(s.price), 0) AS value
+        FROM sales s
+        LEFT JOIN categories c ON c.c_id = s.c_id
+        WHERE s.u_id=%s
+        GROUP BY c.c_name
+        ORDER BY value DESC
+        """,
+        (u_id,),
+    )
+
+    return ok(
+        {
+            "history": history_ui,
+            "pie": pie,
+        }
+    )

@@ -21,8 +21,9 @@ async def sale_cat(message: Message, state: FSMContext):
     c_id = await get_cat_id(message.from_user.id, message.text)
     if c_id:
         await state.update_data(c_id=c_id)
-        types = await get_all_ty(c_id, message.from_user.id)
-        await message.answer("Navni tanlang:", reply_markup=ty_keyboard(types))
+        ty = await get_all_ty(message.from_user.id, int(c_id))  
+        keyboard = ty_keyboard(ty) if ty else None
+        await message.answer("Navni tanlang:", reply_markup=keyboard)
         await sale_state.t_id.set()
     else:
         await message.answer("Xato guruh. Tanlang:")
@@ -31,7 +32,7 @@ async def sale_cat(message: Message, state: FSMContext):
 @dp.message_handler(state=sale_state.t_id)
 async def sale_type(message: Message, state: FSMContext):
     data = await state.get_data()
-    t_id = await get_type_id(data['c_id'], message.from_user.id, message.text)
+    t_id = await get_type_id(message.from_user.id, data['c_id'], message.text)
     if t_id:
         await state.update_data(t_id=t_id)
         await message.answer("1-navdan necha dona sotildi?", reply_markup=ReplyKeyboardRemove())

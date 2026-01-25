@@ -1,6 +1,9 @@
+// src/pages/login/Login.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "./Login.css";
+import "./Login.scss";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 export default function Login() {
   const [userId, setUserId] = useState("");
@@ -18,19 +21,16 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/auth/user-id-login", {
+      const res = await fetch(`${API_BASE}/auth/user-id-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ u_id: userId }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
 
-      if (!data.ok) {
-        setError(
-          data.error?.message ||
-          "User topilmadi. Botga /start bering."
-        );
+      if (!data?.ok) {
+        setError(data?.error?.message || "User topilmadi. Botga /start bering.");
         return;
       }
 
@@ -44,33 +44,28 @@ export default function Login() {
   };
 
   return (
-    <div className="login-page">
-      <div className="login-card">
-        <h1 className="login-title">Ko‘chatim</h1>
-        <p className="login-subtitle">
-          Inventaringizni ko‘rish uchun tizimga kiring
-        </p>
+    <div className="login">
+      <div className="login__card">
+        <h1 className="login__title">Ko‘chatim</h1>
+        <p className="login__subtitle">Inventaringizni ko‘rish uchun tizimga kiring</p>
 
-        <label className="login-label">Telegram ID orqli kirting</label>
+        <label className="login__label">Telegram ID orqali kiring</label>
+
         <input
-          className="login-input"
+          className="login__input"
           value={userId}
           onChange={(e) => setUserId(e.target.value)}
           placeholder="Telegram ID kiriting..."
+          inputMode="numeric"
         />
 
-        <p className="login-hint">
-          Agar ro‘yxatdan o‘tmagan bo‘lsangiz, Telegram botga kirib
-          <b> /start </b> buyrug‘ini bering.
+        <p className="login__hint">
+          Agar ro‘yxatdan o‘tmagan bo‘lsangiz, Telegram botga kirib <b>/start</b> buyrug‘ini bering.
         </p>
 
-        {error && <div className="login-error">{error}</div>}
+        {error && <div className="login__error">{error}</div>}
 
-        <button
-          className="login-button"
-          onClick={submit}
-          disabled={loading}
-        >
+        <button className="login__button" onClick={submit} disabled={loading}>
           {loading ? "Tekshirilmoqda..." : "Kirish"}
         </button>
       </div>

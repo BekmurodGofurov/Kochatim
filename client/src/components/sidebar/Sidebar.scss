@@ -1,0 +1,137 @@
+.sidebar {
+  display: none;
+
+  @media (min-width: 768px) {
+    display: flex;
+  }
+
+  flex-direction: column;
+  width: 288px;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+
+  padding: 32px;
+  background: #ffffff;
+  border-right: 1px solid #f1f5f9;
+}
+
+/* ===== BRAND ===== */
+
+.sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 48px;
+  padding: 0 8px;
+}
+
+.sidebar__logo {
+  background: #16a34a;
+  padding: 10px;
+  border-radius: 18px;
+  box-shadow: 0 10px 25px rgba(22, 163, 74, 0.25);
+  transform: rotate(3deg);
+
+  svg {
+    color: #ffffff;
+  }
+}
+
+.sidebar__title {
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #1e293b;
+}
+
+/* ===== MENU ===== */
+
+.sidebar__menu {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+.sidebar__item {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 16px;
+  border-radius: 24px;
+
+  text-decoration: none;
+  color: #64748b;
+
+  font-weight: 700;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: #f0fdf4;
+    color: #16a34a;
+  }
+
+  svg {
+    transition: transform 0.2s ease;
+  }
+
+  &:hover svg {
+    transform: scale(1.1);
+  }
+}
+
+.sidebar__item-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* ACTIVE */
+
+.sidebar__item.is-active {
+  background: #026209;
+  color: #ffffff;
+  box-shadow: 0 25px 50px rgba(15, 23, 42, 0.25);
+  transform: scale(1.02);
+
+  svg {
+    color: #4ade80;
+  }
+}
+
+/* DISABLED */
+
+.sidebar__item.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== FOOTER ===== */
+
+.sidebar__footer {
+  margin-top: auto;
+  padding: 16px;
+  text-align: center;
+
+  background: #f8fafc;
+  border-radius: 24px;
+  border: 1px dashed #e2e8f0;
+}
+
+.sidebar__plan {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.sidebar__version {
+  margin-top: 4px;
+  font-size: 10px;
+  color: #64748b;
+  font-style: italic;
+}

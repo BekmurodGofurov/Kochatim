@@ -1,3 +1,5 @@
+/* src/style/variables.scss */
+
 /* Typography */
 $font-base: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 
@@ -21,16 +23,27 @@ $border-main: #eef2f7;
 $border-strong: #e5e7eb;
 $border-active: #bfdbfe;
 
-/* Accent (brand rang, nomi rang emas, MAQSAD) */
+/* Accent */
 $accent-main: #2563eb;
-// $accent-soft: #3b82f6;
-$accent-soft: #60a5fa;   // oldin: #3b82f6
+$accent-soft: #60a5fa;
 
-/* State (yumshoqroq qizil) */
-$danger-text: #ef4444;   // oldin: #991b1b (juda agressiv)
-$danger-border: #fecaca; // oldin: #fee2e2
+/* State */
+$danger-text: #ef4444;
+$danger-border: #fecaca;
 
+/* Purpose colors (Sales va boshqa joylarda ham ishlatsa bo‘ladi) */
+$positive-main: #16a34a;
+$positive-soft: #dcfce7;
 
+$warning-main: #f59e0b;
+$warning-soft: #ffedd5;
+
+$accent-2-main: #db2777;
+$accent-2-soft: #fce7f3;
+
+/* Chips */
+$chip-bg: #f1f5f9;
+$chip-text: #334155;
 
 /* Radius */
 $radius-pill: 999px;

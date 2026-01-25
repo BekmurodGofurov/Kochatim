@@ -1,0 +1,137 @@
+/* src/pages/login/Login.scss */
+@use "../../style/variables.scss" as *;
+
+.login {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: $page-bg;
+  font-family: $font-base;
+  padding: 24px;
+
+  &__card {
+    width: 100%;
+    max-width: 420px;
+
+    background: $surface-main;
+    border: 1px solid $border-main;
+    border-radius: $radius-card-sm;
+    padding: 32px;
+
+    box-shadow: $shadow-main;
+  }
+
+  &__title {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 900;
+    color: $text-strong;
+    margin: 0 0 6px 0;
+    letter-spacing: -0.02em;
+  }
+
+  &__subtitle {
+    text-align: center;
+    font-size: 14px;
+    color: $text-muted;
+    margin: 0 0 24px 0;
+    font-weight: 700;
+  }
+
+  &__label {
+    display: block;
+    font-size: 14px;
+    font-weight: 900;
+    color: $text-main;
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
+  }
+
+  &__input {
+    width: 100%;
+    box-sizing: border-box;
+
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid $border-strong;
+    background: $surface-main;
+
+    font-size: 15px;
+    font-weight: 700;
+    color: $text-strong;
+
+    outline: none;
+    margin-bottom: 12px;
+
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+    &:focus {
+      border-color: $border-active;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    }
+
+    &::placeholder {
+      color: $text-muted;
+      font-weight: 600;
+    }
+  }
+
+  &__hint {
+    text-align: center;
+    font-size: 12px;
+    color: $text-muted;
+    margin: 0 0 18px 0;
+    line-height: 1.45;
+
+    b {
+      color: $text-strong;
+      font-weight: 900;
+    }
+  }
+
+  &__error {
+    background: $danger-border;
+    border: 1px solid $danger-border;
+    color: $danger-text;
+
+    font-size: 13px;
+    font-weight: 800;
+
+    padding: 10px 12px;
+    border-radius: 12px;
+    margin-bottom: 14px;
+  }
+
+  &__button {
+    width: 100%;
+    border: none;
+    border-radius: 14px;
+
+    padding: 12px 14px;
+    cursor: pointer;
+
+    background: $positive-main;
+    color: $surface-main;
+
+    font-size: 15px;
+    font-weight: 900;
+
+    transition: transform 0.05s ease, opacity 0.2s ease, filter 0.2s ease;
+
+    &:hover {
+      filter: brightness(0.95);
+    }
+
+    &:active {
+      transform: translateY(1px);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+  }
+}

@@ -1,0 +1,9 @@
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.app-layout__content {
+  flex: 1;
+  min-width: 0; // ichki kontent (chart/table) overflow bo‘lmasligi uchun muhim
+}

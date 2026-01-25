@@ -1,142 +1,232 @@
-import React, { useState } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { History, TrendingUp, Calendar, Wallet } from 'lucide-react';
-// Ma'lumotlarni import qilamiz
-import { SALES_HISTORY, MONTHLY_PIE_DATA } from '../../data/mockData';
+// src/pages/sales/Sales.jsx
+import React, { useEffect, useMemo, useState } from "react";
+import { History, TrendingUp } from "lucide-react";
 
-const Sales = () => {
+import Loader from "../../components/loader/Loader";
+import PieCard from "../../components/pieCard/PieCard";
+import TransactionCard from "../../components/transaction-card/TransactionCard";
+
+import "./Sales.scss";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+
+const PIE_COLORS = ["#16a34a", "#2563eb", "#f59e0b", "#db2777", "#8b5cf6", "#06b6d4"];
+
+function getToken() {
+  return localStorage.getItem("session_token");
+}
+
+async function apiGetSales() {
+  const token = getToken();
+
+  const res = await fetch(`${API_BASE}/api/sales`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const json = await res.json().catch(() => null);
+
+  if (!res.ok || !json || json.ok !== true) {
+    const msg = json?.error?.message || "Server bilan bog‘lanib bo‘lmadi";
+    if (res.status === 401) localStorage.removeItem("session_token");
+    throw new Error(msg);
+  }
+
+  return json.data;
+}
+
+export default function Sales() {
   const [visibleCount, setVisibleCount] = useState(10);
+  const [loading, setLoading] = useState(true);
+  const [errMsg, setErrMsg] = useState("");
 
-  const loadMore = () => {
-    setVisibleCount(prev => prev + 10);
+  const [history, setHistory] = useState([]);
+  const [pie, setPie] = useState([]);
+
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      try {
+        setLoading(true);
+        setErrMsg("");
+
+        const data = await apiGetSales();
+        if (!alive) return;
+
+        const rawHistory = Array.isArray(data?.history)
+          ? data.history
+          : Array.isArray(data?.sales_history)
+          ? data.sales_history
+          : Array.isArray(data?.sales)
+          ? data.sales
+          : [];
+
+        const normalizedHistory = rawHistory.map((x, idx) => ({
+          id: x?.id ?? x?.sale_id ?? idx,
+          name: x?.name ?? x?.t_name ?? x?.sort_name ?? "-",
+          category: x?.category ?? x?.c_name ?? x?.group_name ?? "-",
+          date: x?.date ?? x?.created_at ?? x?.sold_at ?? "-",
+          qty:
+            Number(
+              x?.qty ??
+                x?.quantity ??
+                x?.count ??
+                (Number(x?.q1_sold || 0) + Number(x?.q2_sold || 0) + Number(x?.q3_sold || 0))
+            ) || 0,
+          price: Number(x?.price ?? x?.total_price ?? x?.sum ?? 0) || 0,
+        }));
+
+        const rawPie = Array.isArray(data?.pie)
+          ? data.pie
+          : Array.isArray(data?.monthly_pie)
+          ? data.monthly_pie
+          : Array.isArray(data?.groups)
+          ? data.groups
+          : [];
+
+        const normalizedPie = rawPie.map((x, idx) => ({
+          name: x?.name ?? x?.c_name ?? x?.groupName ?? `Guruh ${idx + 1}`,
+          value: Number(x?.value ?? x?.sum ?? x?.total ?? 0) || 0,
+          color: x?.color ?? x?.hex ?? PIE_COLORS[idx % PIE_COLORS.length],
+        }));
+
+        setHistory(normalizedHistory);
+        setPie(normalizedPie);
+      } catch (e) {
+        if (!alive) return;
+        setErrMsg(e?.message || "Xatolik yuz berdi");
+      } finally {
+        if (!alive) return;
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const totalRevenue = useMemo(
+    () => pie.reduce((sum, item) => sum + Number(item.value || 0), 0),
+    [pie]
+  );
+
+  const shownHistory = useMemo(() => history.slice(0, visibleCount), [history, visibleCount]);
+
+  const loadMore = () => setVisibleCount((p) => p + 10);
+
+  const tooltipFormatter = (value, _name, props) => {
+    const v = Number(value || 0);
+    const pct = totalRevenue ? ((v / totalRevenue) * 100).toFixed(1) : "0.0";
+    return [`${v.toLocaleString()} so'm (${pct}%)`, props?.payload?.name || "Guruh"];
   };
 
-  // Jami tushumni hisoblash
-  const totalRevenue = MONTHLY_PIE_DATA.reduce((sum, item) => sum + item.value, 0);
+  if (loading) return <Loader text="Yuklanmoqda..." />;
+  if (errMsg) return <Loader text={errMsg} />;
 
   return (
-    <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8 bg-[#F8FAFC] min-h-screen">
-      
-      {/* CHAP TOMON: Sotuvlar tarixi */}
-      <div className="bg-white p-8 rounded-[35px] shadow-sm border border-gray-100">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="p-3 bg-green-50 rounded-2xl text-green-600">
-            <History size={24} />
+    <div className="sales-page">
+      {/* LEFT */}
+      <div className="sales-card">
+        <div className="sales-head">
+          <div className="sales-head__icon sales-head__icon--green">
+            <History size={22} />
           </div>
-          <h2 className="text-2xl font-black text-gray-800 tracking-tight">Sotuvlar tarixi</h2>
+          <h2 className="sales-head__title">Sotuvlar tarixi</h2>
         </div>
 
-        <div className="space-y-4">
-          {SALES_HISTORY.slice(0, visibleCount).map((item) => (
-            <div key={item.id} className="flex justify-between items-center p-5 bg-gray-50 rounded-[22px] hover:bg-white hover:shadow-md transition-all duration-300 border border-transparent hover:border-gray-100 group">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-gray-400 group-hover:text-green-500 transition">
-                  <Wallet size={20} />
-                </div>
-                <div>
-                  <h4 className="font-bold text-gray-800 text-lg">{item.name}</h4>
-                  <div className="flex items-center gap-3 mt-1">
-                    <span className="text-[10px] bg-green-100 px-2 py-0.5 rounded-lg text-green-700 font-black uppercase">
-                      {item.category}
-                    </span>
-                    <p className="text-xs text-gray-400 flex items-center gap-1 font-medium">
-                      <Calendar size={12} /> {item.date} • {item.qty} dona
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="font-black text-green-600 text-lg">+{item.price.toLocaleString()} so'm</p>
-              </div>
-            </div>
+        <div className="sales-list">
+          {shownHistory.map((item) => (
+            <TransactionCard key={item.id} item={item} />
           ))}
         </div>
 
-        {visibleCount < SALES_HISTORY.length && (
-          <button 
-            onClick={loadMore}
-            className="w-full mt-8 py-4 border-2 border-dashed border-gray-200 text-gray-400 rounded-2xl hover:border-green-500 hover:text-green-600 transition-all font-bold uppercase tracking-widest text-xs"
-          >
+        {visibleCount < history.length && (
+          <button type="button" onClick={loadMore} className="sales-more">
             Yana yuklash (+10)
           </button>
         )}
       </div>
 
-      {/* O'NG TOMON: Analytics Pie Chart */}
-      <div className="bg-white p-8 rounded-[35px] shadow-sm border border-gray-100 h-fit sticky top-6">
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-50 rounded-2xl text-blue-600">
-              <TrendingUp size={24} />
+      {/* RIGHT */}
+      <div className="sales-card">
+        <div className="sales-head sales-head--spaced">
+          <div className="sales-head__left">
+            <div className="sales-head__icon sales-head__icon--blue">
+              <TrendingUp size={22} />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-gray-800 tracking-tight">Daromad tahlili</h2>
-              <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Oylik hisobot (%)</p>
+              <h2 className="sales-head__title">Daromad tahlili</h2>
+              <div className="sales-head__subtitle">Oylik hisobot (%)</div>
             </div>
           </div>
         </div>
 
-        {/* Pie Chart qismi */}
-        <div className="relative h-[350px] w-full bg-gray-50 rounded-[30px] p-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={MONTHLY_PIE_DATA}
-                innerRadius={90}
-                outerRadius={130}
-                paddingAngle={8}
+        {/* Chart */}
+        <div className="sales-pieWrap">
+          <div className="sales-pieOuter">
+            <div className="sales-pieChart">
+              <PieCard
+                data={pie}
+                colors={PIE_COLORS}
                 dataKey="value"
-                stroke="none"
-              >
-                {MONTHLY_PIE_DATA.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} className="outline-none" />
-                ))}
-              </Pie>
-              {/* Pie chartda foiz ko'rsatish */}
-              <Tooltip 
-                formatter={(value) => [`${((value / totalRevenue) * 100).toFixed(1)}%`, "Ulushi"]}
-                contentStyle={{ borderRadius: '15px', border: 'none', boxShadow: '0 10px 15px rgba(0,0,0,0.1)' }}
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius="80%"
+                stroke="#fff"
+                strokeWidth={6}
+                tooltipFormatter={tooltipFormatter}
               />
-            </PieChart>
-          </ResponsiveContainer>
-          
-          {/* Pie Chart o'rtasidagi Jami summa */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Jami tushum</p>
-            <p className="text-3xl font-black text-gray-800">{totalRevenue.toLocaleString()}</p>
-            <p className="text-xs font-bold text-green-500 mt-1">so'm</p>
+            </div>
+          </div>
+
+          {/* Total pastda */}
+          <div className="sales-total">
+            <div className="sales-total__kicker">Jami tushum</div>
+            <div className="sales-total__value">{Number(totalRevenue || 0).toLocaleString()}</div>
+            <div className="sales-total__unit">so&apos;m</div>
           </div>
         </div>
 
-        {/* Pastdagi ro'yxat: Endi faqat SUMMAda */}
-        <div className="mt-10 space-y-5">
-          <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Guruhlar bo'yicha tushum:</h3>
-          {MONTHLY_PIE_DATA.map((item, i) => (
-            <div key={i} className="group">
-              <div className="flex justify-between items-end mb-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: item.color }}></div>
-                  <span className="text-gray-700 font-bold text-lg">{item.name}</span>
+        {/* Breakdown */}
+        <div className="sales-breakdown">
+          <div className="sales-breakdown__title">Guruhlar bo&apos;yicha tushum:</div>
+
+          <div className="sales-breakdown__list">
+            {pie.map((item, i) => {
+              const v = Number(item.value || 0);
+              const pct = totalRevenue ? (v / totalRevenue) * 100 : 0;
+
+              return (
+                <div className="sales-breakRow" key={i}>
+                  <div className="sales-breakRow__top">
+                    <div className="sales-breakRow__name">
+                      <span className="sales-dot" style={{ backgroundColor: item.color }} />
+                      <span className="sales-breakRow__label" title={item.name}>
+                        {item.name}
+                      </span>
+                    </div>
+
+                    <div className="sales-breakRow__sum">{v.toLocaleString()} so&apos;m</div>
+                  </div>
+
+                  <div className="sales-bar">
+                    <div
+                      className="sales-bar__fill"
+                      style={{ width: `${pct}%`, backgroundColor: item.color }}
+                    />
+                  </div>
                 </div>
-                {/* Bu yerda foiz emas, SUMMA ko'rsatiladi */}
-                <span className="font-black text-gray-800">{item.value.toLocaleString()} so'm</span>
-              </div>
-              <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden shadow-inner">
-                <div 
-                  className="h-full rounded-full transition-all duration-1000 group-hover:opacity-80" 
-                  style={{ 
-                    width: `${(item.value / totalRevenue) * 100}%`, 
-                    backgroundColor: item.color 
-                  }}
-                ></div>
-              </div>
-            </div>
-          ))}
+              );
+            })}
+          </div>
         </div>
       </div>
-
     </div>
   );
-};
-
-export default Sales;
+}
