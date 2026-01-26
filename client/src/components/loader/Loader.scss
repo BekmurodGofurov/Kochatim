@@ -13,22 +13,27 @@
 .app-loader-spinner {
   width: 48px;
   height: 48px;
-  border: 5px solid $border-strong;
+  border: 4px solid $surface-row;
   border-top-color: $accent-main;
-  border-radius: 50%;
-  animation: appLoaderSpin 0.9s linear infinite;
-  margin-bottom: 16px;
+  border-radius: $radius-pill;
+  animation: appLoaderSpin 0.8s linear infinite;
+  margin-bottom: 20px;
 }
 
 .app-loader-text {
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.18em;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: $accent-main;
+  color: $text-light;
 }
 
 @keyframes appLoaderSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }

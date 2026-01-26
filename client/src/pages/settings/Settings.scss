@@ -30,8 +30,8 @@
 
   .card {
     background: $surface-main;
-    border: 1px solid $border-strong;
-    border-radius: $radius-card-sm;
+    border: 1px solid $border-main;
+    border-radius: $radius-card-md;
     box-shadow: $shadow-soft;
   }
 
@@ -50,8 +50,7 @@
         height: 80px;
         border-radius: $radius-pill;
 
-        // green yo‘q => accent asosida
-        background: $surface-row-active;
+        background: $accent-subtle;
         color: $accent-main;
 
         display: flex;
@@ -62,14 +61,14 @@
       .profileTitle {
         margin: 0;
         font-size: 24px;
-        font-weight: 700;
-        color: $text-main;
+        font-weight: 900;
+        color: $text-strong;
       }
 
       .profileSubtitle {
-        margin: 0;
+        margin: 4px 0 0 0;
         color: $text-muted;
-        font-weight: 500;
+        font-weight: 600;
       }
     }
 
@@ -84,38 +83,43 @@
 
       .fieldLabel {
         display: block;
-        font-size: 14px;
-        font-weight: 500;
-        color: $text-muted;
-        margin-bottom: 4px;
+        font-size: 13px;
+        font-weight: 700;
+        color: $text-light;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
       }
 
       .readOnlyField {
         width: 100%;
-        padding: 12px;
-        border-radius: 12px;
+        padding: 14px;
+        border-radius: $radius-card-sm;
         border: 1px solid $border-main;
         background: $surface-soft;
         color: $text-main;
+        font-weight: 600;
       }
     }
 
     .infoBox {
       margin-top: 32px;
-      padding: 16px;
-      border-radius: 12px;
+      padding: 16px 20px;
+      border-radius: $radius-card-sm;
 
-      // blue-50 yo‘q => surface-row-active ishlatamiz
-      background: $surface-row-active;
+      background: $accent-subtle;
       display: flex;
       align-items: flex-start;
       gap: 12px;
 
       color: $accent-main;
       font-size: 14px;
+      font-weight: 600;
+      border: 1px solid $border-active;
 
       .infoIcon {
         flex-shrink: 0;
+        margin-top: 2px;
       }
     }
   }
@@ -130,18 +134,18 @@
       align-items: center;
       gap: 8px;
       font-size: 18px;
-      font-weight: 700;
+      font-weight: 900;
       color: $text-strong;
 
       .securityIcon {
-        color: $accent-soft;
+        color: $accent-main;
       }
     }
 
     .statusRow {
-      padding: 16px;
-      background: $surface-soft;
-      border-radius: 12px;
+      padding: 16px 20px;
+      background: $surface-row;
+      border-radius: $radius-card-sm;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -149,16 +153,18 @@
 
       .statusLabel {
         color: $text-main;
+        font-weight: 700;
       }
 
       .statusBadge {
-        // green yo‘q => accent asosida “active”
-        background: $surface-row-active;
-        color: $accent-main;
-        padding: 4px 12px;
+        background: $accent-main;
+        color: $surface-main;
+        padding: 6px 14px;
         border-radius: $radius-pill;
-        font-weight: 700;
-        border: 1px solid $border-active;
+        font-weight: 800;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
       }
     }
   }
@@ -175,14 +181,14 @@
       margin-bottom: 24px;
 
       .botIcon {
-        color: $accent-soft;
+        color: $accent-main;
       }
 
       .botTitle {
         margin: 0;
         font-size: 18px;
-        font-weight: 700;
-        color: $text-main;
+        font-weight: 900;
+        color: $text-strong;
       }
     }
 
@@ -192,55 +198,67 @@
       gap: 16px;
 
       .metaLabel {
-        color: $text-muted;
-        font-size: 12px;
+        color: $text-light;
+        font-size: 11px;
+        font-weight: 900;
         margin-bottom: 4px;
         text-transform: uppercase;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.1em;
       }
 
       .monoBox {
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
           "Liberation Mono", "Courier New", monospace;
         background: $surface-soft;
-        padding: 8px;
-        border-radius: 6px;
+        padding: 10px;
+        border-radius: $radius-card-sm;
         border: 1px solid $border-main;
         color: $text-main;
+        font-weight: 600;
       }
 
       .toggleRow {
-        padding: 12px;
-        background: $surface-soft;
-        border-radius: 12px;
-        color: $accent-main;
+        padding: 14px 20px;
+        background: $surface-row;
+        border-radius: $radius-card-sm;
+        color: $text-main;
 
         display: flex;
         justify-content: space-between;
         align-items: center;
+        border: 1px solid transparent;
+        transition: all 0.2s ease;
 
-        border: 1px solid $border-main;
+        &:hover {
+          border-color: $border-main;
+        }
 
         .toggleLabel {
-          font-weight: 500;
+          font-weight: 700;
         }
 
         .toggleState {
-          font-weight: 700;
-          font-size: 12px;
+          font-weight: 900;
+          font-size: 11px;
+          text-transform: uppercase;
+          color: $accent-main;
         }
       }
 
       .disabledButton {
         width: 100%;
-        padding: 12px 0;
+        padding: 14px 0;
         border: none;
-        border-radius: 12px;
+        border-radius: $radius-card-sm;
 
         background: $surface-row;
-        color: $text-muted;
+        color: $text-light;
 
-        font-weight: 700;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        font-size: 12px;
+
         display: flex;
         align-items: center;
         justify-content: center;
@@ -256,25 +274,28 @@
     width: 100%;
     padding: 16px 0;
     border: none;
-    border-radius: $radius-card-sm;
+    border-radius: $radius-card-md;
 
-    background: $surface-soft;
+    background: $danger-soft;
     color: $danger-text;
 
-    font-weight: 700;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 12px;
+
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
 
-    transition: background 150ms ease, color 150ms ease;
+    transition: all 0.2s ease;
     cursor: pointer;
 
     &:hover {
-      background: $danger-border;
-      color: $surface-soft;
-      border: 2px solid $danger-text;
-    
-  }
+      background: $danger-main;
+      color: $surface-main;
+      box-shadow: $shadow-soft;
+    }
   }
 }

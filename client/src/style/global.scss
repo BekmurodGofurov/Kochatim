@@ -11,4 +11,7 @@
 
 body {
   margin: 0;
+  background: v.$page-bg;
+  color: v.$text-main;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }

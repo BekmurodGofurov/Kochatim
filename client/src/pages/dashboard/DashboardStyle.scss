@@ -19,7 +19,7 @@
 
   .dashboard-error {
     background: $surface-main;
-    border: 1px solid $danger-border;
+    border: 1px solid $danger-main;
     border-radius: $radius-card-sm;
     padding: 18px;
     color: $danger-text;
@@ -61,10 +61,10 @@
       font-size: 22px;
       font-weight: 900;
       text-transform: uppercase;
-      color: $text-main;
+      color: $text-strong;
 
       &-icon {
-        color: $accent-soft;
+        color: $accent-main;
       }
     }
 
@@ -78,16 +78,17 @@
         align-items: center;
         justify-content: space-between;
         padding: 18px;
-        border-radius: $radius-card-sm;
+        border-radius: $radius-card-md;
 
         border: 1px solid transparent;
         background: $surface-row;
         cursor: pointer;
         text-align: left;
-        transition: background 0.15s ease, border 0.15s ease;
+        transition: all 0.2s ease;
 
         &:hover {
           background: $surface-row-hover;
+          border-color: $border-main;
         }
 
         &.is-active {
@@ -142,20 +143,21 @@
       margin-top: 16px;
       width: 100%;
       max-width: 300px;
-      padding: 22px;
+      padding: 24px;
       text-align: center;
 
-      border: 2px solid $border-strong;
+      border: 1px solid $border-main;
       border-radius: $radius-card-md;
       background: $surface-main;
       box-shadow: $shadow-soft;
 
       .dashboard-total-caption {
         margin: 0 0 6px 0;
-        font-size: 10px;
+        font-size: 11px;
         font-weight: 900;
-        letter-spacing: 0.18em;
-        color: $text-muted;
+        letter-spacing: 0.15em;
+        color: $text-light;
+        text-transform: uppercase;
       }
 
       .dashboard-total-title {
@@ -178,7 +180,7 @@
           font-size: 12px;
           font-weight: 900;
           letter-spacing: 0.08em;
-          color: $text-muted;
+          color: $text-light;
           margin-left: 6px;
         }
       }
@@ -204,7 +206,7 @@
       font-weight: 900;
       letter-spacing: 0.18em;
       text-transform: uppercase;
-      color: $accent-soft;
+      color: $accent-main;
     }
   }
 
@@ -220,16 +222,16 @@
         flex: 1;
 
         .dashboard-detail-title {
-          margin: 0 0 18px 0;
+          margin: 0 0 24px 0;
           font-size: 32px;
           font-weight: 900;
-          color: $text-main;
+          color: $text-strong;
           padding-bottom: 14px;
-          border-bottom: 1px solid $border-strong;
+          border-bottom: 1px solid $border-main;
 
           .dashboard-detail-subtitle {
             color: $text-muted;
-            font-weight: 300;
+            font-weight: 400;
           }
         }
 
@@ -242,35 +244,34 @@
             background: $surface-soft;
             border: 1px solid $border-main;
             border-radius: $radius-card-md;
-            padding: 22px;
+            padding: 24px;
 
             .dashboard-sort-name {
-              margin: 0 0 6px 0;
+              margin: 0 0 8px 0;
               font-size: 18px;
               font-weight: 900;
               text-transform: uppercase;
               letter-spacing: -0.01em;
-              color: $text-main;
+              color: $text-strong;
             }
 
             .dashboard-sort-total {
               font-size: 32px;
               font-weight: 800;
-              color: $text-main;
+              color: $text-strong;
               margin-bottom: 14px;
 
               .dashboard-sort-total-suffix {
                 font-size: 12px;
                 font-weight: 600;
-                color: $text-muted;
+                color: $text-light;
                 margin-left: 6px;
               }
             }
 
             .dashboard-sort-divider {
               height: 1px;
-              background: $text-strong;
-              opacity: 0.8;
+              background: $border-main;
               margin: 10px 0 14px 0;
             }
 
@@ -284,8 +285,9 @@
                 margin: 0;
                 font-size: 10px;
                 font-weight: 900;
-                color: $text-muted;
+                color: $text-light;
                 letter-spacing: 0.08em;
+                text-transform: uppercase;
               }
 
               .dashboard-sort-q-value {
@@ -296,7 +298,6 @@
 
                 &.muted-2 {
                   color: $text-main;
-                  opacity: 0.75;
                 }
 
                 &.muted-3 {
@@ -324,7 +325,7 @@
           font-size: 10px;
           font-weight: 900;
           letter-spacing: 0.18em;
-          color: $text-muted;
+          color: $text-light;
           text-transform: uppercase;
           text-align: center;
           line-height: 1.3;
@@ -339,7 +340,7 @@
           margin: 8px 0 0 0;
           font-size: 38px;
           font-weight: 900;
-          color: $text-main;
+          color: $text-strong;
         }
 
         .dashboard-right-total-label {
@@ -347,7 +348,7 @@
           font-size: 10px;
           font-weight: 900;
           letter-spacing: 0.18em;
-          color: $text-muted;
+          color: $text-light;
           text-transform: uppercase;
           text-align: center;
         }
@@ -361,6 +362,85 @@
     opacity: 0;
     transform: scale(0.985);
   }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .dashboard-main {
+    flex-direction: column;
+    align-items: stretch;
+
+    &-left,
+    &-right {
+      width: 100%;
+    }
+  }
+
+  .dashboard-details {
+    .dashboard-detail-card {
+      .dashboard-detail-layout {
+        flex-direction: column;
+
+        .dashboard-detail-right {
+          width: 100%;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 700px) {
+  .dashboard-card {
+    border-radius: $radius-card;
+  }
+
+  .dashboard-main {
+    padding: 22px;
+    border-radius: $radius-card;
+  }
+
+  .dashboard-details {
+    .dashboard-detail-card {
+      padding: 22px;
+      border-radius: $radius-card;
+
+      .dashboard-detail-layout {
+        .dashboard-detail-left {
+          .dashboard-detail-title {
+            font-size: 26px;
+          }
+
+          .dashboard-sort-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        .dashboard-detail-right {
+          width: 100%;
+        }
+      }
+    }
+  }
+
+  .dashboard-total-card {
+    .dashboard-total-value {
+      font-size: 38px;
+    }
+  }
+}
+
+
+@keyframes dashFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+
   to {
     opacity: 1;
     transform: scale(1);

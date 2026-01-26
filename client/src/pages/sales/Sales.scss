@@ -19,7 +19,7 @@
 .sales-card {
   background: $surface-main;
   border: 1px solid $border-main;
-  border-radius: 35px;
+  border-radius: $radius-card;
   box-shadow: $shadow-soft;
   padding: 28px;
 }
@@ -28,7 +28,7 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-bottom: 18px;
+  margin-bottom: 24px;
 
   &--spaced {
     justify-content: space-between;
@@ -43,20 +43,21 @@
   &__icon {
     width: 52px;
     height: 52px;
-    border-radius: 22px;
+    border-radius: $radius-card-sm;
 
     display: inline-flex;
     align-items: center;
     justify-content: center;
 
     &--green {
-      background: $positive-soft;
-      color: $positive-main;
+      background: $accent-subtle;
+      color: $accent-main;
     }
 
     &--blue {
-      background: $accent-soft;
+      background: $accent-subtle;
       color: $accent-main;
+      /* Standardized to brand green */
     }
   }
 
@@ -70,11 +71,11 @@
 
   &__subtitle {
     margin-top: 4px;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 900;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.15em;
     text-transform: uppercase;
-    color: $text-muted;
+    color: $text-light;
   }
 }
 
@@ -90,8 +91,8 @@
   width: 100%;
   padding: 16px 18px;
 
-  border: 2px dashed $border-strong;
-  border-radius: 22px;
+  border: 2px dashed $border-main;
+  border-radius: $radius-card-md;
   background: transparent;
 
   cursor: pointer;
@@ -99,14 +100,15 @@
   color: $text-muted;
   font-size: 12px;
   font-weight: 900;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
 
-  transition: border-color 0.2s ease, color 0.2s ease;
+  transition: all 0.2s ease;
 
   &:hover {
-    border-color: $positive-main;
-    color: $positive-main;
+    border-color: $accent-main;
+    color: $accent-main;
+    background: $accent-subtle;
   }
 }
 
@@ -119,14 +121,10 @@
 
 .sales-pieOuter {
   background: $surface-soft;
-  border-radius: 30px;
-  padding: 18px;
+  border-radius: $radius-card;
+  padding: 24px;
 }
 
-/* MUHIM:
-   - doira buzilmasligi uchun chart maydon KVADRAT bo'ladi
-   - overflow hidden YO'Q (chet kesilmasin)
-*/
 .sales-pieChart {
   width: 100%;
   max-width: 520px;
@@ -136,11 +134,11 @@
   height: auto;
 
   background: $surface-main;
-  border: 1px solid $border-strong;
-  border-radius: 26px;
+  border: 1px solid $border-main;
+  border-radius: $radius-card;
   box-shadow: $shadow-soft;
 
-  padding: 10px;
+  padding: 20px;
   box-sizing: border-box;
 }
 
@@ -149,26 +147,26 @@
   padding-top: 4px;
 
   &__kicker {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 900;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.15em;
     text-transform: uppercase;
-    color: $text-muted;
+    color: $text-light;
   }
 
   &__value {
     margin-top: 6px;
-    font-size: 30px;
+    font-size: 32px;
     font-weight: 900;
     letter-spacing: -0.02em;
     color: $text-strong;
   }
 
   &__unit {
-    margin-top: 2px;
+    margin-top: 4px;
     font-size: 14px;
     font-weight: 900;
-    color: $positive-main;
+    color: $accent-main;
   }
 }
 
@@ -178,11 +176,11 @@
 
   &__title {
     margin: 8px 0 14px 0;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 900;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.15em;
     text-transform: uppercase;
-    color: $text-muted;
+    color: $text-light;
   }
 
   &__list {
@@ -208,8 +206,8 @@
 
 .sales-breakRow__label {
   font-size: 16px;
-  font-weight: 900;
-  color: $text-strong;
+  font-weight: 700;
+  color: $text-main;
 
   white-space: nowrap;
   overflow: hidden;
@@ -227,13 +225,13 @@
 .sales-dot {
   width: 14px;
   height: 14px;
-  border-radius: 50%;
+  border-radius: $radius-pill;
   flex: 0 0 auto;
 }
 
 .sales-bar {
   width: 100%;
-  height: 10px;
+  height: 8px;
   background: $surface-row;
   border-radius: $radius-pill;
   overflow: hidden;

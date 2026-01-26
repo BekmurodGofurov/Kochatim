@@ -5,9 +5,12 @@ import {
   Settings,
   Leaf,
   ChevronRight,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
+import { useTheme } from "../../context/ThemeContext";
 
 import "./Sidebar.scss";
 
@@ -34,6 +37,7 @@ async function apiGetMe() {
 export default function Sidebar() {
   const location = useLocation();
   const [uId, setUId] = useState(null);
+  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     let alive = true;
@@ -102,6 +106,17 @@ export default function Sidebar() {
           );
         })}
       </nav>
+
+      <div className="sidebar__theme-toggle">
+        <button
+          onClick={toggleTheme}
+          className="sidebar__theme-btn"
+          title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
+        >
+          {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
+          <span>{theme === "light" ? "Tun" : "Kun"} mode</span>
+        </button>
+      </div>
 
       <div className="sidebar__footer">
         <p className="sidebar__plan">Premium Plan</p>

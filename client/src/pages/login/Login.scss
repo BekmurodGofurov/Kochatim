@@ -17,8 +17,8 @@
 
     background: $surface-main;
     border: 1px solid $border-main;
-    border-radius: $radius-card-sm;
-    padding: 32px;
+    border-radius: $radius-card-md;
+    padding: 40px;
 
     box-shadow: $shadow-main;
   }
@@ -28,7 +28,7 @@
     font-size: 28px;
     font-weight: 900;
     color: $text-strong;
-    margin: 0 0 6px 0;
+    margin: 0 0 8px 0;
     letter-spacing: -0.02em;
   }
 
@@ -36,45 +36,47 @@
     text-align: center;
     font-size: 14px;
     color: $text-muted;
-    margin: 0 0 24px 0;
-    font-weight: 700;
+    margin: 0 0 32px 0;
+    font-weight: 600;
   }
 
   &__label {
     display: block;
-    font-size: 14px;
-    font-weight: 900;
-    color: $text-main;
+    font-size: 13px;
+    font-weight: 800;
+    color: $text-light;
     margin-bottom: 8px;
-    letter-spacing: -0.01em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
   &__input {
     width: 100%;
     box-sizing: border-box;
 
-    padding: 12px 14px;
-    border-radius: 14px;
+    padding: 14px 16px;
+    border-radius: $radius-card-sm;
     border: 1px solid $border-strong;
-    background: $surface-main;
+    background: $surface-soft;
 
     font-size: 15px;
     font-weight: 700;
     color: $text-strong;
 
     outline: none;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
 
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    transition: all 0.2s ease;
 
     &:focus {
-      border-color: $border-active;
-      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+      border-color: $accent-main;
+      background: $surface-main;
+      box-shadow: 0 0 0 4px $accent-subtle;
     }
 
     &::placeholder {
-      color: $text-muted;
-      font-weight: 600;
+      color: $text-light;
+      font-weight: 500;
     }
   }
 
@@ -82,8 +84,8 @@
     text-align: center;
     font-size: 12px;
     color: $text-muted;
-    margin: 0 0 18px 0;
-    line-height: 1.45;
+    margin: 0 0 24px 0;
+    line-height: 1.5;
 
     b {
       color: $text-strong;
@@ -92,36 +94,42 @@
   }
 
   &__error {
-    background: $danger-border;
-    border: 1px solid $danger-border;
+    background: $danger-soft;
+    border: 1px solid $danger-main;
     color: $danger-text;
 
     font-size: 13px;
-    font-weight: 800;
+    font-weight: 700;
 
-    padding: 10px 12px;
-    border-radius: 12px;
-    margin-bottom: 14px;
+    padding: 12px 16px;
+    border-radius: $radius-card-sm;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
   &__button {
     width: 100%;
     border: none;
-    border-radius: 14px;
+    border-radius: $radius-card-sm;
 
-    padding: 12px 14px;
+    padding: 16px;
     cursor: pointer;
 
-    background: $positive-main;
+    background: $accent-main;
     color: $surface-main;
 
     font-size: 15px;
     font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 
-    transition: transform 0.05s ease, opacity 0.2s ease, filter 0.2s ease;
+    transition: all 0.2s ease;
 
     &:hover {
-      filter: brightness(0.95);
+      background: $accent-active;
+      box-shadow: $shadow-soft;
     }
 
     &:active {

@@ -155,7 +155,7 @@ export default function Dashboard() {
               data={mainPieData}
               colors={COLORS}
               outerRadius={160}
-              stroke="#fff"
+              stroke="var(--surface-main)"
               strokeWidth={4}
               cellClassName="dashboard-pie-cell"
               onSliceClick={(entry) => {
@@ -261,7 +261,7 @@ export default function Dashboard() {
                     data={selectedPieData}
                     colors={COLORS}
                     outerRadius={80}
-                    stroke="#fff"
+                    stroke="var(--surface-main)"
                     strokeWidth={2}
                     tooltipFormatter={(value, name) => {
                       const total = Number(selectedGroup.totalValue || 0);
