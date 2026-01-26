@@ -117,3 +117,14 @@ def init_db():
         FOR EACH ROW
         EXECUTE PROCEDURE update_modified_column();
         """)
+
+    # 5) Performance Indexes
+    execute("CREATE INDEX IF NOT EXISTS idx_categories_u_id ON categories (u_id);")
+    execute("CREATE INDEX IF NOT EXISTS idx_types_u_id ON types (u_id);")
+    execute("CREATE INDEX IF NOT EXISTS idx_types_c_id ON types (c_id);")
+    execute("CREATE INDEX IF NOT EXISTS idx_seedlings_u_id ON seedlings (u_id);")
+    execute("CREATE INDEX IF NOT EXISTS idx_seedlings_t_id ON seedlings (t_id);")
+    execute("CREATE INDEX IF NOT EXISTS idx_sales_u_id ON sales (u_id);")
+    execute("CREATE INDEX IF NOT EXISTS idx_sales_c_id ON sales (c_id);")
+    execute("CREATE INDEX IF NOT EXISTS idx_sales_t_id ON sales (t_id);")
+    execute("CREATE INDEX IF NOT EXISTS idx_img_t_id ON img (t_id);")

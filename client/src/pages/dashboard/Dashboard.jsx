@@ -1,78 +1,19 @@
-// src/pages/Dashboard/Dashboard.jsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
 import { LayoutDashboard } from "lucide-react";
 
 import Loader from "../../components/loader/Loader.jsx";
 import PieCard from "../../components/pieCard/PieCard.jsx";
+import { useDashboard } from "../../context/DashboardContext";
 import "./DashboardStyle.scss";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
-
-function getToken() {
-  return localStorage.getItem("session_token");
-}
-
-async function apiGetDashboard() {
-  const token = getToken();
-
-  const res = await fetch(`${API_BASE}/api/me/dashboard`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  const json = await res.json().catch(() => null);
-
-  if (!res.ok || !json || json.ok !== true) {
-    const code = json?.error?.code;
-    const msg = json?.error?.message || "Server bilan bog‘lanib bo‘lmadi";
-
-    if (res.status === 401 || code === "UNAUTHORIZED") {
-      localStorage.removeItem("session_token");
-    }
-    throw new Error(msg);
-  }
-
-  return json.data;
-}
 
 const COLORS = ["#3b82f6", "#fbbf24", "#c084fc", "#f87171", "#34d399"];
 
 export default function Dashboard() {
-  const [dashboard, setDashboard] = useState(null);
-  const [pageLoading, setPageLoading] = useState(true);
-  const [pageError, setPageError] = useState("");
+  const { dashboardData: dashboard, loading: pageLoading, error: pageError } = useDashboard();
 
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
-
   const detailsRef = useRef(null);
-
-  useEffect(() => {
-    let alive = true;
-
-    (async () => {
-      try {
-        setPageLoading(true);
-        setPageError("");
-        const data = await apiGetDashboard();
-        if (!alive) return;
-        setDashboard(data);
-      } catch (e) {
-        if (!alive) return;
-        setPageError(e?.message || "Xatolik");
-      } finally {
-        if (!alive) return;
-        setPageLoading(false);
-      }
-    })();
-
-    return () => {
-      alive = false;
-    };
-  }, []);
 
   const groups = useMemo(() => {
     if (!dashboard) return [];
@@ -243,7 +184,7 @@ export default function Dashboard() {
       <div ref={detailsRef} className="dashboard-details">
         {detailLoading && (
           <div className="dashboard-detail-loader">
-            <Loader/>
+            <Loader />
           </div>
         )}
 

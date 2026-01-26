@@ -1,44 +1,15 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Plus, ArrowLeft, X } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import Loader from "../../components/loader/Loader";
 import GroupCard from "../../components/groupCard/GroupCard";
 import SortCard from "../../components/sortCard/SortCard";
+import { useDashboard } from "../../context/DashboardContext";
 import "./Inventory.scss";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
-function getToken() {
-  return localStorage.getItem("session_token");
-}
-
-async function apiGetDashboard() {
-  const token = getToken();
-
-  const res = await fetch(`${API_BASE}/api/me/dashboard`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  const json = await res.json().catch(() => null);
-
-  if (!res.ok || !json || json.ok !== true) {
-    const code = json?.error?.code;
-    const msg = json?.error?.message || "Server bilan bog‘lanib bo‘lmadi";
-
-    if (res.status === 401 || code === "UNAUTHORIZED") {
-      localStorage.removeItem("session_token");
-    }
-
-    throw new Error(msg);
-  }
-
-  return json.data;
-}
 
 function toWebImgUrl(raw) {
   if (!raw) return "";
@@ -71,39 +42,13 @@ export default function Inventory() {
   const cId = cIdParam ? Number(cIdParam) : null;
   const tId = tIdParam ? Number(tIdParam) : null;
 
-  const [dashboard, setDashboard] = useState(null);
-  const [pageLoading, setPageLoading] = useState(true);
-  const [pageError, setPageError] = useState("");
+  const { dashboardData: dashboard, loading: pageLoading, error: pageError } = useDashboard();
 
   // 10s aylanish (guruh card rasmlari)
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 10000);
     return () => clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    let alive = true;
-
-    (async () => {
-      try {
-        setPageLoading(true);
-        setPageError("");
-        const data = await apiGetDashboard();
-        if (!alive) return;
-        setDashboard(data);
-      } catch (e) {
-        if (!alive) return;
-        setPageError(e?.message || "Xatolik");
-      } finally {
-        if (!alive) return;
-        setPageLoading(false);
-      }
-    })();
-
-    return () => {
-      alive = false;
-    };
   }, []);
 
   // Backend -> Inventory UI format

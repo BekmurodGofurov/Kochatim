@@ -13,6 +13,7 @@ import Sales from "./pages/sales/Sales.jsx";
 import Settings from "./pages/settings/Settings.jsx";
 import Login from "./pages/login/Login.jsx";
 import RequireAuth from "./auth/RequireAuth";
+import { DashboardProvider } from "./context/DashboardContext";
 
 import "./App.scss";
 
@@ -30,27 +31,29 @@ function AppLayout() {
 export default function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/login" element={<Login />} />
+      <DashboardProvider>
+        <Routes>
+          <Route path="/login" element={<Login />} />
 
-        <Route element={<RequireAuth />}>
-          <Route element={<AppLayout />}>
-            <Route path="/" element={<Dashboard />} />
+          <Route element={<RequireAuth />}>
+            <Route element={<AppLayout />}>
+              <Route path="/" element={<Dashboard />} />
 
-            <Route path="/u/:uId/inventory" element={<Inventory />} />
-            <Route path="/u/:uId/inventory/group/:cId" element={<Inventory />} />
-            <Route
-              path="/u/:uId/inventory/group/:cId/sort/:tId"
-              element={<Inventory />}
-            />
+              <Route path="/u/:uId/inventory" element={<Inventory />} />
+              <Route path="/u/:uId/inventory/group/:cId" element={<Inventory />} />
+              <Route
+                path="/u/:uId/inventory/group/:cId/sort/:tId"
+                element={<Inventory />}
+              />
 
-            <Route path="/sales" element={<Sales />} />
-            <Route path="/settings" element={<Settings />} />
+              <Route path="/sales" element={<Sales />} />
+              <Route path="/settings" element={<Settings />} />
 
-            <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
           </Route>
-        </Route>
-      </Routes>
+        </Routes>
+      </DashboardProvider>
     </Router>
   );
 }

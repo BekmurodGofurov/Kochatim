@@ -1,6 +1,7 @@
 // src/pages/sales/Sales.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { History, TrendingUp } from "lucide-react";
+import { useDashboard } from "../../context/DashboardContext";
 
 import Loader from "../../components/loader/Loader";
 import PieCard from "../../components/pieCard/PieCard";
@@ -12,103 +13,66 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 const PIE_COLORS = ["#16a34a", "#2563eb", "#f59e0b", "#db2777", "#8b5cf6", "#06b6d4"];
 
-function getToken() {
-  return localStorage.getItem("session_token");
-}
-
-async function apiGetSales() {
-  const token = getToken();
-
-  const res = await fetch(`${API_BASE}/api/sales`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  const json = await res.json().catch(() => null);
-
-  if (!res.ok || !json || json.ok !== true) {
-    const msg = json?.error?.message || "Server bilan bog‘lanib bo‘lmadi";
-    if (res.status === 401) localStorage.removeItem("session_token");
-    throw new Error(msg);
-  }
-
-  return json.data;
-}
 
 export default function Sales() {
   const [visibleCount, setVisibleCount] = useState(10);
-  const [loading, setLoading] = useState(true);
-  const [errMsg, setErrMsg] = useState("");
-
   const [history, setHistory] = useState([]);
   const [pie, setPie] = useState([]);
 
+  const {
+    salesData: data,
+    salesLoading: loading,
+    salesError: errMsg,
+    fetchSales,
+  } = useDashboard();
+
   useEffect(() => {
-    let alive = true;
+    fetchSales();
+  }, [fetchSales]);
 
-    (async () => {
-      try {
-        setLoading(true);
-        setErrMsg("");
+  useEffect(() => {
+    if (!data) return;
 
-        const data = await apiGetSales();
-        if (!alive) return;
-
-        const rawHistory = Array.isArray(data?.history)
-          ? data.history
-          : Array.isArray(data?.sales_history)
-          ? data.sales_history
-          : Array.isArray(data?.sales)
+    const rawHistory = Array.isArray(data?.history)
+      ? data.history
+      : Array.isArray(data?.sales_history)
+        ? data.sales_history
+        : Array.isArray(data?.sales)
           ? data.sales
           : [];
 
-        const normalizedHistory = rawHistory.map((x, idx) => ({
-          id: x?.id ?? x?.sale_id ?? idx,
-          name: x?.name ?? x?.t_name ?? x?.sort_name ?? "-",
-          category: x?.category ?? x?.c_name ?? x?.group_name ?? "-",
-          date: x?.date ?? x?.created_at ?? x?.sold_at ?? "-",
-          qty:
-            Number(
-              x?.qty ??
-                x?.quantity ??
-                x?.count ??
-                (Number(x?.q1_sold || 0) + Number(x?.q2_sold || 0) + Number(x?.q3_sold || 0))
-            ) || 0,
-          price: Number(x?.price ?? x?.total_price ?? x?.sum ?? 0) || 0,
-        }));
+    const normalizedHistory = rawHistory.map((x, idx) => ({
+      id: x?.id ?? x?.sale_id ?? idx,
+      name: x?.name ?? x?.t_name ?? x?.sort_name ?? "-",
+      category: x?.category ?? x?.c_name ?? x?.group_name ?? "-",
+      date: x?.date ?? x?.created_at ?? x?.sold_at ?? "-",
+      qty:
+        Number(
+          x?.qty ??
+          x?.quantity ??
+          x?.count ??
+          (Number(x?.q1_sold || 0) + Number(x?.q2_sold || 0) + Number(x?.q3_sold || 0))
+        ) || 0,
+      price: Number(x?.price ?? x?.total_price ?? x?.sum ?? 0) || 0,
+    }));
 
-        const rawPie = Array.isArray(data?.pie)
-          ? data.pie
-          : Array.isArray(data?.monthly_pie)
-          ? data.monthly_pie
-          : Array.isArray(data?.groups)
+    const rawPie = Array.isArray(data?.pie)
+      ? data.pie
+      : Array.isArray(data?.monthly_pie)
+        ? data.monthly_pie
+        : Array.isArray(data?.groups)
           ? data.groups
           : [];
 
-        const normalizedPie = rawPie.map((x, idx) => ({
-          name: x?.name ?? x?.c_name ?? x?.groupName ?? `Guruh ${idx + 1}`,
-          value: Number(x?.value ?? x?.sum ?? x?.total ?? 0) || 0,
-          color: x?.color ?? x?.hex ?? PIE_COLORS[idx % PIE_COLORS.length],
-        }));
+    const normalizedPie = rawPie.map((x, idx) => ({
+      name: x?.name ?? x?.c_name ?? x?.groupName ?? `Guruh ${idx + 1}`,
+      value: Number(x?.value ?? x?.sum ?? x?.total ?? 0) || 0,
+      color: x?.color ?? x?.hex ?? PIE_COLORS[idx % PIE_COLORS.length],
+    }));
 
-        setHistory(normalizedHistory);
-        setPie(normalizedPie);
-      } catch (e) {
-        if (!alive) return;
-        setErrMsg(e?.message || "Xatolik yuz berdi");
-      } finally {
-        if (!alive) return;
-        setLoading(false);
-      }
-    })();
-
-    return () => {
-      alive = false;
-    };
-  }, []);
+    setHistory(normalizedHistory);
+    setPie(normalizedPie);
+  }, [data]);
 
   const totalRevenue = useMemo(
     () => pie.reduce((sum, item) => sum + Number(item.value || 0), 0),

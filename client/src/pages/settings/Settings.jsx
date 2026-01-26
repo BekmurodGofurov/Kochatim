@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { User, Shield, Bot, Smartphone, LogOut, Info } from "lucide-react";
 
 import Loader from "../../components/loader/Loader.jsx";
+import { useDashboard } from "../../context/DashboardContext";
 import "./Settings.scss";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
@@ -19,73 +20,18 @@ function formatDate(value) {
 }
 
 export default function Settings() {
-  const [me, setMe] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [errMsg, setErrMsg] = useState("");
+  const { dashboardData, loading: pageLoading, error: pageError } = useDashboard();
+  const me = dashboardData?.user;
 
-  useEffect(() => {
-    const token = localStorage.getItem("session_token");
-    if (!token) {
-      setErrMsg("Session token topilmadi. Iltimos login qiling.");
-      setLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-
-    (async () => {
-      try {
-        setLoading(true);
-        setErrMsg("");
-
-        const res = await fetch(`${API_BASE}/api/me`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        const body = await res.json().catch(() => null);
-
-        if (!res.ok || !body || body.ok !== true) {
-          const code = body?.error?.code;
-          const msg = body?.error?.message || "Server bilan bog‘lanib bo‘lmadi";
-
-          if (res.status === 401 || code === "UNAUTHORIZED") {
-            localStorage.removeItem("session_token");
-          }
-
-          throw new Error(msg);
-        }
-
-        if (!cancelled) setMe(body.data);
-      } catch (e) {
-        if (!cancelled) setErrMsg(e?.message || "Xatolik yuz berdi");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Agar contextdan error yoki loading kelsa
+  if (pageLoading) return <Loader text="Yuklanmoqda..." />;
+  if (pageError) return <Loader text={pageError} />;
 
   const handleLogout = () => {
     localStorage.removeItem("session_token");
     window.location.href = "/login";
   };
 
-  // ✅ DATA KELGUNCHA: bitta Loader component
-  if (loading) {
-    return <Loader text="Yuklanmoqda..." />;
-  }
-
-  // ✅ Error bo‘lsa ham Loader orqali ko‘rsatamiz (bir xil ko‘rinish)
-  if (errMsg) {
-    return <Loader text={errMsg} />;
-  }
 
   const name = me?.u_name || "-";
   const username = me?.u_username ? `@${me.u_username}` : "-";
