@@ -29,11 +29,11 @@ export default function Header() {
                     {!isLoginPage && (
                         isLoggedIn ? (
                             <Link to="/dashboard" className="login-btn">
-                                Dashboard
+                                Boshqaruv paneli
                             </Link>
                         ) : (
                             <Link to="/login" className="login-btn">
-                                Login
+                                Kirish
                             </Link>
                         )
                     )}

@@ -4,6 +4,7 @@ import { LayoutDashboard } from "lucide-react";
 import Loader from "../../components/loader/Loader.jsx";
 import PieCard from "../../components/pieCard/PieCard.jsx";
 import { useDashboard } from "../../context/DashboardContext";
+import { getSessionToken } from "../../api/https";
 import "./DashboardStyle.scss";
 
 const COLORS = ["#3b82f6", "#fbbf24", "#c084fc", "#f87171", "#34d399"];
@@ -28,8 +29,8 @@ export default function Dashboard() {
         q1: Number(s.quality_1 || 0),
         q2: Number(s.quality_2 || 0),
         q3: Number(s.quality_3 || 0),
-        updated_at: s.updated_at || s.last_updated || null,
-        created_at: s.created_at || s.date || null,
+        updated_at: s.updated_at || null,
+        added_at: s.added_at || null,
       });
     }
 
@@ -51,7 +52,7 @@ export default function Dashboard() {
           nav2: q.q2,
           nav3: q.q3,
           updated_at: q.updated_at || t?.updated_at || null,
-          created_at: q.created_at || t?.created_at || null,
+          added_at: q.added_at || t?.added_at || null,
         };
       });
 
@@ -102,11 +103,11 @@ export default function Dashboard() {
     }));
   }, [selectedGroup]);
 
-  if (pageLoading) {
+  if (pageLoading || (!dashboard && getSessionToken())) {
     return (
       <div className="dashboard-page">
         <div className="dashboard-page-loader">
-          <Loader />
+          <Loader text="Ma'lumotlar yuklanmoqda..." />
         </div>
       </div>
     );
@@ -227,25 +228,20 @@ export default function Dashboard() {
                         </p>
 
                         <div className="dashboard-sort-date">
-                          {sort.updated_at || sort.created_at ? (
-                            <>
-                              <span className="dashboard-sort-date-label">
-                                {sort.updated_at ? "Yangilangan: " : "Qo'shilgan: "}
-                              </span>
-                              <span className="dashboard-sort-date-time">
-                                {(() => {
-                                  const dStr = sort.updated_at || sort.created_at;
-                                  const d = new Date(dStr);
-                                  if (isNaN(d.getTime())) return dStr;
-                                  const day = String(d.getDate()).padStart(2, "0");
-                                  const month = String(d.getMonth() + 1).padStart(2, "0");
-                                  const year = d.getFullYear();
-                                  const hours = String(d.getHours()).padStart(2, "0");
-                                  const minutes = String(d.getMinutes()).padStart(2, "0");
-                                  return `${hours}:${minutes} ${day}.${month}.${year}`;
-                                })()}
-                              </span>
-                            </>
+                          {sort.updated_at || sort.added_at ? (
+                            <span className="dashboard-sort-date-time">
+                              {(() => {
+                                const dStr = sort.updated_at || sort.added_at;
+                                const d = new Date(dStr);
+                                if (isNaN(d.getTime())) return dStr;
+                                const day = String(d.getDate()).padStart(2, "0");
+                                const month = String(d.getMonth() + 1).padStart(2, "0");
+                                const year = d.getFullYear();
+                                const hours = String(d.getHours()).padStart(2, "0");
+                                const minutes = String(d.getMinutes()).padStart(2, "0");
+                                return `${hours}:${minutes} ${day}.${month}.${year}`;
+                              })()}
+                            </span>
                           ) : (
                             <span className="dashboard-sort-date-label">Sana noaniq</span>
                           )}

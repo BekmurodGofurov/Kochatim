@@ -1,11 +1,13 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import { apiFetch, getSessionToken } from "../api/https";
 
 const DashboardContext = createContext(null);
 
 export function DashboardProvider({ children }) {
+    const location = useLocation();
     const [dashboardData, setDashboardData] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false); // Initially not loading until we have a token
     const [error, setError] = useState(null);
     const [lastFetched, setLastFetched] = useState(0);
 
@@ -65,12 +67,19 @@ export function DashboardProvider({ children }) {
         }
     }, [salesData, salesLastFetched]);
 
+    // Token bor bo'lsa va data yo'q bo'lsa har gal path o'zgarganda yuklashga harakat qilamiz
+    useEffect(() => {
+        const token = getSessionToken();
+        if (token && !dashboardData && !loading) {
+            fetchDashboard();
+        }
+    }, [location.pathname, dashboardData, loading, fetchDashboard]);
+
     // Dastur ishga tushganda bir marta DASHBOARD yuklaymiz
     useEffect(() => {
         if (!dashboardData) {
             fetchDashboard();
         }
-        // Sales ni bu yerda yuklamaymiz, faqat kerak bo'lganda chaqiramiz
     }, [fetchDashboard, dashboardData]);
 
     const value = useMemo(() => ({

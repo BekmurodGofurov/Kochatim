@@ -12,20 +12,13 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { theme } = useTheme(); // Removed toggleTheme since it's in Header now
-
-  useEffect(() => {
-    const token = localStorage.getItem("session_token");
-    if (token) {
-      navigate("/dashboard", { replace: true });
-    }
-  }, [navigate]);
+  const { theme } = useTheme();
 
   const submit = async () => {
     setError("");
 
     if (!userId.trim()) {
-      setError("Telegram user_id kiriting");
+      setError("Telegram ID kiriting");
       return;
     }
 
@@ -40,7 +33,7 @@ export default function Login() {
       const data = await res.json().catch(() => null);
 
       if (!data?.ok) {
-        setError(data?.error?.message || "User topilmadi. Botga /start bering.");
+        setError(data?.error?.message || "Foydalanuvchi topilmadi. Botga /start bering.");
         return;
       }
 
@@ -50,6 +43,15 @@ export default function Login() {
       setError("Server bilan bog‘lanib bo‘lmadi");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const isIdValid = userId.length === 10;
+
+  const handleChange = (e) => {
+    const val = e.target.value.replace(/\D/g, ""); // Faqat raqamlarni qoldirish
+    if (val.length <= 10) {
+      setUserId(val);
     }
   };
 
@@ -64,20 +66,26 @@ export default function Login() {
           <label className="login__label">Telegram ID orqali kiring</label>
 
           <input
+            type="text"
             className="login__input"
             value={userId}
-            onChange={(e) => setUserId(e.target.value)}
+            onChange={handleChange}
             placeholder="Telegram ID kiriting..."
             inputMode="numeric"
+            maxLength="10"
           />
 
           <p className="login__hint">
-            Agar ro‘yxatdan o‘tmagan bo‘lsangiz, Telegram botga kirib <b>/start</b> buyrug‘ini bering.
+            Agar ro‘yxatdan o‘tmagan bo‘lsangiz, <b><a href="https://t.me/kochatim_bot" target="_blank" rel="noopener noreferrer">@Kochatim_Bot</a></b> telegram bot orqali royhatdan o'ting va <b>Telegram ID</b> ga ega bo'ling.
           </p>
 
           {error && <div className="login__error">{error}</div>}
 
-          <button className="login__button" onClick={submit} disabled={loading}>
+          <button
+            className="login__button"
+            onClick={submit}
+            disabled={loading || !isIdValid}
+          >
             {loading ? "Tekshirilmoqda..." : "Kirish"}
           </button>
         </div>

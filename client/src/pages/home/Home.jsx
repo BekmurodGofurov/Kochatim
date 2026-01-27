@@ -1,20 +1,13 @@
-import React, { useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import React from "react";
+import { Link } from "react-router-dom";
 import { ArrowRight, Leaf, Shield, Zap } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 import Header from "../../components/header/Header";
 import "./Home.scss";
 
 export default function Home() {
-    const navigate = useNavigate();
     const { theme } = useTheme();
     const isLoggedIn = !!localStorage.getItem("session_token");
-
-    useEffect(() => {
-        if (isLoggedIn) {
-            navigate("/dashboard", { replace: true });
-        }
-    }, [isLoggedIn, navigate]);
 
     return (
         <div className={`home-page ${theme}-mode`}>
@@ -23,23 +16,23 @@ export default function Home() {
             <main>
                 <section className="hero">
                     <div className="container">
-                        <h1>Manage Your Greenery with <span>Ko'chatim</span></h1>
+                        <h1><span>Ko'chatim</span> bilan o'zingizni ko'chatingizni boshqaring</h1>
                         <p className="hero-subtitle">
-                            The ultimate solution for greenhouse inventory and sales management.
-                            Track your plants, optimize your sales, and grow your business.
+                            Ko'chatingiz va sotuvlarni boshqarish uchun eng yaxshi yechim.
+                            Omboringizni kuzatib boring, sotuvlarni optimallashtiring va biznesingizni rivojlantiring.
                         </p>
                         <div className="hero-actions">
                             {isLoggedIn ? (
                                 <Link to="/dashboard" className="btn btn-primary">
-                                    Go to Dashboard <ArrowRight size={20} />
+                                    Boshqaruv paneli <ArrowRight size={20} />
                                 </Link>
                             ) : (
                                 <>
                                     <Link to="/login" className="btn btn-primary">
-                                        Get Started <ArrowRight size={20} />
+                                        Boshlash <ArrowRight size={20} />
                                     </Link>
                                     <Link to="/dashboard" className="btn btn-secondary">
-                                        Go to Dashboard
+                                        Boshqaruv paneli
                                     </Link>
                                 </>
                             )}
@@ -54,22 +47,22 @@ export default function Home() {
                                 <div className="feature-icon">
                                     <Leaf size={32} />
                                 </div>
-                                <h3>Inventory Tracking</h3>
-                                <p>Efficiently manage your plant stock and varieties with ease.</p>
+                                <h3>Inventarni kuzatish</h3>
+                                <p>Ko'chatlar zaxirasi va navlarini osongina boshqaring.</p>
                             </div>
                             <div className="feature-card">
                                 <div className="feature-icon">
                                     <Zap size={32} />
                                 </div>
-                                <h3>Fast & Responsive</h3>
-                                <p>Experience lightning-fast performance across all your devices.</p>
+                                <h3>Tez va qulay</h3>
+                                <p>Barcha qurilmalaringizda chaqmoqdek tez ishlashni his qiling.</p>
                             </div>
                             <div className="feature-card">
                                 <div className="feature-icon">
                                     <Shield size={32} />
                                 </div>
-                                <h3>Secure Data</h3>
-                                <p>Your business data is protected with industry-standard security.</p>
+                                <h3>Xavfsiz ma'lumotlar</h3>
+                                <p>Biznes ma'lumotlaringiz zamonaviy xavfsizlik standartlari bilan himoyalangan.</p>
                             </div>
                         </div>
                     </div>
@@ -78,7 +71,7 @@ export default function Home() {
 
             <footer className="home-footer">
                 <div className="container">
-                    <p>&copy; {new Date().getFullYear()} Ko'chatim. All rights reserved.</p>
+                    <p>&copy; {new Date().getFullYear()} Ko'chatim. Barcha huquqlar himoyalangan.</p>
                 </div>
             </footer>
         </div>

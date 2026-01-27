@@ -7,7 +7,7 @@
   justify-content: space-between;
   gap: 16px;
 
-  padding: 16px 20px;
+  padding: 10px 10px;
   border-radius: $radius-card-md;
 
   background: $surface-soft;
@@ -46,6 +46,7 @@
 
   &__meta {
     min-width: 0;
+    flex: 1;
   }
 
   &__name {
@@ -56,6 +57,10 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+
+    @media (max-width: 480px) {
+      font-size: 16px;
+    }
   }
 
   &__sub {
@@ -64,6 +69,11 @@
     align-items: center;
     gap: 12px;
     flex-wrap: wrap;
+
+    @media (max-width: 480px) {
+      gap: 8px;
+      margin-top: 6px;
+    }
   }
 
   &__tag {
@@ -83,14 +93,45 @@
     text-transform: uppercase;
   }
 
-  &__date {
+  &__info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+
+    @media (max-width: 480px) {
+      gap: 6px;
+    }
+  }
+
+  &__time-count {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 
     font-size: 13px;
     font-weight: 700;
+    color: $text-strong;
+    white-space: nowrap;
+
+    svg {
+      color: $text-light;
+    }
+  }
+
+  &__date-only {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    font-size: 13px;
+    font-weight: 600;
     color: $text-light;
+    white-space: nowrap;
+
+    @media (max-width: 480px) {
+      font-size: 12px;
+    }
   }
 
   &__price {
@@ -98,5 +139,24 @@
     font-weight: 900;
     color: $accent-main;
     white-space: nowrap;
+    text-align: right;
+
+    @media (max-width: 480px) {
+      font-size: 16px;
+    }
+
+    &-short {
+      display: none;
+    }
+
+    @media (max-width: 600px) {
+      &-full {
+        display: none;
+      }
+
+      &-short {
+        display: inline;
+      }
+    }
   }
 }

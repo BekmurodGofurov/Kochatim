@@ -99,6 +99,11 @@
         background: $surface-soft;
         color: $text-main;
         font-weight: 600;
+        word-break: break-all;
+        height: auto;
+        min-height: 48px;
+        display: flex;
+        align-items: center;
       }
     }
 

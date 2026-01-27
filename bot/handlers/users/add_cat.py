@@ -1,6 +1,6 @@
 from aiogram.types import Message
 from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters import Text
+from aiogram.dispatcher.filters import Text, CommandStart
 
 from loader import dp
 from states.state_one import cat_state
@@ -8,7 +8,13 @@ from data.database import new_cat, get_all_cat
 from keyboards.default.main_keyboards import cat_keyboard, main_manu
 
 
-@dp.message_handler(Text(equals="Yangi Gruh"), state="*")
+@dp.message_handler(CommandStart(deep_link="yangi_guruh"), state="*")
+async def add_cat_start_from_link(message: Message, state: FSMContext):
+    await state.finish()
+    await message.answer("Yangi guruh nomini yuboring:")
+    await cat_state.c_name.set()
+
+@dp.message_handler(Text(equals="Yangi Guruh"), state="*")
 async def add_cat_start(message: Message, state: FSMContext):
     await state.finish()
     await message.answer("Yangi guruh nomini yuboring:")

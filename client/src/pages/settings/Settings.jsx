@@ -4,6 +4,7 @@ import { User, Shield, Bot, Smartphone, LogOut, Info } from "lucide-react";
 
 import Loader from "../../components/loader/Loader.jsx";
 import { useDashboard } from "../../context/DashboardContext";
+import { getSessionToken } from "../../api/https";
 import "./Settings.scss";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
@@ -13,7 +14,14 @@ function formatDate(value) {
   try {
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return String(value);
-    return d.toLocaleString();
+
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+
+    return `${hours}:${minutes} ${day}.${month}.${year}`;
   } catch {
     return String(value);
   }
@@ -24,7 +32,7 @@ export default function Settings() {
   const me = dashboardData?.user;
 
   // Agar contextdan error yoki loading kelsa
-  if (pageLoading) return <Loader text="Yuklanmoqda..." />;
+  if (pageLoading || (!dashboardData && getSessionToken())) return <Loader text="Yuklanmoqda..." />;
   if (pageError) return <Loader text={pageError} />;
 
   const handleLogout = () => {

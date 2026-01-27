@@ -1,7 +1,7 @@
 import React from "react";
 import "./Loader.scss";
 
-export default function Loader({ text = "Loading..." }) {
+export default function Loader({ text = "Yuklanmoqda..." }) {
   return (
     <div className="app-loader">
       <div className="app-loader-spinner"></div>

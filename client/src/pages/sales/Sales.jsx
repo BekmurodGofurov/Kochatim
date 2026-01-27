@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { History, TrendingUp } from "lucide-react";
 import { useDashboard } from "../../context/DashboardContext";
+import { getSessionToken } from "../../api/https";
 
 import Loader from "../../components/loader/Loader";
 import PieCard from "../../components/pieCard/PieCard";
@@ -103,7 +104,7 @@ export default function Sales() {
     return [`${v.toLocaleString()} so'm (${pct}%)`, props?.payload?.name || "Guruh"];
   };
 
-  if (loading) return <Loader text="Yuklanmoqda..." />;
+  if (loading || (!data && getSessionToken())) return <Loader text="Yuklanmoqda..." />;
   if (errMsg) return <Loader text={errMsg} />;
 
   return (

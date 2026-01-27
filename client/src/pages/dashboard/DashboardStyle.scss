@@ -259,17 +259,17 @@
               margin: 4px 0 10px 0;
               font-size: 11px;
               display: flex;
-              gap: 4px;
-
-              &-label {
-                color: $text-light;
-                font-weight: 600;
-              }
+              justify-content: center;
+              background: $surface-soft;
+              border: 1px solid $border-main;
+              border-radius: $radius-card-sm;
+              padding: 6px 12px;
 
               &-time {
                 color: $text-muted;
                 font-weight: 800;
                 font-variant-numeric: tabular-nums;
+                text-align: center;
               }
             }
 

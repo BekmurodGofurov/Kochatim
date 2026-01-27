@@ -65,8 +65,8 @@ export default function Inventory() {
         q1: Number(s.quality_1 || 0),
         q2: Number(s.quality_2 || 0),
         q3: Number(s.quality_3 || 0),
-        updated_at: s.updated_at || s.last_updated || null,
-        created_at: s.created_at || s.date || null,
+        updated_at: s.updated_at || null,
+        added_at: s.added_at || null,
       });
     }
 
@@ -92,8 +92,8 @@ export default function Inventory() {
           images,
           images,
           description: t?.deff || t?.description || t?.t_desc || "",
-          updated_at: q.updated_at || t?.updated_at || t?.last_updated || null,
-          created_at: q.created_at || t?.created_at || t?.date || null,
+          updated_at: q.updated_at || t?.updated_at || null,
+          added_at: q.added_at || t?.added_at || null,
         };
       });
 
@@ -140,10 +140,12 @@ export default function Inventory() {
             <h1 className="inv-title">Omborxona</h1>
           </div>
 
-          <button type="button" className="inv-btn inv-btn--primary">
-            <Plus size={20} strokeWidth={3} />
-            <span>Yangi nav qo'shish</span>
-          </button>
+          <a href="https://t.me/kochatim_bot?start=yangi_guruh">
+            <button type="button" className="inv-btn inv-btn--primary">
+              <Plus size={20} strokeWidth={3} />
+              <span>Yangi Guruh qo'shish</span>
+            </button>
+          </a>
         </header>
 
         <div className="inv-section">
@@ -273,10 +275,10 @@ export default function Inventory() {
                       Number(selectedSort.nav3 || 0)}
                   </div>
                 </div>
-
+{/* 
                 <button type="button" className="inv-btn inv-btn--dark">
                   Tahrirlash
-                </button>
+                </button> */}
               </div>
             </div>
           </div>

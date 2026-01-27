@@ -58,6 +58,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
   background: $surface-row-active;
   border: 1px solid $border-active;
   border-radius: $radius-card-sm;
@@ -81,16 +83,14 @@
 .inv-sortCard__date {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   background: $surface-soft;
   border: 1px solid $border-main;
   border-radius: $radius-card-sm;
   padding: 8px 14px;
+  min-height: 32px;
 }
 
-.inv-sortCard__date .inv-sortCard__label {
-  color: $text-light;
-}
 
 .inv-sortCard__time {
   font-size: 11px;

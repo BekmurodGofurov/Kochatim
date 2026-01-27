@@ -12,7 +12,7 @@ def dashboard_me():
     u_id = g.u_id
 
     user = fetch_one(
-        "SELECT u_id, u_name, u_phone, u_username, u_age FROM users WHERE u_id=%s",
+        "SELECT u_id, u_name, u_phone, u_username, u_age, added_at FROM users WHERE u_id=%s",
         (u_id,),
     )
 
@@ -31,6 +31,8 @@ def dashboard_me():
             c.c_name,
             t.t_name,
             t.deff,
+            t.updated_at,
+            t.added_at,
             img.i_url
         FROM types t
         LEFT JOIN categories c ON c.c_id = t.c_id
@@ -49,7 +51,7 @@ def dashboard_me():
 
     seedlings = fetch_all(
         """
-        SELECT s.t_id, t.t_name, s.quality_1, s.quality_2, s.quality_3
+        SELECT s.t_id, t.t_name, s.quality_1, s.quality_2, s.quality_3, s.updated_at, s.added_at
         FROM seedlings s
         LEFT JOIN types t ON t.t_id = s.t_id
         WHERE s.u_id=%s

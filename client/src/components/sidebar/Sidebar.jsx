@@ -24,7 +24,7 @@ export default function Sidebar() {
 
   const menu = useMemo(() => {
     return [
-      { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+      { name: "Boshqaruv paneli", path: "/dashboard", icon: LayoutDashboard },
       { name: "Omborxona", path: `/u/${uId}/inventory`, icon: Database },
       { name: "Sotuvlar", path: "/sales", icon: ShoppingCart },
       { name: "Sozlamalar", path: "/settings", icon: Settings },
@@ -41,9 +41,9 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
-        <div className="sidebar__logo">
+        <Link to="/" className="sidebar__logo">
           <img src="/img1.png" alt="Ko'chatim" />
-        </div>
+        </Link>
       </div>
 
       <nav className="sidebar__menu">
@@ -82,12 +82,12 @@ export default function Sidebar() {
           title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
         >
           {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
-          <span>{theme === "light" ? "Tun" : "Kun"} mode</span>
+          <span>{theme === "light" ? "Tungi" : "Kunduzgi"} rejim</span>
         </button>
       </div>
 
       <div className="sidebar__footer">
-        <p className="sidebar__plan">Premium Plan</p>
+        <p className="sidebar__plan">Premium Reja</p>
         <p className="sidebar__version">V1.2.3 build</p>
       </div>
     </aside>

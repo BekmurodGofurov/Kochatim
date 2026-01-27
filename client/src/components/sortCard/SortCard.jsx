@@ -28,12 +28,9 @@ export default function SortCard({ sort, toWebImgUrl, onClick }) {
           </div>
 
           <div className="inv-sortCard__date">
-            <span className="inv-sortCard__label">
-              {sort.updated_at ? "Yangilangan" : "Qo'shilgan"}
-            </span>
             <span className="inv-sortCard__time">
               {(() => {
-                const dStr = sort.updated_at || sort.created_at;
+                const dStr = sort.updated_at || sort.added_at;
                 if (!dStr) return "-";
                 const d = new Date(dStr);
                 if (isNaN(d.getTime())) return dStr;
