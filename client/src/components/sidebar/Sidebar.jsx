@@ -11,51 +11,20 @@ import {
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { useTheme } from "../../context/ThemeContext";
+import { useDashboard } from "../../context/DashboardContext";
 
 import "./Sidebar.scss";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
-
-async function apiGetMe() {
-  const token = localStorage.getItem("session_token");
-  if (!token) return null;
-
-  const res = await fetch(`${API_BASE}/api/me`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  const json = await res.json().catch(() => null);
-  if (!res.ok || !json || json.ok !== true) return null;
-
-  return json.data;
-}
-
 export default function Sidebar() {
   const location = useLocation();
-  const [uId, setUId] = useState(null);
   const { theme, toggleTheme } = useTheme();
+  const { dashboardData } = useDashboard();
 
-  useEffect(() => {
-    let alive = true;
-
-    (async () => {
-      const me = await apiGetMe();
-      if (!alive) return;
-      setUId(me?.u_id != null ? String(me.u_id) : null);
-    })();
-
-    return () => {
-      alive = false;
-    };
-  }, []);
+  const uId = dashboardData?.user?.u_id != null ? String(dashboardData.user.u_id) : null;
 
   const menu = useMemo(() => {
     return [
-      { name: "Dashboard", path: "/", icon: LayoutDashboard },
+      { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
       { name: "Omborxona", path: `/u/${uId}/inventory`, icon: Database },
       { name: "Sotuvlar", path: "/sales", icon: ShoppingCart },
       { name: "Sozlamalar", path: "/settings", icon: Settings },
@@ -73,9 +42,8 @@ export default function Sidebar() {
     <aside className="sidebar">
       <div className="sidebar__brand">
         <div className="sidebar__logo">
-          <Leaf size={24} />
+          <img src="/img1.png" alt="Ko'chatim" />
         </div>
-        <span className="sidebar__title">Ko'chatim</span>
       </div>
 
       <nav className="sidebar__menu">

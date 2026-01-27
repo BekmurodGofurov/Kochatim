@@ -21,4 +21,4 @@ async def on_contact(message: types.Message):
         u_phone=phone
     )
 
-    await message.answer("Telefon raqamingiz saqlandi ✅ Endi davom etishingiz mumkin.", rereply_markup=main_manu)
+    await message.answer("Telefon raqamingiz saqlandi ✅ Endi davom etishingiz mumkin.", reply_markup=main_manu)

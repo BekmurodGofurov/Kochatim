@@ -1,0 +1,89 @@
+@use "../../style/variables.scss" as *;
+
+.app-header {
+    height: 80px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--header-bg);
+    backdrop-filter: blur(10px);
+    z-index: 100;
+    transition: all 0.3s ease;
+    width: 100%;
+
+    .container {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .logo {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-weight: 700;
+        font-size: 1.5rem;
+        color: var(--primary);
+        text-decoration: none; // Reset link underline
+        transition: opacity 0.2s;
+
+        @media (max-width: 768px) {
+            // display: none; // Restored as per user request
+            font-size: 1.2rem; // Slightly smaller on mobile
+        }
+
+        &:hover {
+            opacity: 0.8;
+        }
+
+        img {
+            height: 40px;
+            width: auto;
+            mix-blend-mode: var(--logo-blend);
+            filter: var(--logo-filter);
+            transition: all 0.3s ease;
+        }
+    }
+
+    .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+    }
+
+    .theme-toggle {
+        background: none;
+        border: none;
+        color: var(--text);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem;
+        border-radius: 50%;
+        transition: all 0.2s;
+
+        &:hover {
+            background: rgba(var(--text-rgb), 0.1);
+        }
+    }
+
+    .login-btn {
+        text-decoration: none;
+        color: var(--text);
+        font-weight: 500;
+        padding: 0.5rem 1.5rem;
+        border-radius: 8px;
+        transition: all 0.2s;
+
+        &:hover {
+            background: rgba(var(--text-rgb), 0.1);
+        }
+    }
+}

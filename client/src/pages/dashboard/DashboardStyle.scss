@@ -247,12 +247,30 @@
             padding: 24px;
 
             .dashboard-sort-name {
-              margin: 0 0 8px 0;
+              margin: 0;
               font-size: 18px;
               font-weight: 900;
               text-transform: uppercase;
               letter-spacing: -0.01em;
               color: $text-strong;
+            }
+
+            .dashboard-sort-date {
+              margin: 4px 0 10px 0;
+              font-size: 11px;
+              display: flex;
+              gap: 4px;
+
+              &-label {
+                color: $text-light;
+                font-weight: 600;
+              }
+
+              &-time {
+                color: $text-muted;
+                font-weight: 800;
+                font-variant-numeric: tabular-nums;
+              }
             }
 
             .dashboard-sort-total {
@@ -473,41 +491,149 @@
 }
 
 @media (max-width: 700px) {
+  .dashboard-page {
+    padding: 12px; // Increased from 8px
+    padding-bottom: 90px;
+  }
+
   .dashboard-card {
     border-radius: $radius-card;
   }
 
   .dashboard-main {
-    padding: 22px;
+    padding: 16px; // Increased from 12px
     border-radius: $radius-card;
-  }
+    gap: 16px; // Increased from 12px
 
-  .dashboard-details {
-    .dashboard-detail-card {
-      padding: 22px;
-      border-radius: $radius-card;
+    &-left {
+      .dashboard-group-list {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
 
-      .dashboard-detail-layout {
-        .dashboard-detail-left {
-          .dashboard-detail-title {
-            font-size: 26px;
+        .dashboard-group-row {
+          padding: 12px; // Bigger touch target
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 6px;
+
+          .dashboard-group-left {
+            .dashboard-group-name {
+              font-size: 14px; // Increased from 13px
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              max-width: 100%;
+            }
           }
 
-          .dashboard-sort-grid {
-            grid-template-columns: 1fr;
+          .dashboard-group-value {
+            font-size: 18px; // Increased from 16px
           }
         }
+      }
+    }
 
-        .dashboard-detail-right {
-          width: 100%;
+    &-right {
+      .dashboard-pie-wrap {
+        height: 240px; // Increased from 200px
+        width: 100%;
+        margin-bottom: -15px; // Pull total card up more
+      }
+
+      .dashboard-total-card {
+        padding: 10px 12px;
+        margin-top: 0;
+
+        .dashboard-total-value {
+          font-size: 32px;
+          margin-top: 0;
+        }
+
+        .dashboard-total-title {
+          font-size: 14px;
         }
       }
     }
   }
 
-  .dashboard-total-card {
-    .dashboard-total-value {
-      font-size: 38px;
+  .dashboard-details {
+    margin-top: 10px;
+
+    .dashboard-detail-card {
+      padding: 10px 12px;
+      border-radius: $radius-card;
+
+      .dashboard-detail-layout {
+        gap: 12px;
+
+        .dashboard-detail-left {
+          .dashboard-detail-title {
+            font-size: 20px;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+          }
+
+          .dashboard-sort-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+
+            .dashboard-sort-card {
+              padding: 10px;
+
+              .dashboard-sort-name {
+                font-size: 14px;
+                margin-bottom: 4px;
+              }
+
+              .dashboard-sort-total {
+                font-size: 20px;
+                margin-bottom: 6px;
+              }
+
+              .dashboard-sort-qualities {
+                flex-direction: column;
+                gap: 2px;
+
+                .dashboard-sort-q {
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+
+                  &-label {
+                    font-size: 9px;
+                  }
+
+                  &-value {
+                    font-size: 12px;
+                    margin: 0;
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        .dashboard-detail-right {
+          width: 100%;
+          padding: 8px 12px; // Reduced vertical padding
+
+          .dashboard-right-caption {
+            font-size: 10px;
+            margin-bottom: 6px;
+          }
+
+          .dashboard-right-pie {
+            height: 180px; // Increased from 140px
+          }
+
+          .dashboard-right-total {
+            font-size: 28px;
+            margin-top: 0;
+            /* Pull total up more */
+          }
+        }
+      }
     }
   }
 }

@@ -28,6 +28,8 @@ export default function Dashboard() {
         q1: Number(s.quality_1 || 0),
         q2: Number(s.quality_2 || 0),
         q3: Number(s.quality_3 || 0),
+        updated_at: s.updated_at || s.last_updated || null,
+        created_at: s.created_at || s.date || null,
       });
     }
 
@@ -42,7 +44,15 @@ export default function Dashboard() {
         const name = String(t.t_name || "");
         const q = seedMap.get(t_id) || { q1: 0, q2: 0, q3: 0 };
 
-        return { t_id, name, nav1: q.q1, nav2: q.q2, nav3: q.q3 };
+        return {
+          t_id,
+          name,
+          nav1: q.q1,
+          nav2: q.q2,
+          nav3: q.q3,
+          updated_at: q.updated_at || t?.updated_at || null,
+          created_at: q.created_at || t?.created_at || null,
+        };
       });
 
       const totalValue = sorts.reduce((sum, x) => sum + x.nav1 + x.nav2 + x.nav3, 0);
@@ -154,9 +164,9 @@ export default function Dashboard() {
             <PieCard
               data={mainPieData}
               colors={COLORS}
-              outerRadius={160}
+              outerRadius="100%" // Maximize size
               stroke="var(--surface-main)"
-              strokeWidth={4}
+              strokeWidth={0}
               cellClassName="dashboard-pie-cell"
               onSliceClick={(entry) => {
                 const group = entry?.original;
@@ -216,6 +226,31 @@ export default function Dashboard() {
                           {sort.name}
                         </p>
 
+                        <div className="dashboard-sort-date">
+                          {sort.updated_at || sort.created_at ? (
+                            <>
+                              <span className="dashboard-sort-date-label">
+                                {sort.updated_at ? "Yangilangan: " : "Qo'shilgan: "}
+                              </span>
+                              <span className="dashboard-sort-date-time">
+                                {(() => {
+                                  const dStr = sort.updated_at || sort.created_at;
+                                  const d = new Date(dStr);
+                                  if (isNaN(d.getTime())) return dStr;
+                                  const day = String(d.getDate()).padStart(2, "0");
+                                  const month = String(d.getMonth() + 1).padStart(2, "0");
+                                  const year = d.getFullYear();
+                                  const hours = String(d.getHours()).padStart(2, "0");
+                                  const minutes = String(d.getMinutes()).padStart(2, "0");
+                                  return `${hours}:${minutes} ${day}.${month}.${year}`;
+                                })()}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="dashboard-sort-date-label">Sana noaniq</span>
+                          )}
+                        </div>
+
                         <div className="dashboard-sort-total">
                           {total.toLocaleString()}
                           <span className="dashboard-sort-total-suffix"> dona jami</span>
@@ -260,9 +295,9 @@ export default function Dashboard() {
                   <PieCard
                     data={selectedPieData}
                     colors={COLORS}
-                    outerRadius={80}
+                    outerRadius="100%" // Maximize size
                     stroke="var(--surface-main)"
-                    strokeWidth={2}
+                    strokeWidth={0}
                     tooltipFormatter={(value, name) => {
                       const total = Number(selectedGroup.totalValue || 0);
                       const pct = total ? ((Number(value) / total) * 100).toFixed(1) : "0.0";

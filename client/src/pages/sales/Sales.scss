@@ -14,6 +14,12 @@
     grid-template-columns: 1.2fr 0.8fr;
     align-items: start;
   }
+
+  @media (max-width: 768px) {
+    padding: 12px; // Reduced form 24px
+    padding-bottom: 90px;
+    gap: 16px; // Reduced from 28px
+  }
 }
 
 .sales-card {
@@ -22,6 +28,10 @@
   border-radius: $radius-card;
   box-shadow: $shadow-soft;
   padding: 28px;
+
+  @media (max-width: 768px) {
+    padding: 10px;
+  }
 }
 
 .sales-head {
@@ -231,10 +241,11 @@
 
 .sales-bar {
   width: 100%;
-  height: 8px;
+  height: 4px;
   background: $surface-row;
   border-radius: $radius-pill;
   overflow: hidden;
+  margin-top: 8px;
 }
 
 .sales-bar__fill {

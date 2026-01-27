@@ -20,24 +20,30 @@ export default function SortCard({ sort, toWebImgUrl, onClick }) {
         </h3>
 
         <div className="inv-sortCard__rows">
-          <div className="inv-sortRow">
-            <span className="inv-sortRow__label">1-NAV</span>
-            <span className="inv-sortRow__value inv-sortRow__value--a">
-              {sort.nav1}
+          <div className="inv-sortCard__total">
+            <span className="inv-sortCard__label">Jami soni</span>
+            <span className="inv-sortCard__value">
+              {(Number(sort.nav1 || 0) + Number(sort.nav2 || 0) + Number(sort.nav3 || 0)).toLocaleString()} ta
             </span>
           </div>
 
-          <div className="inv-sortRow">
-            <span className="inv-sortRow__label">2-NAV</span>
-            <span className="inv-sortRow__value inv-sortRow__value--b">
-              {sort.nav2}
+          <div className="inv-sortCard__date">
+            <span className="inv-sortCard__label">
+              {sort.updated_at ? "Yangilangan" : "Qo'shilgan"}
             </span>
-          </div>
-
-          <div className="inv-sortRow">
-            <span className="inv-sortRow__label">3-NAV</span>
-            <span className="inv-sortRow__value inv-sortRow__value--c">
-              {sort.nav3}
+            <span className="inv-sortCard__time">
+              {(() => {
+                const dStr = sort.updated_at || sort.created_at;
+                if (!dStr) return "-";
+                const d = new Date(dStr);
+                if (isNaN(d.getTime())) return dStr;
+                const day = String(d.getDate()).padStart(2, '0');
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const year = d.getFullYear();
+                const hours = String(d.getHours()).padStart(2, '0');
+                const minutes = String(d.getMinutes()).padStart(2, '0');
+                return `${hours}:${minutes} ${day}.${month}.${year}`;
+              })()}
             </span>
           </div>
         </div>

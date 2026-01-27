@@ -1,15 +1,45 @@
 /* src/pages/login/Login.scss */
 @use "../../style/variables.scss" as *;
 
-.login {
+.login-page {
   min-height: 100vh;
+  background-color: var(--bg);
+
+  // Default (Light Mode)
+  --primary: #2e7d32;
+  --bg: #ffffff;
+  --text: #333333;
+  --header-bg: rgba(255, 255, 255, 0.8);
+  --logo-blend: multiply;
+  --logo-filter: none;
+  --text-rgb: 51, 51, 51;
+  --border: #eeeeee;
+
+  &.dark-mode {
+    --primary: #4ade80;
+    --bg: #0f172a;
+    --text: #f8fafc;
+    --header-bg: rgba(15, 23, 42, 0.9);
+    --logo-blend: screen;
+    --logo-filter: invert(1) hue-rotate(180deg) brightness(1.2);
+    --text-rgb: 248, 250, 252;
+    --border: #334155;
+  }
+}
+
+.login {
+  min-height: calc(100vh - 80px); // Subtract header height
   display: flex;
   align-items: center;
   justify-content: center;
 
-  background: $page-bg;
+  // background: $page-bg; // Removed to let theme take over
   font-family: $font-base;
   padding: 24px;
+  position: relative;
+
+
+
 
   &__card {
     width: 100%;

@@ -6,4 +6,8 @@
 .app-layout__content {
   flex: 1;
   min-width: 0; // ichki kontent (chart/table) overflow bo‘lmasligi uchun muhim
+
+  @media (max-width: 768px) {
+    padding-bottom: 80px; // Add space for fixed bottom navigation
+  }
 }

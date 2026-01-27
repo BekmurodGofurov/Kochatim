@@ -53,3 +53,21 @@
   font-weight: 900;
   color: $text-light;
 }
+
+@media (max-width: 768px) {
+  .inv-groupCard__media {
+    height: 160px; // Reduced from 260px
+  }
+
+  .inv-groupCard__body {
+    padding: 16px; // Reduced from 26px
+  }
+
+  .inv-groupCard__title {
+    font-size: 18px; // Reduced from 24px
+  }
+
+  .inv-groupCard__count {
+    font-size: 14px; // Reduced from 18px
+  }
+}

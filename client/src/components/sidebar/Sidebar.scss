@@ -1,50 +1,69 @@
 @use "../../style/variables" as v;
 
 .sidebar {
-  display: none;
-
-  @media (min-width: 768px) {
-    display: flex;
-  }
-
+  display: flex; // Always show, but style differently for mobile
   flex-direction: column;
   width: 288px;
   height: 100vh;
   position: sticky;
   top: 0;
-
   padding: 32px;
   background: v.$surface-main;
   border-right: 1px solid v.$border-main;
+  z-index: 99;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    height: auto;
+    position: fixed;
+    bottom: 0;
+    top: auto;
+    flex-direction: row;
+    padding: 0 16px;
+    border-right: none;
+    border-top: 1px solid v.$border-main;
+    background: var(--header-bg); // Match header background
+    backdrop-filter: blur(10px);
+    justify-content: space-around;
+    align-items: center;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
+  }
 }
 
 /* ===== BRAND ===== */
 
 .sidebar__brand {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  gap: 16px;
   margin-bottom: 48px;
   padding: 0 8px;
-}
+  text-align: center;
 
-.sidebar__logo {
-  background: v.$accent-main;
-  padding: 10px;
-  border-radius: v.$radius-card-sm;
-  box-shadow: 0 10px 25px rgba(22, 163, 74, 0.2);
-  transform: rotate(3deg);
-
-  svg {
-    color: #ffffff;
+  @media (max-width: 768px) {
+    display: none;
   }
 }
 
-.sidebar__title {
-  font-size: 24px;
-  font-weight: 900;
-  letter-spacing: -0.02em;
-  color: v.$text-strong;
+.sidebar__logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  img {
+    height: 120px;
+    width: auto;
+    object-fit: contain;
+    transition: filter 0.3s ease;
+    mix-blend-mode: multiply; // Removes white background in light mode
+  }
+}
+
+.dark-mode .sidebar__logo img {
+  filter: invert(1) hue-rotate(180deg) brightness(1.2);
+  mix-blend-mode: screen; // Removes black background in dark mode
 }
 
 /* ===== MENU ===== */
@@ -54,6 +73,15 @@
   flex-direction: column;
   gap: 12px;
   flex: 1;
+
+  @media (max-width: 768px) {
+    flex-direction: row;
+    justify-content: space-evenly; // Distribute items evenly
+    align-items: center;
+    width: 100%;
+    margin: 0;
+    padding: 8px 0;
+  }
 }
 
 .sidebar__item {
@@ -70,6 +98,18 @@
 
   font-weight: 700;
   transition: all 0.2s ease;
+
+  @media (max-width: 768px) {
+    padding: 12px;
+    border-radius: 12px; // Smaller radius for icons
+    justify-content: center;
+    flex-direction: column; // Stack if we were showing text, but we are hiding it
+
+    // Hide chevron
+    >svg:last-child {
+      display: none;
+    }
+  }
 
   &:hover {
     background: v.$accent-subtle;
@@ -89,6 +129,14 @@
   display: flex;
   align-items: center;
   gap: 16px;
+
+  @media (max-width: 768px) {
+    gap: 0;
+
+    span {
+      display: none; // Hide text
+    }
+  }
 }
 
 /* ACTIVE */
@@ -109,6 +157,10 @@
 .sidebar__theme-toggle {
   margin-top: 24px;
   padding: 0 8px;
+
+  @media (max-width: 768px) {
+    display: none;
+  }
 }
 
 .sidebar__theme-btn {
@@ -138,8 +190,9 @@
 /* DISABLED */
 
 .sidebar__item.is-disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  opacity: 0.7;
+  cursor: default;
+  pointer-events: none;
 }
 
 /* ===== FOOTER ===== */
@@ -152,6 +205,10 @@
   background: v.$surface-soft;
   border-radius: v.$radius-card-md;
   border: 1px dashed v.$border-strong;
+
+  @media (max-width: 768px) {
+    display: none;
+  }
 }
 
 .sidebar__plan {

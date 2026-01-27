@@ -65,6 +65,8 @@ export default function Inventory() {
         q1: Number(s.quality_1 || 0),
         q2: Number(s.quality_2 || 0),
         q3: Number(s.quality_3 || 0),
+        updated_at: s.updated_at || s.last_updated || null,
+        created_at: s.created_at || s.date || null,
       });
     }
 
@@ -88,7 +90,10 @@ export default function Inventory() {
           nav2: q.q2,
           nav3: q.q3,
           images,
+          images,
           description: t?.deff || t?.description || t?.t_desc || "",
+          updated_at: q.updated_at || t?.updated_at || t?.last_updated || null,
+          created_at: q.created_at || t?.created_at || t?.date || null,
         };
       });
 

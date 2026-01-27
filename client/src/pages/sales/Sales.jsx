@@ -45,7 +45,21 @@ export default function Sales() {
       id: x?.id ?? x?.sale_id ?? idx,
       name: x?.name ?? x?.t_name ?? x?.sort_name ?? "-",
       category: x?.category ?? x?.c_name ?? x?.group_name ?? "-",
-      date: x?.date ?? x?.created_at ?? x?.sold_at ?? "-",
+      category: x?.category ?? x?.c_name ?? x?.group_name ?? "-",
+      date: (() => {
+        const dStr = x?.date ?? x?.created_at ?? x?.sold_at;
+        if (!dStr) return "-";
+        const d = new Date(dStr);
+        if (isNaN(d.getTime())) return dStr;
+
+        const day = String(d.getDate()).padStart(2, "0");
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const year = d.getFullYear();
+        const hours = String(d.getHours()).padStart(2, "0");
+        const minutes = String(d.getMinutes()).padStart(2, "0");
+
+        return `${hours}:${minutes} ${day}.${month}.${year}`;
+      })(),
       qty:
         Number(
           x?.qty ??
@@ -143,7 +157,7 @@ export default function Sales() {
                 cy="50%"
                 outerRadius="80%"
                 stroke="#fff"
-                strokeWidth={6}
+                strokeWidth={0}
                 tooltipFormatter={tooltipFormatter}
               />
             </div>

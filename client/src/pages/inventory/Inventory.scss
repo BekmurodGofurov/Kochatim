@@ -457,3 +457,55 @@
   color: $text-strong;
   letter-spacing: -0.02em;
 }
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+  .inv-page {
+    padding: 12px;
+    padding-bottom: 90px;
+  }
+
+  .inv-header {
+    margin-bottom: 24px;
+
+    .inv-title {
+      font-size: 28px; // reduced from 44px
+    }
+  }
+
+  .inv-grid {
+    gap: 16px; // reduced from 28px
+  }
+
+  .inv-grid--groups,
+  .inv-grid--sorts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  // Group Cards
+  // .inv-card {
+  // }
+
+  // If the card style is inline or in another file, I can't catch it here easily
+  // But looking at the user image, the "Omborxona" title is huge.
+
+  .inv-modal__panel {
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+    width: 100%;
+    margin: 0;
+  }
+
+  .inv-modal {
+    padding: 0;
+  }
+
+  .inv-modal__body {
+    padding: 20px;
+  }
+
+  .inv-detailTitle {
+    font-size: 24px;
+  }
+}
