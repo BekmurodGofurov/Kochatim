@@ -14,6 +14,7 @@ class Config:
     OTP_TTL_SECONDS = int(os.getenv("OTP_TTL_SECONDS", "120"))
     SESSION_TTL_SECONDS = int(os.getenv("SESSION_TTL_SECONDS", str(30 * 24 * 3600)))
 
+
     DB_POOL_MIN = int(os.getenv("DB_POOL_MIN", "1"))
     DB_POOL_MAX = int(os.getenv("DB_POOL_MAX", "5"))
 
