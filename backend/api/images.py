@@ -1,10 +1,64 @@
 # backend/api/images.py
-from flask import Response
-from api import api_bp
-from config import Config   # ✅ TO‘G‘RI IMPORT
+from flask import Response, request
 import requests
 
+from api import api_bp
+from config import Config
+from middleware.require_api_key import require_api_key
+from utils.errors import ok, fail
+from db import fetch_one, execute
+
 TELEGRAM_API = "https://api.telegram.org"
+
+
+@api_bp.post("/img")
+@require_api_key
+def add_img():
+    """
+    Bot: POST /api/img {t_id, i_url}
+    """
+    data = request.get_json(silent=True) or {}
+    t_id = data.get("t_id")
+    i_url = data.get("i_url")
+
+    if not t_id or not i_url:
+        return fail("t_id and i_url required", 400)
+
+    try:
+        t_id_int = int(t_id)
+    except (ValueError, TypeError):
+        return fail("t_id must be an integer", 400)
+
+    # UPSERT logic
+    row = fetch_one("SELECT i_id FROM img WHERE t_id=%s", (t_id_int,))
+    if row:
+        execute("UPDATE img SET i_url=%s, updated_at=CURRENT_TIMESTAMP WHERE t_id=%s", (i_url, t_id_int))
+    else:
+        execute("INSERT INTO img (t_id, i_url) VALUES (%s, %s)", (t_id_int, i_url))
+
+    return ok({"saved": True})
+
+
+@api_bp.get("/img/by-type")
+@require_api_key
+def get_img_by_type():
+    """
+    Bot: GET /api/img/by-type?t_id=...
+    """
+    t_id = request.args.get("t_id")
+    if not t_id:
+        return fail("t_id query param required", 400)
+
+    try:
+        t_id_int = int(t_id)
+    except (ValueError, TypeError):
+        return fail("t_id must be an integer", 400)
+
+    row = fetch_one("SELECT i_url FROM img WHERE t_id=%s", (t_id_int,))
+    if not row:
+        return ok(None)
+
+    return ok(row.get("i_url"))
 
 
 @api_bp.get("/img/<file_id>")

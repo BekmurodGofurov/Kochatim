@@ -27,12 +27,20 @@ async def _request(
     t0 = time.perf_counter()
     async with aiohttp.ClientSession() as session:
         async with session.request(method, url, headers=headers, json=json, params=params) as resp:
-            data = await resp.json(content_type=None)
+            status = resp.status
+            try:
+                data = await resp.json(content_type=None)
+            except Exception:
+                # Agar JSON emas bo'lsa (masalan 404 HTML), textni olib error beramiz
+                body_text = await resp.text()
+                dt_ms = (time.perf_counter() - t0) * 1000
+                print(f"[HTTP ERROR] {method} {path} -> {status} {dt_ms:.0f}ms. Body: {body_text[:100]}")
+                raise BackendAPIError(f"Backend HTTP {status} (Not JSON)")
+
     dt_ms = (time.perf_counter() - t0) * 1000
+    print(f"[HTTP] {method} {path} -> {status} {dt_ms:.0f}ms")
 
-    print(f"[HTTP] {method} {path} -> {resp.status} {dt_ms:.0f}ms")
-
-    if resp.status >= 400 or not data.get("ok"):
+    if status >= 400 or not data.get("ok"):
         raise BackendAPIError(data)
 
     return data.get("data")
