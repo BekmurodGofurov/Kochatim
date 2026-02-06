@@ -16,6 +16,6 @@ class Config:
 
 
     DB_POOL_MIN = int(os.getenv("DB_POOL_MIN", "1"))
-    DB_POOL_MAX = int(os.getenv("DB_POOL_MAX", "5"))
+    DB_POOL_MAX = int(os.getenv("DB_POOL_MAX", "20"))
 
     FLASK_ENV = os.getenv("FLASK_ENV", "production")

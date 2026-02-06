@@ -34,6 +34,7 @@ def ensure_user():
     u_name = (data.get("u_name") or "").strip() or None
     u_phone = (data.get("u_phone") or "").strip() or None
     u_username = (data.get("u_username") or "").strip() or None
+    u_photo = (data.get("u_photo") or "").strip() or None
 
     u_age = data.get("u_age")
     if u_age is not None:
@@ -44,15 +45,16 @@ def ensure_user():
 
     execute(
         """
-        INSERT INTO users (u_id, u_name, u_phone, u_username, u_age)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO users (u_id, u_name, u_phone, u_username, u_age, u_photo)
+        VALUES (%s, %s, %s, %s, %s, %s)
         ON CONFLICT (u_id) DO UPDATE SET
             u_name = COALESCE(EXCLUDED.u_name, users.u_name),
             u_phone = COALESCE(EXCLUDED.u_phone, users.u_phone),
             u_username = COALESCE(EXCLUDED.u_username, users.u_username),
-            u_age = COALESCE(EXCLUDED.u_age, users.u_age)
+            u_age = COALESCE(EXCLUDED.u_age, users.u_age),
+            u_photo = COALESCE(EXCLUDED.u_photo, users.u_photo)
         """,
-        (u_id, u_name, u_phone, u_username, u_age),
+        (u_id, u_name, u_phone, u_username, u_age, u_photo),
     )
 
     return ok({"saved": True})

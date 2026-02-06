@@ -13,16 +13,26 @@ async def bot_start(message: types.Message):
 
     u = message.from_user
 
-    # 1) backendda user borligini ta'minlash (phone bo'lmasa ham)
+    u_photo = None
+    try:
+        photos = await u.get_profile_photos(limit=1)
+        if photos and photos.total_count > 0:
+            # eng kattasini olamiz (-1)
+            u_photo = photos.photos[0][-1].file_id
+    except Exception as e:
+        print(f"[START] photo error: {e}")
+
+    # 1) backendga yuborish
     t1 = time.perf_counter()
     await ensure_user(
         u_id=u.id,
         u_name=u.full_name,
-        u_username=u.username
+        u_username=u.username,
+        u_photo=u_photo
     )
     print(f"[START] ensure_user {(time.perf_counter() - t1) * 1000:.0f}ms")
 
-    # 2) user ma'lumotini olib, phone bor-yo'qligini tekshirish
+    # 2) Kontakt so'rash (agar kerak bo'lsa)
     t2 = time.perf_counter()
     user_row = await get_user(u.id)
     print(f"[START] get_user {(time.perf_counter() - t2) * 1000:.0f}ms")

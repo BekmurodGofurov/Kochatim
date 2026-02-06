@@ -23,10 +23,17 @@ def init_db():
         u_phone TEXT,
         u_username TEXT,
         u_age INTEGER,
+        u_photo TEXT,
         added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT NULL
     );
     """)
+
+    # MIGRATION: add u_photo if not exists
+    try:
+        execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS u_photo TEXT;")
+    except Exception:
+        pass
 
     execute("""
     CREATE TABLE IF NOT EXISTS categories(
@@ -128,3 +135,6 @@ def init_db():
     execute("CREATE INDEX IF NOT EXISTS idx_sales_c_id ON sales (c_id);")
     execute("CREATE INDEX IF NOT EXISTS idx_sales_t_id ON sales (t_id);")
     execute("CREATE INDEX IF NOT EXISTS idx_img_t_id ON img (t_id);")
+    execute("CREATE INDEX IF NOT EXISTS idx_img_lookup ON img (t_id, i_id DESC);")
+    execute("CREATE INDEX IF NOT EXISTS idx_types_lookup ON types (u_id, t_id DESC);")
+    execute("CREATE INDEX IF NOT EXISTS idx_sessions_u_id ON sessions (u_id);")

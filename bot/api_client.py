@@ -33,6 +33,7 @@ async def ensure_user(
     u_username: Optional[str],
     u_phone: Optional[str] = None,
     u_age: Optional[int] = None,
+    u_photo: Optional[str] = None,
 ):
     return await _request(
         "POST",
@@ -43,6 +44,7 @@ async def ensure_user(
             "u_username": u_username,
             "u_phone": u_phone,
             "u_age": u_age,
+            "u_photo": u_photo,
         },
     )
 

@@ -1,9 +1,10 @@
 // src/pages/Settings.jsx
 import React, { useEffect, useState } from "react";
-import { User, Shield, Bot, Smartphone, LogOut, Info } from "lucide-react";
+import { User, Shield, Bot, Smartphone, LogOut, Info, Moon, Sun } from "lucide-react";
 
 import Loader from "../../components/loader/Loader.jsx";
 import { useDashboard } from "../../context/DashboardContext";
+import { useTheme } from "../../context/ThemeContext";
 import { getSessionToken } from "../../api/https";
 import "./Settings.scss";
 
@@ -29,6 +30,8 @@ function formatDate(value) {
 
 export default function Settings() {
   const { dashboardData, loading: pageLoading, error: pageError } = useDashboard();
+  const { theme, toggleTheme } = useTheme();
+
   const me = dashboardData?.user;
 
   // Agar contextdan error yoki loading kelsa
@@ -53,7 +56,20 @@ export default function Settings() {
         <div className="card profileCard">
           <div className="profileHeader">
             <div className="avatarCircle">
-              <User size={40} />
+              {me?.u_photo ? (
+                <img
+                  src={`${API_BASE}/api/img/${me.u_photo}`}
+                  alt={name}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    borderRadius: "50%",
+                  }}
+                />
+              ) : (
+                <User size={40} />
+              )}
             </div>
 
             <div>
@@ -111,6 +127,17 @@ export default function Settings() {
             <div>
               <p className="metaLabel">Telegram ID</p>
               <p className="monoBox">{userId}</p>
+            </div>
+
+            {/* Mobile Only Theme Toggle */}
+            <div className="toggleRow mobileOnly" onClick={toggleTheme} style={{ cursor: "pointer" }}>
+              <span className="toggleLabel" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+                Ilova Mavzusi
+              </span>
+              <span className="toggleState">
+                {theme === "light" ? "KUNDUZGI" : "TUNGI"}
+              </span>
             </div>
 
             <div className="toggleRow">

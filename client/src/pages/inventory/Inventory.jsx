@@ -90,7 +90,6 @@ export default function Inventory() {
           nav2: q.q2,
           nav3: q.q3,
           images,
-          images,
           description: t?.deff || t?.description || t?.t_desc || "",
           updated_at: q.updated_at || t?.updated_at || null,
           added_at: q.added_at || t?.added_at || null,
@@ -275,7 +274,7 @@ export default function Inventory() {
                       Number(selectedSort.nav3 || 0)}
                   </div>
                 </div>
-{/* 
+                {/* 
                 <button type="button" className="inv-btn inv-btn--dark">
                   Tahrirlash
                 </button> */}
