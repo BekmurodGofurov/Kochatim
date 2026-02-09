@@ -46,11 +46,11 @@ export default function Login() {
     }
   };
 
-  const isIdValid = userId.length === 10;
+  const isIdValid = userId.length >= 8 && userId.length <= 12;
 
   const handleChange = (e) => {
     const val = e.target.value.replace(/\D/g, ""); // Faqat raqamlarni qoldirish
-    if (val.length <= 10) {
+    if (val.length <= 12) {
       setUserId(val);
     }
   };
@@ -72,7 +72,7 @@ export default function Login() {
             onChange={handleChange}
             placeholder="Telegram ID kiriting..."
             inputMode="numeric"
-            maxLength="10"
+            maxLength="12"
           />
 
           <p className="login__hint">
