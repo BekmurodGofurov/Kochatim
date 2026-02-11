@@ -9,6 +9,7 @@ from data.database import (
     get_type_id,
     get_seedling_count,
     get_img_url,
+    get_all_types_for_user,
 )
 from keyboards.default.main_keyboards import ty_keyboard, main_manu
 
@@ -37,19 +38,14 @@ async def bot_echo(message: Message):
         return
 
     # 2) TYPE QIDIRISH (user nav nomini yozsa -> qaysi categoryda borligini topamiz)
+    all_types = await get_all_types_for_user(u_id)
     t_id = None
-    found_c_id = None
-
-    for c_name in cats:
-        c_id = await get_cat_id(u_id, c_name)
-        if not c_id:
-            continue
-
-        # MUHIM: parametr tartibi (u_id, c_id, t_name)
-        current_t_id = await get_type_id(u_id, int(c_id), text)
-        if current_t_id:
-            t_id = int(current_t_id)
-            found_c_id = int(c_id)
+    
+    # Kiritilgan textga mos navni qidiramiz
+    search_text = text.lower().strip()
+    for ty in all_types:
+        if ty.get("t_name", "").lower().strip() == search_text:
+            t_id = int(ty["t_id"])
             break
 
     if not t_id:

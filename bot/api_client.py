@@ -9,6 +9,16 @@ class BackendAPIError(Exception):
     pass
 
 
+_session: Optional[aiohttp.ClientSession] = None
+
+
+def get_session() -> aiohttp.ClientSession:
+    global _session
+    if _session is None or _session.closed:
+        _session = aiohttp.ClientSession()
+    return _session
+
+
 async def _request(method: str, path: str, json: Optional[Dict[str, Any]] = None):
     if not API_URL or not API_KEY:
         raise BackendAPIError("API_URL or API_KEY is not configured")
@@ -19,12 +29,12 @@ async def _request(method: str, path: str, json: Optional[Dict[str, Any]] = None
         "X-API-KEY": API_KEY,
     }
 
-    async with aiohttp.ClientSession() as session:
-        async with session.request(method, url, headers=headers, json=json) as resp:
-            data = await resp.json(content_type=None)
-            if resp.status >= 400 or not data.get("ok"):
-                raise BackendAPIError(data)
-            return data["data"]
+    session = get_session()
+    async with session.request(method, url, headers=headers, json=json) as resp:
+        data = await resp.json(content_type=None)
+        if resp.status >= 400 or not data.get("ok"):
+            raise BackendAPIError(data)
+        return data["data"]
 
 
 async def ensure_user(

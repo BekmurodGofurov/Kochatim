@@ -24,18 +24,14 @@ async def bot_start(message: types.Message):
 
     # 1) backendga yuborish
     t1 = time.perf_counter()
-    await ensure_user(
+    # ensure_user returns the user row, so we don't necessarily need a separate get_user
+    user_row = await ensure_user(
         u_id=u.id,
         u_name=u.full_name,
         u_username=u.username,
         u_photo=u_photo
     )
     print(f"[START] ensure_user {(time.perf_counter() - t1) * 1000:.0f}ms")
-
-    # 2) Kontakt so'rash (agar kerak bo'lsa)
-    t2 = time.perf_counter()
-    user_row = await get_user(u.id)
-    print(f"[START] get_user {(time.perf_counter() - t2) * 1000:.0f}ms")
 
     phone = user_row.get("u_phone")
 

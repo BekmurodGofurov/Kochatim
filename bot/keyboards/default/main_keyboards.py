@@ -1,4 +1,4 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 
 
 # Contact so'rash keyboard
@@ -20,7 +20,8 @@ main_manu = ReplyKeyboardMarkup(
             KeyboardButton(text="Yangi Nav")
         ],
         [
-            KeyboardButton(text="Sotuv")
+            KeyboardButton(text="Sotuv"),
+            KeyboardButton(text="Boshqaruv")
         ],
     ],
     resize_keyboard=True,
@@ -99,4 +100,29 @@ def ty_keyboard(arr):
 
     kb.add(*buttons)
     kb.add(new_ty_button)
+    return kb
+
+
+def manage_cat_inline(c_id: int):
+    kb = InlineKeyboardMarkup(row_width=2)
+    kb.add(
+        InlineKeyboardButton(text="✏️ Tahrirlash", callback_data=f"edit_cat:{c_id}"),
+        InlineKeyboardButton(text="❌ O'chirish", callback_data=f"delete_cat:{c_id}")
+    )
+    return kb
+
+def manage_ty_inline(t_id: int):
+    kb = InlineKeyboardMarkup(row_width=2)
+    kb.add(
+        InlineKeyboardButton(text="✏️ Tahrirlash", callback_data=f"edit_ty:{t_id}"),
+        InlineKeyboardButton(text="❌ O'chirish", callback_data=f"delete_ty:{t_id}")
+    )
+    return kb
+
+def delete_confirm_inline(item_type: str, item_id: int):
+    kb = InlineKeyboardMarkup(row_width=2)
+    kb.add(
+        InlineKeyboardButton(text="✅ Ha, o'chirish", callback_data=f"conf_del_{item_type}:{item_id}"),
+        InlineKeyboardButton(text="🚫 Yo'q", callback_data=f"cancel_del")
+    )
     return kb

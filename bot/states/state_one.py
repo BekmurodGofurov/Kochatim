@@ -30,3 +30,12 @@ class sale_state(StatesGroup):
     q2 = State()
     q3 = State()
     price = State()
+
+class manage_cat_state(StatesGroup):
+    c_id = State()
+    c_name = State()
+
+class manage_ty_state(StatesGroup):
+    t_id = State()
+    t_name = State()
+    t_def = State()

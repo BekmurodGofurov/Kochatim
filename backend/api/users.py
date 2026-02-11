@@ -57,7 +57,11 @@ def ensure_user():
         (u_id, u_name, u_phone, u_username, u_age, u_photo),
     )
 
-    return ok({"saved": True})
+    row = fetch_one(
+        "SELECT u_id, u_name, u_phone, u_username, u_age, added_at, updated_at FROM users WHERE u_id=%s",
+        (u_id,),
+    )
+    return ok(row)
 
 
 @api_bp.get("/users/<int:u_id>")

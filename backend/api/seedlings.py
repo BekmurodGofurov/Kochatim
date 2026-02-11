@@ -59,7 +59,13 @@ def seedlings_set():
     row = fetch_one("SELECT s_id FROM seedlings WHERE u_id=%s AND t_id=%s", (u_id, t_id))
     if row:
         execute(
-            "UPDATE seedlings SET quality_1=%s, quality_2=%s, quality_3=%s WHERE s_id=%s",
+            """
+            UPDATE seedlings 
+            SET quality_1 = quality_1 + %s, 
+                quality_2 = quality_2 + %s, 
+                quality_3 = quality_3 + %s 
+            WHERE s_id=%s
+            """,
             (q1, q2, q3, int(row["s_id"])),
         )
     else:

@@ -2,7 +2,7 @@ from flask import request, g
 from api import api_bp
 from middleware.require_api_key import require_api_key
 from utils.errors import ok, fail
-from db import execute_returning, fetch_all, fetch_one
+from db import execute, execute_returning, fetch_all, fetch_one
 
 
 def _to_int(value, field_name: str):
@@ -163,3 +163,34 @@ def type_info():
         return fail("Not found", 404, code="NOT_FOUND")
 
     return ok(row)
+
+
+@api_bp.put("/types/<int:t_id>")
+@require_api_key
+def update_type(t_id: int):
+    data = request.get_json(silent=True) or {}
+    u_id = _to_int(data.get("u_id"), "u_id")
+    t_name = (data.get("t_name") or "").strip()
+    deff = (data.get("deff") or "").strip() or None
+
+    if not u_id:
+        return fail("u_id(int) required", 400)
+    if not t_name:
+        return fail("t_name required", 400)
+
+    execute(
+        "UPDATE types SET t_name=%s, deff=%s WHERE t_id=%s AND u_id=%s",
+        (t_name, deff, t_id, u_id),
+    )
+    return ok({"updated": True, "t_id": t_id})
+
+
+@api_bp.delete("/types/<int:t_id>")
+@require_api_key
+def delete_type(t_id: int):
+    u_id = request.args.get("u_id", type=int)
+    if not u_id:
+        return fail("u_id query param required", 400)
+
+    execute("DELETE FROM types WHERE t_id=%s AND u_id=%s", (t_id, u_id))
+    return ok({"deleted": True, "t_id": t_id})

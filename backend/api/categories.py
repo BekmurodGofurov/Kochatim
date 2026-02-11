@@ -47,3 +47,29 @@ def list_categories_me():
         (u_id,),
     )
     return ok(rows)
+
+@api_bp.put("/categories/<int:c_id>")
+@require_api_key
+def update_category(c_id: int):
+    data = request.get_json(silent=True) or {}
+    u_id = data.get("u_id")
+    c_name = (data.get("c_name") or "").strip()
+
+    if not isinstance(u_id, int) or not c_name:
+        return fail("u_id(int) and c_name required", 400)
+
+    execute(
+        "UPDATE categories SET c_name=%s WHERE c_id=%s AND u_id=%s",
+        (c_name, c_id, u_id),
+    )
+    return ok({"updated": True, "c_id": c_id})
+
+@api_bp.delete("/categories/<int:c_id>")
+@require_api_key
+def delete_category(c_id: int):
+    u_id = request.args.get("u_id", type=int)
+    if not u_id:
+        return fail("u_id query param required", 400)
+
+    execute("DELETE FROM categories WHERE c_id=%s AND u_id=%s", (c_id, u_id))
+    return ok({"deleted": True, "c_id": c_id})

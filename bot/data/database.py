@@ -9,6 +9,16 @@ class BackendAPIError(Exception):
     pass
 
 
+_session: Optional[aiohttp.ClientSession] = None
+
+
+def get_session() -> aiohttp.ClientSession:
+    global _session
+    if _session is None or _session.closed:
+        _session = aiohttp.ClientSession()
+    return _session
+
+
 async def _request(
     method: str,
     path: str,
@@ -25,17 +35,17 @@ async def _request(
     }
 
     t0 = time.perf_counter()
-    async with aiohttp.ClientSession() as session:
-        async with session.request(method, url, headers=headers, json=json, params=params) as resp:
-            status = resp.status
-            try:
-                data = await resp.json(content_type=None)
-            except Exception:
-                # Agar JSON emas bo'lsa (masalan 404 HTML), textni olib error beramiz
-                body_text = await resp.text()
-                dt_ms = (time.perf_counter() - t0) * 1000
-                print(f"[HTTP ERROR] {method} {path} -> {status} {dt_ms:.0f}ms. Body: {body_text[:100]}")
-                raise BackendAPIError(f"Backend HTTP {status} (Not JSON)")
+    session = get_session()
+    async with session.request(method, url, headers=headers, json=json, params=params) as resp:
+        status = resp.status
+        try:
+            data = await resp.json(content_type=None)
+        except Exception:
+            # Agar JSON emas bo'lsa (masalan 404 HTML), textni olib error beramiz
+            body_text = await resp.text()
+            dt_ms = (time.perf_counter() - t0) * 1000
+            print(f"[HTTP ERROR] {method} {path} -> {status} {dt_ms:.0f}ms. Body: {body_text[:100]}")
+            raise BackendAPIError(f"Backend HTTP {status} (Not JSON)")
 
     dt_ms = (time.perf_counter() - t0) * 1000
     print(f"[HTTP] {method} {path} -> {status} {dt_ms:.0f}ms")
@@ -117,6 +127,24 @@ async def new_cat(u_id: int, c_name: str):
         json={"u_id": int(u_id), "c_name": c_name},
     )
 
+
+async def update_cat(u_id: int, c_id: int, c_name: str):
+    # backend: PUT /api/categories/<c_id>
+    return await _request(
+        "PUT",
+        f"/api/categories/{int(c_id)}",
+        json={"u_id": int(u_id), "c_name": c_name},
+    )
+
+
+async def delete_cat(u_id: int, c_id: int):
+    # backend: DELETE /api/categories/<c_id>?u_id=
+    return await _request(
+        "DELETE",
+        f"/api/categories/{int(c_id)}",
+        params={"u_id": int(u_id)},
+    )
+
 # =========================
 # TYPES (handlerlar string list kutadi)
 # =========================
@@ -162,6 +190,33 @@ async def new_ty(u_id: int, c_id, t_name: str, deff: Optional[str] = None):
             "deff": deff,
         },
     )
+
+
+async def update_ty(u_id: int, t_id: int, t_name: str, deff: Optional[str] = None):
+    # backend: PUT /api/types/<t_id>
+    return await _request(
+        "PUT",
+        f"/api/types/{int(t_id)}",
+        json={
+            "u_id": int(u_id),
+            "t_name": t_name,
+            "deff": deff,
+        },
+    )
+
+
+async def delete_ty(u_id: int, t_id: int):
+    # backend: DELETE /api/types/<t_id>?u_id=
+    return await _request(
+        "DELETE",
+        f"/api/types/{int(t_id)}",
+        params={"u_id": int(u_id)},
+    )
+
+
+async def get_all_types_for_user(u_id: int):
+    # backend: GET /api/types?u_id=x
+    return await _request("GET", "/api/types", params={"u_id": int(u_id)})
 
 
 async def get_a_ty(u_id: int, t_id: int):
