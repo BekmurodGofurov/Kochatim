@@ -4,7 +4,8 @@ from aiogram.dispatcher.filters.builtin import CommandStart
 
 from loader import dp
 from api_client import ensure_user, get_user
-from keyboards.default.main_keyboards import contact_kb, main_manu
+from data.database import get_all_cat, get_all_types_for_user
+from keyboards.default.main_keyboards import contact_kb, get_main_menu
 
 
 @dp.message_handler(CommandStart())
@@ -43,5 +44,10 @@ async def bot_start(message: types.Message):
         print(f"[START] total {(time.perf_counter() - t0) * 1000:.0f}ms (need phone)")
         return
 
-    await message.answer("Xush kelibsiz. Ma'lumotlaringiz mavjud ✅", reply_markup=main_manu)
+    # 3) Dinamik menu
+    cats = await get_all_cat(u.id)
+    types_list = await get_all_types_for_user(u.id)
+    markup = get_main_menu(has_cats=bool(cats), has_types=bool(types_list))
+
+    await message.answer("Xush kelibsiz. Ma'lumotlaringiz mavjud ✅", reply_markup=markup)
     print(f"[START] total {(time.perf_counter() - t0) * 1000:.0f}ms (ok)")

@@ -1,8 +1,8 @@
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from loader import dp
-from data.database import get_all_cat_rows, get_all_ty_rows, update_cat, delete_cat, update_ty, delete_ty
-from keyboards.default.main_keyboards import manage_cat_inline, manage_ty_inline, delete_confirm_inline, main_manu
+from data.database import get_all_cat, get_all_types_for_user, get_all_cat_rows, get_all_ty_rows, update_cat, delete_cat, update_ty, delete_ty
+from keyboards.default.main_keyboards import manage_cat_inline, manage_ty_inline, delete_confirm_inline, get_main_menu
 from states.state_one import manage_cat_state, manage_ty_state
 
 @dp.message_handler(text="Boshqaruv")
@@ -18,7 +18,11 @@ async def start_management(message: types.Message):
 
 @dp.message_handler(text="Asosiy menu")
 async def back_to_main(message: types.Message):
-    await message.answer("Asosiy menu", reply_markup=main_manu)
+    u_id = message.from_user.id
+    cats = await get_all_cat(u_id)
+    types_list = await get_all_types_for_user(u_id)
+    markup = get_main_menu(has_cats=bool(cats), has_types=bool(types_list))
+    await message.answer("Asosiy menu", reply_markup=markup)
 
 # ================= CATEGORY MANAGEMENT =================
 
@@ -49,7 +53,10 @@ async def edit_category_finish(message: types.Message, state: FSMContext):
     
     res = await update_cat(message.from_user.id, c_id, new_name)
     if res:
-        await message.answer(f"Guruh nomi '{new_name}' ga o'zgartirildi ✅", reply_markup=main_manu)
+        cats = await get_all_cat(message.from_user.id)
+        types_list = await get_all_types_for_user(message.from_user.id)
+        markup = get_main_menu(has_cats=bool(cats), has_types=bool(types_list))
+        await message.answer(f"Guruh nomi '{new_name}' ga o'zgartirildi ✅", reply_markup=markup)
     else:
         await message.answer("Xatolik yuz berdi ❌")
     await state.finish()
@@ -125,7 +132,10 @@ async def edit_type_finish(message: types.Message, state: FSMContext):
     
     res = await update_ty(message.from_user.id, t_id, t_name, t_def)
     if res:
-        await message.answer(f"Nav '{t_name}' muvaffaqiyatli yangilandi ✅", reply_markup=main_manu)
+        cats = await get_all_cat(message.from_user.id)
+        types_list = await get_all_types_for_user(message.from_user.id)
+        markup = get_main_menu(has_cats=bool(cats), has_types=bool(types_list))
+        await message.answer(f"Nav '{t_name}' muvaffaqiyatli yangilandi ✅", reply_markup=markup)
     else:
         await message.answer("Xatolik yuz berdi ❌")
     await state.finish()

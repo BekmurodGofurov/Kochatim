@@ -4,8 +4,8 @@ from aiogram.dispatcher.filters import Text, CommandStart
 
 from loader import dp
 from states.state_one import cat_state
-from data.database import new_cat, get_all_cat
-from keyboards.default.main_keyboards import cat_keyboard, main_manu
+from data.database import new_cat, get_all_cat, get_all_types_for_user
+from keyboards.default.main_keyboards import cat_keyboard, get_main_menu
 
 
 @dp.message_handler(CommandStart(deep_link="yangi_guruh"), state="*")
@@ -34,9 +34,12 @@ async def add_cat_save(message: Message, state: FSMContext):
 
     # xohlasa: yangilangan ro'yxatni ko'rsatamiz
     cats = await get_all_cat(u_id)
+    types_list = await get_all_types_for_user(u_id)
+    markup = get_main_menu(has_cats=bool(cats), has_types=bool(types_list))
+
     if cats:
-        await message.answer("✅ Guruh qo‘shildi. Guruhlar:", reply_markup=cat_keyboard(cats))
+        await message.answer("✅ Guruh qo‘shildi. Guruhlar:", reply_markup=markup)
     else:
-        await message.answer("✅ Guruh qo‘shildi.", reply_markup=main_manu)
+        await message.answer("✅ Guruh qo‘shildi.", reply_markup=markup)
 
     await state.finish()

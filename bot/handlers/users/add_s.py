@@ -5,17 +5,24 @@ from states.state_one import sel_state
 
 from data.database import (
     get_all_cat,
+    get_all_types_for_user,
     get_cat_id,
     get_all_ty,
     new_seedling,
     get_type_id,
 )
-from keyboards.default.main_keyboards import cat_keyboard, ty_keyboard, main_manu
+from keyboards.default.main_keyboards import cat_keyboard, ty_keyboard, get_main_menu
 
 
 @dp.message_handler(text="Ko'chat qo'shish")
 async def start_sel(message: Message):
-    cats = await get_all_cat(message.from_user.id)
+    u_id = message.from_user.id
+    cats = await get_all_cat(u_id)
+    if not cats:
+        markup = get_main_menu(has_cats=False)
+        await message.answer("Sizda hali guruh yo‘q. Avval 'Yangi Guruh' qo‘shing.", reply_markup=markup)
+        return
+
     keyboard = cat_keyboard(cats)
     await message.answer("Ko'chat sonini kiritmoqchi bo'lgan **Gruh**ni tanlang:", reply_markup=keyboard)
     await sel_state.c_id.set()
@@ -32,8 +39,14 @@ async def select_category(message: Message, state: FSMContext):
         await state.update_data(c_id=int(c_id))
 
         # MUHIM: get_all_ty(u_id, c_id)
-        types = await get_all_ty(u_id, int(c_id))
-        keyboard = ty_keyboard(types)
+        types_list = await get_all_ty(u_id, int(c_id))
+        if not types_list:
+            markup = get_main_menu(has_cats=True, has_types=False)
+            await message.answer(f"Tanlangan Gruh: **{c_name}**.\nLekin bu guruhda hali navlar yo'q. Avval 'Yangi Nav' qo'shasiz.", reply_markup=markup)
+            await state.finish()
+            return
+
+        keyboard = ty_keyboard(types_list)
 
         await message.answer(f"Tanlangan Gruh: **{c_name}**. Endi **Nav**ni tanlang:", reply_markup=keyboard)
         await sel_state.t_id.set()
@@ -100,7 +113,11 @@ async def add_q3(message: Message, state: FSMContext):
             q3=int(q3),
         )
 
-        await message.answer("Ko'chatlar soni yangilandi!", reply_markup=main_manu)
+        cats = await get_all_cat(u_id)
+        types_all = await get_all_types_for_user(u_id)
+        markup = get_main_menu(has_cats=bool(cats), has_types=bool(types_all))
+
+        await message.answer("Ko'chatlar soni yangilandi!", reply_markup=markup)
         await state.finish()
     except ValueError:
         await message.answer("Iltimos, faqat son kiriting.")

@@ -1,7 +1,8 @@
 from aiogram import types
 from loader import dp
 from api_client import ensure_user
-from keyboards.default.main_keyboards import main_manu
+from data.database import get_all_cat, get_all_types_for_user
+from keyboards.default.main_keyboards import get_main_menu
 
 
 @dp.message_handler(content_types=types.ContentType.CONTACT)
@@ -21,4 +22,9 @@ async def on_contact(message: types.Message):
         u_phone=phone
     )
 
-    await message.answer("Telefon raqamingiz saqlandi ✅ Endi davom etishingiz mumkin.", reply_markup=main_manu)
+    # Dinamik menu
+    cats = await get_all_cat(message.from_user.id)
+    types_list = await get_all_types_for_user(message.from_user.id)
+    markup = get_main_menu(has_cats=bool(cats), has_types=bool(types_list))
+
+    await message.answer("Telefon raqamingiz saqlandi ✅ Endi davom etishingiz mumkin.", reply_markup=markup)

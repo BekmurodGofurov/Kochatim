@@ -8,24 +8,31 @@ contact_kb = ReplyKeyboardMarkup(
 )
 
 
-# Asosiy menu (main)
-main_manu = ReplyKeyboardMarkup(
-    keyboard=[
-        [
-            KeyboardButton(text="Ko'rish"),
-            KeyboardButton(text="Ko'chat qo'shish")
-        ],
-        [
-            KeyboardButton(text="Yangi Guruh"), 
-            KeyboardButton(text="Yangi Nav")
-        ],
-        [
-            KeyboardButton(text="Sotuv"),
-            KeyboardButton(text="Boshqaruv")
-        ],
-    ],
-    resize_keyboard=True,
-)
+# To'liq menu (faqat ichkarida ishlatiladi)
+def get_main_menu(has_cats=True, has_types=True):
+    kb = ReplyKeyboardMarkup(resize_keyboard=True)
+    
+    if not has_cats:
+        # Faqat guruh qo'shish
+        kb.add(KeyboardButton(text="Yangi Guruh"))
+        return kb
+    
+    if not has_types:
+        # Guruh bor, lekin nav yo'q
+        kb.row(KeyboardButton(text="Yangi Guruh"), KeyboardButton(text="Yangi Nav"))
+        # Ko'rish tugmasini ham qo'shsa bo'ladi guruhlarni ko'rish uchun
+        kb.row(KeyboardButton(text="Ko'rish"))
+        return kb
+    
+    # To'liq menu
+    kb.row(KeyboardButton(text="Ko'rish"), KeyboardButton(text="Ko'chat qo'shish"))
+    kb.row(KeyboardButton(text="Yangi Guruh"), KeyboardButton(text="Yangi Nav"))
+    kb.row(KeyboardButton(text="Sotuv"), KeyboardButton(text="Boshqaruv"))
+    return kb
+
+
+# Eski main_manu (compat uchun, lekin ishlatmaslik tavsiya etiladi)
+main_manu = get_main_menu(True, True)
 
 
 new_cat = ReplyKeyboardMarkup( keyboard=[

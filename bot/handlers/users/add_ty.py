@@ -4,8 +4,8 @@ from aiogram.dispatcher.filters import Text
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 
 from loader import dp
-from data.database import get_all_cat, get_cat_id, new_ty, add_new_img
-from keyboards.default.main_keyboards import cat_keyboard, main_manu
+from data.database import get_all_cat, get_all_types_for_user, get_cat_id, new_ty, add_new_img
+from keyboards.default.main_keyboards import cat_keyboard, get_main_menu
 
 
 ST_ADD_TY_CAT = "add_ty:cat"
@@ -20,7 +20,8 @@ async def add_ty_start(message: types.Message, state: FSMContext):
 
     cats = await get_all_cat(u_id)  # LIST[str]
     if not cats:
-        await message.answer("Sizda hali guruh yo‘q. Avval 'Yangi Guruh' qo‘shing.", reply_markup=main_manu)
+        markup = get_main_menu(has_cats=False)
+        await message.answer("Sizda hali guruh yo‘q. Avval 'Yangi Guruh' qo‘shing.", reply_markup=markup)
         return
 
     await message.answer("Iltimos guruhlardan birini tanlang:", reply_markup=cat_keyboard(cats))
@@ -114,7 +115,11 @@ async def add_ty_add_img(message: types.Message, state: FSMContext):
     photo_id = message.photo[-1].file_id
     await add_new_img(int(t_id), photo_id)
 
-    await message.answer("Rasm saqlandi ✅", reply_markup=main_manu)
+    cats = await get_all_cat(message.from_user.id)
+    types_list = await get_all_types_for_user(message.from_user.id)
+    markup = get_main_menu(has_cats=bool(cats), has_types=bool(types_list))
+
+    await message.answer("Rasm saqlandi ✅", reply_markup=markup)
     await state.finish()
 
 
