@@ -8,7 +8,7 @@ contact_kb = ReplyKeyboardMarkup(
 )
 
 
-# To'liq menu (faqat ichkarida ishlatiladi)
+# Dinamik menu konstruktori
 def get_main_menu(has_cats=True, has_types=True):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     
@@ -20,18 +20,25 @@ def get_main_menu(has_cats=True, has_types=True):
     if not has_types:
         # Guruh bor, lekin nav yo'q
         kb.row(KeyboardButton(text="Yangi Guruh"), KeyboardButton(text="Yangi Nav"))
-        # Ko'rish tugmasini ham qo'shsa bo'ladi guruhlarni ko'rish uchun
         kb.row(KeyboardButton(text="Ko'rish"))
         return kb
     
-    # To'liq menu
-    kb.row(KeyboardButton(text="Ko'rish"), KeyboardButton(text="Ko'chat qo'shish"))
-    kb.row(KeyboardButton(text="Yangi Guruh"), KeyboardButton(text="Yangi Nav"))
+    # To'liq menu - endi "Qo'shish" tugmasi bilan
+    kb.row(KeyboardButton(text="Ko'rish"), KeyboardButton(text="Qo'shish"))
     kb.row(KeyboardButton(text="Sotuv"), KeyboardButton(text="Boshqaruv"))
     return kb
 
 
-# Eski main_manu (compat uchun, lekin ishlatmaslik tavsiya etiladi)
+# Qo'shish sub-menusi
+def get_add_menu():
+    kb = ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.row(KeyboardButton(text="Yangi Guruh"), KeyboardButton(text="Yangi Nav"))
+    kb.row(KeyboardButton(text="Ko'chat qo'shish"))
+    kb.row(KeyboardButton(text="Asosiy menu"))
+    return kb
+
+
+# Eski main_manu (compat)
 main_manu = get_main_menu(True, True)
 
 
