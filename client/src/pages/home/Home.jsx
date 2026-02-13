@@ -6,6 +6,7 @@ export default function Home() {
     const navigate = useNavigate();
     const isLoggedIn = !!localStorage.getItem("session_token");
     const isTgDetected = sessionStorage.getItem("tg_detected") === "true";
+    const APP_VERSION = "2.1.0-DEBUG";
 
     React.useEffect(() => {
         if (isLoggedIn) {
@@ -15,6 +16,9 @@ export default function Home() {
 
     return (
         <div className={`home-page ${theme}-mode`}>
+            <div style={{ position: "fixed", top: 10, right: 10, background: "black", color: "white", padding: "5px 10px", borderRadius: "5px", fontSize: "10px", zIndex: 10000 }}>
+                v{APP_VERSION} {isTgDetected ? "(TG: ✅)" : "(TG: ❌)"}
+            </div>
             {isTgDetected && (
                 <div style={{ position: "fixed", top: 0, left: 0, right: 0, background: "orange", color: "black", textAlign: "center", fontSize: "10px", zIndex: 9999 }}>
                     TG SDK DETECTED!

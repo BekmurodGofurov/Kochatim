@@ -11,78 +11,41 @@ export default function TelegramHandler({ children }) {
     const loginAttempted = useRef(false);
 
     useEffect(() => {
-        // 1. Telegram SDK ni tekshirish
-        const tg = window.Telegram?.WebApp;
+        let checkCount = 0;
+        const checkInterval = setInterval(() => {
+            const tg = window.Telegram?.WebApp;
+            const initData = tg?.initData;
+            const hasTgObject = !!tg;
+            const isTmaEnvironment = !!initData;
 
-        // Agar tg obyekti bo'lsa, demak bu TMA muhiti bo'lishi EHTIMOL
-        // Lekin initData bo'lmaguncha biz kimmizligini bilmaymiz
-        const initData = tg?.initData;
-        const hasTgObject = !!tg;
-        const isTmaEnvironment = !!initData;
+            console.log(`TMA Check #${checkCount}:`, { hasTgObject, isTmaEnvironment });
 
-        // Debug uchun konsolga chiqaramiz
-        console.log("TMA Check:", { hasTgObject, initDataLength: initData?.length, isTmaEnvironment });
+            if (hasTgObject) {
+                sessionStorage.setItem("tg_detected", "true");
+                tg.ready();
+                tg.expand();
 
-        if (hasTgObject) {
-            sessionStorage.setItem("tg_detected", "true");
-            tg.ready();
-            tg.expand();
-        }
+                if (isTmaEnvironment) {
+                    sessionStorage.setItem("is_tma", "true");
+                }
 
-        if (isTmaEnvironment) {
-            sessionStorage.setItem("is_tma", "true");
-        } else {
-            sessionStorage.removeItem("is_tma");
-        }
+                // Majburiy debugga o'tkazamiz
+                if (location.pathname !== "/debug-tma") {
+                    navigate("/debug-tma", { replace: true });
+                }
+                clearInterval(checkInterval);
+                setIsChecking(false);
+            }
 
-        // 2. TMA deb gumon qilsak debug sahifasiga yo'naltiramiz
-        if (hasTgObject && location.pathname !== "/debug-tma") {
-            navigate("/debug-tma", { replace: true });
-            setIsChecking(false);
-            return;
-        }
+            checkCount++;
+            if (checkCount > 15) { // 3 soniya kutamiz
+                clearInterval(checkInterval);
+                setIsChecking(false);
+                sessionStorage.setItem("tg_detected", "false");
+            }
+        }, 200);
 
-        const token = localStorage.getItem("session_token");
-
-        // 3. TMA bo'lsa va hali login qilinmagan bo'lsa (Debugdan keyin ishlaydi)
-        if (isTmaEnvironment && !token && !loginAttempted.current) {
-            loginAttempted.current = true;
-            setIsChecking(true);
-
-            api
-                .telegramLogin(initData)
-                .then((res) => {
-                    localStorage.setItem("session_token", res.session_token);
-                    localStorage.setItem("u_id", res.u_id);
-
-                    if (res.is_registered) {
-                        // Ro'yxatdan o'tgan bo'lsa dashboardga o'tkazamiz
-                        navigate("/dashboard", { replace: true });
-                    } else {
-                        setNotRegistered(true);
-                    }
-                })
-                .catch((err) => {
-                    console.error("Telegram auto-login failed:", err);
-                    if (err.status === 401) {
-                        setError("Telegram orqali tasdiqlashda xatolik yuz berdi. Iltimos, botni qayta ishga tushiring.");
-                    } else {
-                        setError("Serverga ulanishda xatolik yuz berdi. Internetni tekshiring.");
-                    }
-                })
-                .finally(() => {
-                    setIsChecking(false);
-                });
-        }
-        // 4. TMA bo'lsa va allaqachon login qilingan bo'lsa (Home yoki Login sahifasida turganda)
-        else if (isTmaEnvironment && token && (location.pathname === "/" || location.pathname === "/login")) {
-            navigate("/dashboard", { replace: true });
-            setIsChecking(false);
-        }
-        // 5. Normal brauzer bo'lsa yoki barcha tekshiruvlar tugagan bo'lsa
-        else {
-            setIsChecking(false);
-        }
+        return () => clearInterval(checkInterval);
     }, [navigate, location.pathname]);
 
     // Tekshirish vaqtida loader ko'rsatamiz
