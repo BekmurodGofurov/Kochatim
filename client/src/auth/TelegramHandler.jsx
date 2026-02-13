@@ -14,21 +14,29 @@ export default function TelegramHandler({ children }) {
         // 1. Telegram SDK ni tekshirish
         const tg = window.Telegram?.WebApp;
 
-        // Telegram muhitidami yoki yo'qligini aniqlash mantiqi
-        // initData mavjudligi Mini App ekanligini anglatadi
+        // Agar tg obyekti bo'lsa, demak bu TMA muhiti bo'lishi EHTIMOL
+        // Lekin initData bo'lmaguncha biz kimmizligini bilmaymiz
         const initData = tg?.initData;
+        const hasTgObject = !!tg;
         const isTmaEnvironment = !!initData;
+
+        // Debug uchun konsolga chiqaramiz
+        console.log("TMA Check:", { hasTgObject, initDataLength: initData?.length, isTmaEnvironment });
+
+        if (hasTgObject) {
+            sessionStorage.setItem("tg_detected", "true");
+            tg.ready();
+            tg.expand();
+        }
 
         if (isTmaEnvironment) {
             sessionStorage.setItem("is_tma", "true");
-            tg.ready();
-            tg.expand();
         } else {
             sessionStorage.removeItem("is_tma");
         }
 
-        // 2. TMA bo'lsa debug sahifasiga yo'naltiramiz (Vaqtincha tekshirish uchun)
-        if (isTmaEnvironment && location.pathname !== "/debug-tma") {
+        // 2. TMA deb gumon qilsak debug sahifasiga yo'naltiramiz
+        if (hasTgObject && location.pathname !== "/debug-tma") {
             navigate("/debug-tma", { replace: true });
             setIsChecking(false);
             return;
