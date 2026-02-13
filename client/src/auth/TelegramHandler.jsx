@@ -51,9 +51,11 @@ export default function TelegramHandler({ children }) {
     // Tekshirish vaqtida loader ko'rsatamiz
     if (isChecking) {
         return (
-            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", backgroundColor: "var(--bg-color, #fff)" }}>
-                <div className="loader-spinner"></div> {/* Agar CSS loader bo'lsa */}
-                <p style={{ marginTop: "20px", fontWeight: "500" }}>Kutib turing...</p>
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", backgroundColor: "var(--bg-color, #fff)", textAlign: "center", padding: "20px" }}>
+                <div style={{ width: "40px", height: "40px", border: "4px solid #f3f3f3", borderTop: "4px solid var(--primary-color, #2e7d32)", borderRadius: "50%", animation: "spin 1s linear infinite" }}></div>
+                <p style={{ marginTop: "20px", fontWeight: "500" }}>Tizim tekshirilmoqda...</p>
+                <p style={{ fontSize: "12px", color: "#666" }}>Telegram SDK qidirilmoqda... {window.Telegram ? "✅ Topildi" : "❌ Hali yo'q"}</p>
+                <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
             </div>
         );
     }

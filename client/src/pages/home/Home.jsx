@@ -50,6 +50,11 @@ export default function Home() {
                                 </>
                             )}
                         </div>
+                        <div style={{ marginTop: "20px" }}>
+                            <Link to="/debug-tma" style={{ fontSize: "12px", color: "var(--primary-color)", opacity: 0.7 }}>
+                                🛠 TMA Debug sahifasiga o'tish
+                            </Link>
+                        </div>
                     </div>
                 </section>
 
