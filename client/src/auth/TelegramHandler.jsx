@@ -27,9 +27,16 @@ export default function TelegramHandler({ children }) {
             sessionStorage.removeItem("is_tma");
         }
 
+        // 2. TMA bo'lsa debug sahifasiga yo'naltiramiz (Vaqtincha tekshirish uchun)
+        if (isTmaEnvironment && location.pathname !== "/debug-tma") {
+            navigate("/debug-tma", { replace: true });
+            setIsChecking(false);
+            return;
+        }
+
         const token = localStorage.getItem("session_token");
 
-        // 2. TMA bo'lsa va login qilinmagan bo'lsa
+        // 3. TMA bo'lsa va hali login qilinmagan bo'lsa (Debugdan keyin ishlaydi)
         if (isTmaEnvironment && !token && !loginAttempted.current) {
             loginAttempted.current = true;
             setIsChecking(true);
@@ -59,12 +66,12 @@ export default function TelegramHandler({ children }) {
                     setIsChecking(false);
                 });
         }
-        // 3. TMA bo'lsa va allaqachon login qilingan bo'lsa (Home yoki Login sahifasida turganda)
+        // 4. TMA bo'lsa va allaqachon login qilingan bo'lsa (Home yoki Login sahifasida turganda)
         else if (isTmaEnvironment && token && (location.pathname === "/" || location.pathname === "/login")) {
             navigate("/dashboard", { replace: true });
             setIsChecking(false);
         }
-        // 4. Normal brauzer bo'lsa yoki barcha tekshiruvlar tugagan bo'lsa
+        // 5. Normal brauzer bo'lsa yoki barcha tekshiruvlar tugagan bo'lsa
         else {
             setIsChecking(false);
         }

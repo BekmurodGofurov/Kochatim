@@ -13,6 +13,7 @@ import Sales from "./pages/sales/Sales.jsx";
 import Settings from "./pages/settings/Settings.jsx";
 import Login from "./pages/login/Login.jsx";
 import Home from "./pages/home/Home.jsx";
+import TmaDebug from "./pages/debug/TmaDebug.jsx";
 import RequireAuth from "./auth/RequireAuth";
 import TelegramHandler from "./auth/TelegramHandler";
 import { DashboardProvider } from "./context/DashboardContext";
@@ -41,6 +42,7 @@ export default function App() {
               <Route path="/login" element={<Login />} />
 
               <Route path="/" element={<Home />} />
+              <Route path="/debug-tma" element={<TmaDebug />} />
 
               <Route element={<RequireAuth />}>
                 <Route element={<AppLayout />}>
