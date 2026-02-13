@@ -45,8 +45,8 @@ export default function TelegramHandler({ children }) {
                 .finally(() => {
                     setLoading(false);
                 });
-        } else if (initData && token && location.pathname === "/") {
-            // Allaqachon login bo'lgan bo'lsa va uy sahifasida bo'lsa
+        } else if (initData && token && (location.pathname === "/" || location.pathname === "/login")) {
+            // TMA muhitida login bo'lgan bo'lsa, har doim dashboardga yo'naltiramiz
             navigate("/dashboard", { replace: true });
         }
     }, [navigate, location.pathname]);

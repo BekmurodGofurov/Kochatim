@@ -34,8 +34,8 @@ function AppLayout() {
 export default function App() {
   return (
     <ThemeProvider>
-      <TelegramHandler>
-        <Router>
+      <Router>
+        <TelegramHandler>
           <DashboardProvider>
             <Routes>
               <Route path="/login" element={<Login />} />
@@ -61,8 +61,8 @@ export default function App() {
               </Route>
             </Routes>
           </DashboardProvider>
-        </Router>
-      </TelegramHandler>
+        </TelegramHandler>
+      </Router>
     </ThemeProvider>
   );
 }
