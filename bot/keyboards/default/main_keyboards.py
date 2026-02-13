@@ -1,4 +1,5 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+from data.config import WEB_URL
 
 
 # Contact so'rash keyboard
@@ -12,20 +13,24 @@ contact_kb = ReplyKeyboardMarkup(
 def get_main_menu(has_cats=True, has_types=True):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     
+    web_button = KeyboardButton(text="💻 Saytni ochish", web_app=WebAppInfo(url=WEB_URL))
+
     if not has_cats:
         # Faqat guruh qo'shish
         kb.add(KeyboardButton(text="Yangi Guruh"))
+        kb.add(web_button)
         return kb
     
     if not has_types:
         # Guruh bor, lekin nav yo'q
         kb.row(KeyboardButton(text="Yangi Guruh"), KeyboardButton(text="Yangi Nav"))
-        kb.row(KeyboardButton(text="Ko'rish"))
+        kb.row(KeyboardButton(text="Ko'rish"), web_button)
         return kb
     
     # To'liq menu - endi "Qo'shish" tugmasi bilan
     kb.row(KeyboardButton(text="Ko'rish"), KeyboardButton(text="Qo'shish"))
     kb.row(KeyboardButton(text="Sotuv"), KeyboardButton(text="Boshqaruv"))
+    kb.add(web_button)
     return kb
 
 
