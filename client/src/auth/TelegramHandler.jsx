@@ -1,29 +1,39 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { api } from "../api/endpoints";
 import { useNavigate, useLocation } from "react-router-dom";
 
 export default function TelegramHandler({ children }) {
-    const [loading, setLoading] = useState(false);
+    const [isChecking, setIsChecking] = useState(true);
     const [error, setError] = useState(null);
     const [notRegistered, setNotRegistered] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
+    const loginAttempted = useRef(false);
 
     useEffect(() => {
+        // 1. Telegram SDK ni tekshirish
         const tg = window.Telegram?.WebApp;
-        const initData = tg?.initData;
 
-        if (initData) {
-            // TMA muhitida ekanligimizni belgilaymiz
+        // Telegram muhitidami yoki yo'qligini aniqlash mantiqi
+        // initData mavjudligi Mini App ekanligini anglatadi
+        const initData = tg?.initData;
+        const isTmaEnvironment = !!initData;
+
+        if (isTmaEnvironment) {
             sessionStorage.setItem("is_tma", "true");
+            tg.ready();
             tg.expand();
+        } else {
+            sessionStorage.removeItem("is_tma");
         }
 
         const token = localStorage.getItem("session_token");
 
-        // Agar TMA bo'lsa va hali login qilinmagan bo'lsa
-        if (initData && !token) {
-            setLoading(true);
+        // 2. TMA bo'lsa va login qilinmagan bo'lsa
+        if (isTmaEnvironment && !token && !loginAttempted.current) {
+            loginAttempted.current = true;
+            setIsChecking(true);
+
             api
                 .telegramLogin(initData)
                 .then((res) => {
@@ -31,43 +41,55 @@ export default function TelegramHandler({ children }) {
                     localStorage.setItem("u_id", res.u_id);
 
                     if (res.is_registered) {
-                        // Agar ro'yxatdan o'tgan bo'lsa, dashboardga o'tkazamiz
+                        // Ro'yxatdan o'tgan bo'lsa dashboardga o'tkazamiz
                         navigate("/dashboard", { replace: true });
                     } else {
-                        // Ro'yxatdan o'tmagan bo'lsa, xabar ko'rsatamiz
                         setNotRegistered(true);
                     }
                 })
                 .catch((err) => {
-                    console.error("Telegram login failed", err);
-                    setError("Telegram orqali kirishda xatolik yuz berdi.");
+                    console.error("Telegram auto-login failed:", err);
+                    if (err.status === 401) {
+                        setError("Telegram orqali tasdiqlashda xatolik yuz berdi. Iltimos, botni qayta ishga tushiring.");
+                    } else {
+                        setError("Serverga ulanishda xatolik yuz berdi. Internetni tekshiring.");
+                    }
                 })
                 .finally(() => {
-                    setLoading(false);
+                    setIsChecking(false);
                 });
-        } else if (initData && token && (location.pathname === "/" || location.pathname === "/login")) {
-            // TMA muhitida login bo'lgan bo'lsa, har doim dashboardga yo'naltiramiz
+        }
+        // 3. TMA bo'lsa va allaqachon login qilingan bo'lsa (Home yoki Login sahifasida turganda)
+        else if (isTmaEnvironment && token && (location.pathname === "/" || location.pathname === "/login")) {
             navigate("/dashboard", { replace: true });
+            setIsChecking(false);
+        }
+        // 4. Normal brauzer bo'lsa yoki barcha tekshiruvlar tugagan bo'lsa
+        else {
+            setIsChecking(false);
         }
     }, [navigate, location.pathname]);
 
-    if (loading) {
+    // Tekshirish vaqtida loader ko'rsatamiz
+    if (isChecking) {
         return (
-            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", backgroundColor: "var(--bg-color, #fff)" }}>
-                <p>Telegram orqali kirilmoqda...</p>
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", backgroundColor: "var(--bg-color, #fff)" }}>
+                <div className="loader-spinner"></div> {/* Agar CSS loader bo'lsa */}
+                <p style={{ marginTop: "20px", fontWeight: "500" }}>Kutib turing...</p>
             </div>
         );
     }
 
+    // Ro'yxatdan o'tmagan TMA foydalanuvchisi uchun xabar
     if (notRegistered) {
         return (
             <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", textAlign: "center", padding: "20px", backgroundColor: "var(--bg-color, #fff)" }}>
-                <h2 style={{ color: "var(--primary-color, #2e7d32)" }}>Xush kelibsiz!</h2>
-                <p>Websaytdan foydalanish uchun avval botda ro'yxatdan o'tishingiz kerak.</p>
-                <p>Iltimos, botga qaytib <b>📞 Telefon raqamni yuborish</b> tugmasini bosing.</p>
+                <h2 style={{ color: "var(--primary-color, #2e7d32)" }}>Diqqat!</h2>
+                <p>Siz hali ro'yxatdan o'tmagansiz.</p>
+                <p>Botga qaytib <b>📞 Telefon raqamni yuborish</b> tugmasini bosing va qayta urinib ko'ring.</p>
                 <button
                     onClick={() => window.Telegram?.WebApp?.close()}
-                    style={{ marginTop: "20px", padding: "10px 20px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-color, #2e7d32)", color: "#fff", cursor: "pointer" }}
+                    style={{ marginTop: "20px", padding: "12px 24px", borderRadius: "10px", border: "none", backgroundColor: "var(--primary-color, #2e7d32)", color: "#fff", cursor: "pointer", fontWeight: "bold" }}
                 >
                     Botga qaytish
                 </button>
@@ -75,13 +97,21 @@ export default function TelegramHandler({ children }) {
         );
     }
 
+    // Xatolik yuz berganda
     if (error) {
         return (
-            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", color: "red", backgroundColor: "var(--bg-color, #fff)" }}>
-                <p>{error}</p>
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", padding: "20px", textAlign: "center", backgroundColor: "var(--bg-color, #fff)" }}>
+                <p style={{ color: "red", fontWeight: "bold", marginBottom: "15px" }}>{error}</p>
+                <button
+                    onClick={() => window.location.reload()}
+                    style={{ padding: "10px 20px", borderRadius: "8px", border: "1px solid #ccc", background: "#f5f5f5" }}
+                >
+                    Qaytadan urinish
+                </button>
             </div>
         );
     }
 
+    // Agar hamma narsa joyida bo'lsa, asosiy ilovani ko'rsatamiz
     return children;
 }

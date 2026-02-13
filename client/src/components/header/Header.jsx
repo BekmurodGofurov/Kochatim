@@ -8,6 +8,7 @@ export default function Header() {
     const location = useLocation();
     const isLoggedIn = !!localStorage.getItem("session_token");
     const isLoginPage = location.pathname === "/login";
+    const isTma = sessionStorage.getItem("is_tma") === "true";
 
     return (
         <header className="app-header">
@@ -26,7 +27,7 @@ export default function Header() {
                         {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
                     </button>
 
-                    {!isLoginPage && (
+                    {!isLoginPage && !isTma && (
                         isLoggedIn ? (
                             <Link to="/dashboard" className="login-btn">
                                 Boshqaruv paneli
