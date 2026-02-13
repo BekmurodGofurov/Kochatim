@@ -3,13 +3,12 @@ import {
   Database,
   ShoppingCart,
   Settings,
-  Leaf,
   ChevronRight,
   Sun,
   Moon,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTheme } from "../../context/ThemeContext";
 import { useDashboard } from "../../context/DashboardContext";
 
@@ -19,6 +18,7 @@ export default function Sidebar() {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { dashboardData } = useDashboard();
+  const isTma = sessionStorage.getItem("is_tma") === "true";
 
   const uId = dashboardData?.user?.u_id != null ? String(dashboardData.user.u_id) : null;
 
@@ -87,6 +87,7 @@ export default function Sidebar() {
       </div>
 
       <div className="sidebar__footer">
+        {isTma && <p className="sidebar__method" style={{ color: "var(--primary-color)", fontSize: "12px", fontWeight: "bold", marginBottom: "8px" }}>Telegram orqali ✅</p>}
         <p className="sidebar__plan">Premium Reja</p>
         <p className="sidebar__version">V1.1.3 build</p>
       </div>

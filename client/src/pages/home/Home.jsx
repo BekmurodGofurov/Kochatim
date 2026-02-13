@@ -1,13 +1,16 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ArrowRight, Leaf, Shield, Zap } from "lucide-react";
-import { useTheme } from "../../context/ThemeContext";
-import Header from "../../components/header/Header";
-import "./Home.scss";
 
 export default function Home() {
     const { theme } = useTheme();
+    const navigate = useNavigate();
     const isLoggedIn = !!localStorage.getItem("session_token");
+
+    React.useEffect(() => {
+        if (isLoggedIn) {
+            navigate("/dashboard", { replace: true });
+        }
+    }, [isLoggedIn, navigate]);
 
     return (
         <div className={`home-page ${theme}-mode`}>
