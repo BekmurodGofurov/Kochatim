@@ -1,29 +1,16 @@
-import { useNavigate } from "react-router-dom";
+import React from "react";
+import { Link } from "react-router-dom";
 import { ArrowRight, Leaf, Shield, Zap } from "lucide-react";
+import { useTheme } from "../../context/ThemeContext";
+import Header from "../../components/header/Header";
+import "./Home.scss";
 
 export default function Home() {
     const { theme } = useTheme();
-    const navigate = useNavigate();
     const isLoggedIn = !!localStorage.getItem("session_token");
-    const isTgDetected = sessionStorage.getItem("tg_detected") === "true";
-    const APP_VERSION = "2.1.0-DEBUG";
-
-    React.useEffect(() => {
-        if (isLoggedIn) {
-            navigate("/dashboard", { replace: true });
-        }
-    }, [isLoggedIn, navigate]);
 
     return (
         <div className={`home-page ${theme}-mode`}>
-            <div style={{ position: "fixed", top: 10, right: 10, background: "black", color: "white", padding: "5px 10px", borderRadius: "5px", fontSize: "10px", zIndex: 10000 }}>
-                v{APP_VERSION} {isTgDetected ? "(TG: ✅)" : "(TG: ❌)"}
-            </div>
-            {isTgDetected && (
-                <div style={{ position: "fixed", top: 0, left: 0, right: 0, background: "orange", color: "black", textAlign: "center", fontSize: "10px", zIndex: 9999 }}>
-                    TG SDK DETECTED!
-                </div>
-            )}
             <Header />
 
             <main>
@@ -50,11 +37,6 @@ export default function Home() {
                                 </>
                             )}
                         </div>
-                        <div style={{ marginTop: "20px" }}>
-                            <Link to="/debug-tma" style={{ fontSize: "12px", color: "var(--primary-color)", opacity: 0.7 }}>
-                                🛠 TMA Debug sahifasiga o'tish
-                            </Link>
-                        </div>
                     </div>
                 </section>
 
@@ -62,34 +44,34 @@ export default function Home() {
                     <div className="container">
                         <div className="features-grid">
                             <div className="feature-card">
-                                <div className="feature-icon">
+                                <div className="icon leaf">
                                     <Leaf size={32} />
                                 </div>
-                                <h3>Inventarni kuzatish</h3>
-                                <p>Ko'chatlar zaxirasi va navlarini osongina boshqaring.</p>
+                                <h3>Oson boshqaruv</h3>
+                                <p>Ko'chatlaringizni toifalarga ajrating va ularni osonlik bilan kuzatib boring.</p>
                             </div>
                             <div className="feature-card">
-                                <div className="feature-icon">
+                                <div className="icon zap">
                                     <Zap size={32} />
                                 </div>
-                                <h3>Tez va qulay</h3>
-                                <p>Barcha qurilmalaringizda chaqmoqdek tez ishlashni his qiling.</p>
+                                <h3>Tezkor hisobot</h3>
+                                <p>Sotuvlar va ombor holati haqida real vaqtdagi ma'lumotlarni oling.</p>
                             </div>
                             <div className="feature-card">
-                                <div className="feature-icon">
+                                <div className="icon shield">
                                     <Shield size={32} />
                                 </div>
                                 <h3>Xavfsiz ma'lumotlar</h3>
-                                <p>Biznes ma'lumotlaringiz zamonaviy xavfsizlik standartlari bilan himoyalangan.</p>
+                                <p>Biznesingiz haqidagi barcha ma'lumotlar xavfsiz holda saqlanadi.</p>
                             </div>
                         </div>
                     </div>
                 </section>
             </main>
 
-            <footer className="home-footer">
+            <footer className="footer">
                 <div className="container">
-                    <p>&copy; {new Date().getFullYear()} Ko'chatim. Barcha huquqlar himoyalangan.</p>
+                    <p>&copy; 2024 Ko'chatim. Barcha huquqlar himoyalangan.</p>
                 </div>
             </footer>
         </div>

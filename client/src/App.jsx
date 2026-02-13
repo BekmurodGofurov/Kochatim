@@ -13,9 +13,7 @@ import Sales from "./pages/sales/Sales.jsx";
 import Settings from "./pages/settings/Settings.jsx";
 import Login from "./pages/login/Login.jsx";
 import Home from "./pages/home/Home.jsx";
-import TmaDebug from "./pages/debug/TmaDebug.jsx";
 import RequireAuth from "./auth/RequireAuth";
-import TelegramHandler from "./auth/TelegramHandler";
 import { DashboardProvider } from "./context/DashboardContext";
 import { ThemeProvider } from "./context/ThemeContext";
 
@@ -36,34 +34,31 @@ export default function App() {
   return (
     <ThemeProvider>
       <Router>
-        <TelegramHandler>
-          <DashboardProvider>
-            <Routes>
-              <Route path="/login" element={<Login />} />
+        <DashboardProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
 
-              <Route path="/" element={<Home />} />
-              <Route path="/debug-tma" element={<TmaDebug />} />
+            <Route path="/" element={<Home />} />
 
-              <Route element={<RequireAuth />}>
-                <Route element={<AppLayout />}>
-                  <Route path="/dashboard" element={<Dashboard />} />
+            <Route element={<RequireAuth />}>
+              <Route element={<AppLayout />}>
+                <Route path="/dashboard" element={<Dashboard />} />
 
-                  <Route path="/u/:uId/inventory" element={<Inventory />} />
-                  <Route path="/u/:uId/inventory/group/:cId" element={<Inventory />} />
-                  <Route
-                    path="/u/:uId/inventory/group/:cId/sort/:tId"
-                    element={<Inventory />}
-                  />
+                <Route path="/u/:uId/inventory" element={<Inventory />} />
+                <Route path="/u/:uId/inventory/group/:cId" element={<Inventory />} />
+                <Route
+                  path="/u/:uId/inventory/group/:cId/sort/:tId"
+                  element={<Inventory />}
+                />
 
-                  <Route path="/sales" element={<Sales />} />
-                  <Route path="/settings" element={<Settings />} />
+                <Route path="/sales" element={<Sales />} />
+                <Route path="/settings" element={<Settings />} />
 
-                  <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                </Route>
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Route>
-            </Routes>
-          </DashboardProvider>
-        </TelegramHandler>
+            </Route>
+          </Routes>
+        </DashboardProvider>
       </Router>
     </ThemeProvider>
   );

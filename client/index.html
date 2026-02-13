@@ -7,21 +7,6 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/tree-96.png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ko'chatim</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script>
-    // Global debug flag
-    window.SDK_VERSION = "2.1.0";
-    console.log("SDK Script loaded, checking window.Telegram...");
-    setTimeout(() => {
-      if (window.Telegram) {
-        console.log("window.Telegram found in index.html!");
-        window.is_tg_available = true;
-      } else {
-        console.log("window.Telegram NOT found in index.html after 500ms");
-        window.is_tg_available = false;
-      }
-    }, 500);
-  </script>
 </head>
 
 <body>
