@@ -11,6 +11,7 @@ export default function App() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isRegistered, setIsRegistered] = useState(false);
+    const [tgDataDump, setTgDataDump] = useState(null);
 
     useEffect(() => {
         const tg = window.Telegram?.WebApp;
@@ -41,18 +42,32 @@ export default function App() {
                 setLoading(false);
                 setError(`MA'LUMOT KELMADI (initData missing). 
                 
-                URL: ${window.location.origin}${window.location.pathname}
-                Search: ${window.location.search ? 'Bor' : 'Yo\'q'}
-                Hash: ${window.location.hash ? 'Bor (Lekin WebApp bo\'sh deyapti)' : 'Yo\'q (Bo\'sh)'}
+                Platform: ${tg.platform} | Ver: ${tg.version}
                 
-                Hozirgi to'liq Hash: "${window.location.hash || 'bo\'sh'}"
+                Hash: ${window.location.hash ? 'Bor' : 'Yo\'q'}
+                initData: ${tg.initData ? 'Bor' : 'Yo\'q'}
+                initDataUnsafe.user: ${tg.initDataUnsafe?.user ? 'Bor' : 'Yo\'q'}
                 
-                Maslahat: Agar Hash ham bo'sh bo'lsa, demak Telegram bu ma'lumotni yubormayapti yoki redirektda o'chib ketyapti.`);
+                Sizning ma'lumotlaringizni Telegram taqdim etmayapti.
+                Buning sababi client (Desktop) cheklovi yoki bot sozlamalari bo'lishi mumkin.`);
+
+                // Debug uchun butun obyektni saqlaymiz
+                setTgDataDump({
+                    location: window.location.href,
+                    hashParams: window.location.hash.split('&'),
+                    tgWebApp: {
+                        platform: tg.platform,
+                        version: tg.version,
+                        initData: tg.initData,
+                        initDataUnsafe: tg.initDataUnsafe,
+                        colorScheme: tg.colorScheme
+                    }
+                });
                 return;
             }
 
             // Auto-login logic
-            axios.post(`${API_BASE_URL}/auth/telegram-webapp`, { init_data: rawData })
+            axios.post(`${API_BASE_URL}/auth/telegram-webapp`, { initData: rawData })
                 .then(res => {
                     const { session_token, u_id, is_registered } = res.data;
                     localStorage.setItem("session_token", session_token);
@@ -87,6 +102,13 @@ export default function App() {
                 <h1>Xatolik ❌</h1>
                 <p>{error}</p>
                 <button onClick={() => window.location.reload()}>Qayta urinish</button>
+
+                {tgDataDump && (
+                    <div className="debug-dump" style={{ marginTop: '20px', textAlign: 'left', background: '#333', color: '#0f0', padding: '10px', fontSize: '10px', borderRadius: '5px', overflowX: 'auto' }}>
+                        <h3>SYSTEM DUMP:</h3>
+                        <pre>{JSON.stringify(tgDataDump, null, 2)}</pre>
+                    </div>
+                )}
             </div>
         );
     }
