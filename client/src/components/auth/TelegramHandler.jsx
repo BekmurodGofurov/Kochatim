@@ -16,7 +16,7 @@ export default function TelegramHandler() {
 
     useEffect(() => {
         const tg = window.Telegram?.WebApp;
-        // initData bo'lmasa yoki allaqachon urinib ko'rgan bo'lsak chiqib ketamiz
+        // Allaqachon urinib ko'rgan bo'lsak yoki Telegram bo'lmasa to'xtatamiz
         if (!tg || !tg.initData || hasAttempted.current) return;
 
         hasAttempted.current = true;
@@ -27,15 +27,15 @@ export default function TelegramHandler() {
         const sessionToken = localStorage.getItem("session_token");
         const currentPath = window.location.pathname;
 
-        // Agar foydalanuvchi allaqachon ichkarida bo'lsa va / yoki /login da bo'lmasa, 
-        // splash korsatmaymiz, shunchaki loginni fonda yangilaymiz (ixtiyoriy)
-        const showSplash = (currentPath === "/" || currentPath === "/login") && !sessionToken;
+        // Splash screen faqat Login sahifasida bo'lsak chiqishi mumkin
+        // Home (/) da silent login bo'lgani ma'qul, lekin user xohlagancha loading ko'rsatishimiz mumkin
+        const showSplash = (currentPath === "/login") && !sessionToken;
 
         if (showSplash) {
             setIsAuthenticating(true);
         }
 
-        // 200ms kutamiz (tezroq ishlashi uchun)
+        // 200ms kutamiz
         const timer = setTimeout(() => {
             axios.post(`${API_BASE}/auth/telegram-webapp`, { initData: tg.initData })
                 .then(res => {
@@ -44,9 +44,16 @@ export default function TelegramHandler() {
                         localStorage.setItem("session_token", session_token);
                         localStorage.setItem("u_id", u_id);
 
-                        // Faqatgina Home yoki Login da bo'lsa Dashboard ga o'tkazamiz
-                        if (window.location.pathname === "/" || window.location.pathname === "/login") {
+                        // Avtomatik Dashboard ga o'tkazmaymiz (User xohishiga ko'ra)
+                        // Faqat Login sahifasida bo'lsak, Dashboard ga o'tkazish mantiqiyroq
+                        if (window.location.pathname === "/login") {
                             navigate("/dashboard", { replace: true });
+                        } else if (window.location.pathname === "/") {
+                            // Home sahifasida bo'lsak, tugmalar yangilanishi uchun reload qilamiz 
+                            // yoki shunchaki navigate(0) qilamiz. 
+                            // Eng yaxshisi - react state orqali yangilash, lekin hozirgi strukturada 
+                            // navigate(0) eng xavfsiz silent yo'l.
+                            window.location.reload();
                         }
                     }
                 })
@@ -59,7 +66,7 @@ export default function TelegramHandler() {
         }, 200);
 
         return () => clearTimeout(timer);
-    }, [navigate]);
+    }, [navigate]); // location.pathname dependency olib tashlandi
 
     if (isAuthenticating) {
         return (
@@ -71,14 +78,11 @@ export default function TelegramHandler() {
                 height: '100%',
                 background: '#1c1c1c',
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
                 zIndex: 9999,
                 color: 'white'
             }}>
-                {/* Chiroyli Logo yoki Spinner */}
-                <img src="/img1.png" alt="Logo" style={{ width: '80px', marginBottom: '20px' }} />
                 <div className="spinner" style={{
                     width: '30px',
                     height: '30px',
@@ -87,7 +91,6 @@ export default function TelegramHandler() {
                     borderRadius: '50%',
                     animation: 'spin 1s linear infinite'
                 }}></div>
-                <p style={{ marginTop: '15px', fontSize: '14px', opacity: 0.6 }}>Ko'chatim...</p>
                 <style>{`
                     @keyframes spin {
                         0% { transform: rotate(0deg); }
