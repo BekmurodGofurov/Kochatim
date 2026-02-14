@@ -23,42 +23,53 @@ export default function App() {
         tg.ready();
         tg.expand();
 
-        const rawData = tg.initData;
-        const unsafeData = tg.initDataUnsafe;
-        setInitData(rawData);
+        // 500ms kutib tekshiramiz (Ba'zi platformalarda SDK kechroq yuklanishi mumkin)
+        const timer = setTimeout(() => {
+            const rawData = tg.initData;
+            const unsafeData = tg.initDataUnsafe;
+            setInitData(rawData);
 
-        console.log("TMA Debug:", {
-            href: window.location.href,
-            rawDataLength: rawData?.length,
-            unsafeData: unsafeData,
-            platform: tg.platform,
-            version: tg.version
-        });
-
-        if (!rawData) {
-            setLoading(false);
-            // Batafsilroq xato xabari
-            setError(`initData topilmadi. \nURL: ${window.location.href.split('#')[0]} \nPlatform: ${tg.platform} \nVersion: ${tg.version} \nUnsafeUser: ${unsafeData?.user ? 'Bor' : 'Yo\'q'}`);
-            return;
-        }
-
-        // Auto-login logic
-        axios.post(`${API_BASE_URL}/auth/telegram-webapp`, { init_data: rawData })
-            .then(res => {
-                const { session_token, u_id, is_registered, user_info } = res.data;
-                localStorage.setItem("session_token", session_token);
-                localStorage.setItem("u_id", u_id);
-                setIsRegistered(is_registered);
-                setUser(tg.initDataUnsafe?.user || { first_name: "Foydalanuvchi" });
-            })
-            .catch(err => {
-                console.error("TMA Login error:", err);
-                setError("Login qilishda xatolik yuz berdi. Iltimos, keyinroq urinib ko'ring.");
-            })
-            .finally(() => {
-                setLoading(false);
+            console.log("TMA Full Debug:", {
+                href: window.location.href,
+                hash: window.location.hash,
+                search: window.location.search,
+                rawData: rawData,
+                unsafeData: unsafeData
             });
 
+            if (!rawData) {
+                setLoading(false);
+                setError(`MA'LUMOT KELMADI (initData missing). 
+                
+                URL: ${window.location.origin}${window.location.pathname}
+                Search: ${window.location.search ? 'Bor' : 'Yo\'q'}
+                Hash: ${window.location.hash ? 'Bor (Lekin WebApp bo\'sh deyapti)' : 'Yo\'q (Bo\'sh)'}
+                
+                Hozirgi to'liq Hash: "${window.location.hash || 'bo\'sh'}"
+                
+                Maslahat: Agar Hash ham bo'sh bo'lsa, demak Telegram bu ma'lumotni yubormayapti yoki redirektda o'chib ketyapti.`);
+                return;
+            }
+
+            // Auto-login logic
+            axios.post(`${API_BASE_URL}/auth/telegram-webapp`, { init_data: rawData })
+                .then(res => {
+                    const { session_token, u_id, is_registered } = res.data;
+                    localStorage.setItem("session_token", session_token);
+                    localStorage.setItem("u_id", u_id);
+                    setIsRegistered(is_registered);
+                    setUser(unsafeData?.user || { first_name: "Foydalanuvchi" });
+                })
+                .catch(err => {
+                    console.error("TMA Login error:", err);
+                    setError(`Serverga yuborishda xatolik: ${err.message}`);
+                })
+                .finally(() => {
+                    setLoading(false);
+                });
+        }, 500);
+
+        return () => clearTimeout(timer);
     }, []);
 
     if (loading) {
