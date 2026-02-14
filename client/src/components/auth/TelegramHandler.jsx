@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 
@@ -12,49 +12,54 @@ export default function TelegramHandler() {
     const navigate = useNavigate();
     const location = useLocation();
     const [isAuthenticating, setIsAuthenticating] = useState(false);
+    const hasAttempted = useRef(false);
 
     useEffect(() => {
         const tg = window.Telegram?.WebApp;
-        if (!tg || !tg.initData) return;
+        // initData bo'lmasa yoki allaqachon urinib ko'rgan bo'lsak chiqib ketamiz
+        if (!tg || !tg.initData || hasAttempted.current) return;
+
+        hasAttempted.current = true;
 
         tg.ready();
         tg.expand();
 
-        // 500ms kutamiz (ba'zi platformalarda SDK kechroq yuklanadi)
+        const sessionToken = localStorage.getItem("session_token");
+        const currentPath = window.location.pathname;
+
+        // Agar foydalanuvchi allaqachon ichkarida bo'lsa va / yoki /login da bo'lmasa, 
+        // splash korsatmaymiz, shunchaki loginni fonda yangilaymiz (ixtiyoriy)
+        const showSplash = (currentPath === "/" || currentPath === "/login") && !sessionToken;
+
+        if (showSplash) {
+            setIsAuthenticating(true);
+        }
+
+        // 200ms kutamiz (tezroq ishlashi uchun)
         const timer = setTimeout(() => {
-            const rawData = tg.initData;
+            axios.post(`${API_BASE}/auth/telegram-webapp`, { initData: tg.initData })
+                .then(res => {
+                    const { session_token, u_id } = res.data.data || {};
+                    if (session_token) {
+                        localStorage.setItem("session_token", session_token);
+                        localStorage.setItem("u_id", u_id);
 
-            if (rawData) {
-                // Agar allaqachon dashboard yoki ichkarida bo'lsak, qayta login qilmaymiz (ixtiyoriy)
-                // Lekin session yangilash uchun foydali bo'lishi mumkin.
-                // Eng muhimi - faqat Home yoki Login dan Dashboard ga o'tkazish.
-
-                setIsAuthenticating(true);
-                axios.post(`${API_BASE}/auth/telegram-webapp`, { initData: rawData })
-                    .then(res => {
-                        const { session_token, u_id } = res.data.data || {};
-                        if (session_token) {
-                            localStorage.setItem("session_token", session_token);
-                            localStorage.setItem("u_id", u_id);
-
-                            // Faqat Home (/) yoki Login (/login) sahifasida bo'lsak Dashboardga o'tkazamiz
-                            const currentPath = window.location.pathname;
-                            if (currentPath === "/" || currentPath === "/login") {
-                                navigate("/dashboard", { replace: true });
-                            }
+                        // Faqatgina Home yoki Login da bo'lsa Dashboard ga o'tkazamiz
+                        if (window.location.pathname === "/" || window.location.pathname === "/login") {
+                            navigate("/dashboard", { replace: true });
                         }
-                    })
-                    .catch(err => {
-                        console.error("Auto-login error:", err);
-                    })
-                    .finally(() => {
-                        setIsAuthenticating(false);
-                    });
-            }
-        }, 500);
+                    }
+                })
+                .catch(err => {
+                    console.error("Auto-login error:", err);
+                })
+                .finally(() => {
+                    setIsAuthenticating(false);
+                });
+        }, 200);
 
         return () => clearTimeout(timer);
-    }, [navigate]); // Faqat bir marta (mount bo'lganda) ishlaydi
+    }, [navigate]);
 
     if (isAuthenticating) {
         return (
@@ -72,15 +77,17 @@ export default function TelegramHandler() {
                 zIndex: 9999,
                 color: 'white'
             }}>
+                {/* Chiroyli Logo yoki Spinner */}
+                <img src="/img1.png" alt="Logo" style={{ width: '80px', marginBottom: '20px' }} />
                 <div className="spinner" style={{
-                    width: '40px',
-                    height: '40px',
-                    border: '4px solid rgba(255,255,255,0.1)',
-                    borderTop: '4px solid #007aff',
+                    width: '30px',
+                    height: '30px',
+                    border: '3px solid rgba(255,255,255,0.1)',
+                    borderTop: '3px solid #007aff',
                     borderRadius: '50%',
                     animation: 'spin 1s linear infinite'
                 }}></div>
-                <p style={{ marginTop: '15px', fontSize: '14px', opacity: 0.8 }}>Ko'chatim yuklanmoqda...</p>
+                <p style={{ marginTop: '15px', fontSize: '14px', opacity: 0.6 }}>Ko'chatim...</p>
                 <style>{`
                     @keyframes spin {
                         0% { transform: rotate(0deg); }
