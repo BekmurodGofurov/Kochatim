@@ -13,31 +13,40 @@ export default function TelegramHandler() {
 
     useEffect(() => {
         const tg = window.Telegram?.WebApp;
+        if (!tg) return;
 
-        // Agar Telegram bo'lsa va initData bo'lsa
-        if (tg && tg.initData) {
-            console.log("TMA Detected on Main Website. Attempting auto-login...");
+        tg.ready();
+        tg.expand();
 
-            tg.ready();
-            tg.expand();
+        // 500ms kutamiz (ba'zi platformalarda SDK kechroq yuklanadi)
+        const timer = setTimeout(() => {
+            const rawData = tg.initData;
 
-            // Auto-login request
-            axios.post(`${API_BASE}/auth/telegram-webapp`, { initData: tg.initData })
-                .then(res => {
-                    const { session_token, u_id } = res.data.data || {};
+            console.log("Main Site - TMA Debug:", {
+                href: window.location.href,
+                hash: window.location.hash,
+                initData: !!rawData
+            });
 
-                    if (session_token) {
-                        localStorage.setItem("session_token", session_token);
-                        localStorage.setItem("u_id", u_id);
+            if (rawData) {
+                console.log("TMA Detected. Attempting auto-login...");
+                axios.post(`${API_BASE}/auth/telegram-webapp`, { initData: rawData })
+                    .then(res => {
+                        const { session_token, u_id } = res.data.data || {};
+                        if (session_token) {
+                            localStorage.setItem("session_token", session_token);
+                            localStorage.setItem("u_id", u_id);
+                            console.log("Auto-login success. Redirecting...");
+                            navigate("/dashboard", { replace: true });
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Auto-login error:", err);
+                    });
+            }
+        }, 500);
 
-                        console.log("TMA Auto-login successful. Redirecting to dashboard...");
-                        navigate("/dashboard", { replace: true });
-                    }
-                })
-                .catch(err => {
-                    console.error("TMA Auto-login error on main site:", err);
-                });
-        }
+        return () => clearTimeout(timer);
     }, [navigate]);
 
     return null; // Hech narsa render qilmaydi
