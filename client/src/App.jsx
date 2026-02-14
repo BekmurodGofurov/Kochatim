@@ -14,6 +14,7 @@ import Settings from "./pages/settings/Settings.jsx";
 import Login from "./pages/login/Login.jsx";
 import Home from "./pages/home/Home.jsx";
 import RequireAuth from "./auth/RequireAuth";
+import TelegramHandler from "./components/auth/TelegramHandler";
 import { DashboardProvider } from "./context/DashboardContext";
 import { ThemeProvider } from "./context/ThemeContext";
 
@@ -34,6 +35,7 @@ export default function App() {
   return (
     <ThemeProvider>
       <Router>
+        <TelegramHandler />
         <DashboardProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
