@@ -18,19 +18,17 @@ def get_main_menu(has_cats=True, has_types=True):
     if not has_cats:
         # Faqat guruh qo'shish
         kb.add(KeyboardButton(text="Yangi Guruh"))
-        kb.add(web_button)
         return kb
     
     if not has_types:
         # Guruh bor, lekin nav yo'q
         kb.row(KeyboardButton(text="Yangi Guruh"), KeyboardButton(text="Yangi Nav"))
-        kb.row(KeyboardButton(text="Ko'rish"), web_button)
+        kb.row(KeyboardButton(text="Ko'rish"))
         return kb
     
     # To'liq menu - endi "Qo'shish" tugmasi bilan
     kb.row(KeyboardButton(text="Ko'rish"), KeyboardButton(text="Qo'shish"))
     kb.row(KeyboardButton(text="Sotuv"), KeyboardButton(text="Boshqaruv"))
-    kb.add(web_button)
     return kb
 
 
