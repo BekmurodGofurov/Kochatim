@@ -16,6 +16,11 @@ export default function TelegramHandler() {
 
     useEffect(() => {
         const tg = window.Telegram?.WebApp;
+        const sessionToken = localStorage.getItem("session_token");
+        const currentPath = window.location.pathname;
+
+        // AGAR allaqachon session bo'lsa, qayta login va reload qilmaymiz (infinite loop oldini olish)
+        if (sessionToken && currentPath === "/") return;
         // Allaqachon urinib ko'rgan bo'lsak yoki Telegram bo'lmasa to'xtatamiz
         if (!tg || !tg.initData || hasAttempted.current) return;
 
@@ -23,9 +28,6 @@ export default function TelegramHandler() {
 
         tg.ready();
         tg.expand();
-
-        const sessionToken = localStorage.getItem("session_token");
-        const currentPath = window.location.pathname;
 
         // Splash screen faqat Login sahifasida bo'lsak chiqishi mumkin
         // Home (/) da silent login bo'lgani ma'qul, lekin user xohlagancha loading ko'rsatishimiz mumkin
