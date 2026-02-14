@@ -15,6 +15,13 @@
         justify-content: center;
         align-items: center;
         text-align: center;
+
+        p {
+            white-space: pre-wrap;
+            font-size: 14px;
+            color: var(--tg-theme-text-color, #333);
+            margin: 10px 0;
+        }
     }
 
     .tma-header {

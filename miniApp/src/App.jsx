@@ -24,11 +24,21 @@ export default function App() {
         tg.expand();
 
         const rawData = tg.initData;
+        const unsafeData = tg.initDataUnsafe;
         setInitData(rawData);
+
+        console.log("TMA Debug:", {
+            href: window.location.href,
+            rawDataLength: rawData?.length,
+            unsafeData: unsafeData,
+            platform: tg.platform,
+            version: tg.version
+        });
 
         if (!rawData) {
             setLoading(false);
-            setError("initData topilmadi. Autentifikatsiya imkonsiz.");
+            // Batafsilroq xato xabari
+            setError(`initData topilmadi. \nURL: ${window.location.href.split('#')[0]} \nPlatform: ${tg.platform} \nVersion: ${tg.version} \nUnsafeUser: ${unsafeData?.user ? 'Bor' : 'Yo\'q'}`);
             return;
         }
 
