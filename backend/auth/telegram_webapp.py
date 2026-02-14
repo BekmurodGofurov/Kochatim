@@ -17,15 +17,11 @@ def telegram_webapp_login():
     """
     data = request.get_json(silent=True) or {}
     init_data = data.get("initData") or ""
-
-    print(f"DEBUG: Received TMA login attempt. Data keys: {list(data.keys())}")
     
     try:
         parsed = telegram_webapp_verify(init_data, Config.BOT_TOKEN)
-        print("DEBUG: Signature verified successfully")
         uinfo = parse_telegram_user(parsed)
     except Exception as e:
-        print(f"DEBUG: Signature verification failed: {e}")
         return fail("Invalid initData", 401, code="INVALID_INITDATA", extra=str(e))
 
     u_id = uinfo["u_id"]

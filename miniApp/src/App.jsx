@@ -11,7 +11,6 @@ export default function App() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isRegistered, setIsRegistered] = useState(false);
-    const [tgDataDump, setTgDataDump] = useState(null);
 
     useEffect(() => {
         const tg = window.Telegram?.WebApp;
@@ -30,49 +29,20 @@ export default function App() {
             const unsafeData = tg.initDataUnsafe;
             setInitData(rawData);
 
-            console.log("TMA Full Debug:", {
-                href: window.location.href,
-                hash: window.location.hash,
-                search: window.location.search,
-                rawData: rawData,
-                unsafeData: unsafeData
-            });
-
             if (!rawData) {
                 setLoading(false);
-                setError(`MA'LUMOT KELMADI (initData missing). 
-                
-                Platform: ${tg.platform} | Ver: ${tg.version}
-                
-                Hash: ${window.location.hash ? 'Bor' : 'Yo\'q'}
-                initData: ${tg.initData ? 'Bor' : 'Yo\'q'}
-                initDataUnsafe.user: ${tg.initDataUnsafe?.user ? 'Bor' : 'Yo\'q'}
-                
-                Sizning ma'lumotlaringizni Telegram taqdim etmayapti.
-                Buning sababi client (Desktop) cheklovi yoki bot sozlamalari bo'lishi mumkin.`);
-
-                // Debug uchun butun obyektni saqlaymiz
-                setTgDataDump({
-                    location: window.location.href,
-                    hashParams: window.location.hash.split('&'),
-                    tgWebApp: {
-                        platform: tg.platform,
-                        version: tg.version,
-                        initData: tg.initData,
-                        initDataUnsafe: tg.initDataUnsafe,
-                        colorScheme: tg.colorScheme
-                    }
-                });
+                setError("Telegram ma'lumotlarini aniqlab bo'lmadi. Iltimos, qayta urinib ko'ring.");
                 return;
             }
 
             // Auto-login logic
             axios.post(`${API_BASE_URL}/auth/telegram-webapp`, { initData: rawData })
                 .then(res => {
-                    const { session_token, u_id, is_registered } = res.data;
-                    localStorage.setItem("session_token", session_token);
-                    localStorage.setItem("u_id", u_id);
-                    setIsRegistered(is_registered);
+                    // Axios res.data dagi 'data' obyektini ichidan olamiz (Backend ok({data}) qaytardi)
+                    const { session_token, u_id, is_registered } = res.data.data || {};
+                    if (session_token) localStorage.setItem("session_token", session_token);
+                    if (u_id) localStorage.setItem("u_id", u_id);
+                    setIsRegistered(!!is_registered);
                     setUser(unsafeData?.user || { first_name: "Foydalanuvchi" });
                 })
                 .catch(err => {
@@ -102,13 +72,6 @@ export default function App() {
                 <h1>Xatolik ❌</h1>
                 <p>{error}</p>
                 <button onClick={() => window.location.reload()}>Qayta urinish</button>
-
-                {tgDataDump && (
-                    <div className="debug-dump" style={{ marginTop: '20px', textAlign: 'left', background: '#333', color: '#0f0', padding: '10px', fontSize: '10px', borderRadius: '5px', overflowX: 'auto' }}>
-                        <h3>SYSTEM DUMP:</h3>
-                        <pre>{JSON.stringify(tgDataDump, null, 2)}</pre>
-                    </div>
-                )}
             </div>
         );
     }
@@ -149,10 +112,6 @@ export default function App() {
                     </button>
                 </section>
 
-                <section className="debug-info">
-                    <h3>Debug ma'lumotlari:</h3>
-                    <pre>{JSON.stringify(user, null, 2)}</pre>
-                </section>
             </main>
         </div>
     );
