@@ -4,7 +4,7 @@ from api import api_bp
 from middleware.require_api_key import require_api_key
 from middleware.require_session import require_session
 from utils.errors import ok, fail
-from db import execute, fetch_one, fetch_all
+from db import execute, execute_returning, fetch_one, fetch_all
 from utils.cache import invalidate_dashboard_cache
 
 @api_bp.get("/categories/by-user")
