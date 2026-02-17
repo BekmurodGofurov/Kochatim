@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import Loader from "../../components/loader/Loader";
 import GroupCard from "../../components/groupCard/GroupCard";
 import SortCard from "../../components/sortCard/SortCard";
+import AddGroupModal from "../../components/addGroupModal/AddGroupModal";
 import { useDashboard } from "../../context/DashboardContext";
 import "./Inventory.scss";
 
@@ -42,7 +43,10 @@ export default function Inventory() {
   const cId = cIdParam ? Number(cIdParam) : null;
   const tId = tIdParam ? Number(tIdParam) : null;
 
-  const { dashboardData: dashboard, loading: pageLoading, error: pageError } = useDashboard();
+  const { dashboardData: dashboard, loading: pageLoading, error: pageError, refreshDashboard } = useDashboard();
+
+  // Modal state
+  const [showAddModal, setShowAddModal] = useState(false);
 
   // 10s aylanish (guruh card rasmlari)
   const [tick, setTick] = useState(0);
@@ -139,13 +143,25 @@ export default function Inventory() {
             <h1 className="inv-title">Omborxona</h1>
           </div>
 
-          <a href="https://t.me/kochatim_bot?start=yangi_guruh">
-            <button type="button" className="inv-btn inv-btn--primary">
-              <Plus size={20} strokeWidth={3} />
-              <span>Yangi Guruh qo'shish</span>
-            </button>
-          </a>
+          <button
+            type="button"
+            className="inv-btn inv-btn--primary"
+            onClick={() => setShowAddModal(true)}
+          >
+            <Plus size={20} strokeWidth={3} />
+            <span>Yangi Guruh qo'shish</span>
+          </button>
         </header>
+
+        {showAddModal && (
+          <AddGroupModal
+            onClose={() => setShowAddModal(false)}
+            onSuccess={() => {
+              setShowAddModal(false);
+              refreshDashboard();
+            }}
+          />
+        )}
 
         <div className="inv-section">
           <h2 className="inv-section__title">Guruhlar</h2>
@@ -189,20 +205,42 @@ export default function Inventory() {
   // ✅ 2) SORTS VIEW (URL: /u/:uId/inventory/group/:cId)
   return (
     <div className="inv-page inv-page--detail">
-      <button
-        type="button"
-        className="inv-back"
-        onClick={() => navigate(`/u/${uId}/inventory`)}
-      >
-        <ArrowLeft size={18} strokeWidth={3} />
-        <span>Guruhlarga qaytish</span>
-      </button>
+      <div className="inv-detailNav">
+        <button
+          type="button"
+          className="inv-back"
+          onClick={() => navigate(`/u/${uId}/inventory`)}
+        >
+          <ArrowLeft size={18} strokeWidth={3} />
+          <span>Guruhlarga qaytish</span>
+        </button>
+
+        <button
+          type="button"
+          className="inv-btn inv-btn--primary inv-btn--small"
+          onClick={() => setShowAddTypeModal(true)}
+        >
+          <Plus size={18} strokeWidth={3} />
+          <span>Yangi Nav qo'shish</span>
+        </button>
+      </div>
 
       <div className="inv-detailHead">
         <h2 className="inv-detailTitle">
           {selectedGroup.groupName} <span>Navlari</span>
         </h2>
       </div>
+
+      {showAddTypeModal && (
+        <AddTypeModal
+          cId={cId}
+          onClose={() => setShowAddTypeModal(false)}
+          onSuccess={() => {
+            setShowAddTypeModal(false);
+            refreshDashboard();
+          }}
+        />
+      )}
 
       <div className="inv-grid inv-grid--sorts">
         {selectedGroup.sorts.map((sort) => (

@@ -208,6 +208,13 @@
 }
 
 /* Detail head */
+.inv-detailNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
 .inv-detailHead {
   margin-bottom: 22px;
 }

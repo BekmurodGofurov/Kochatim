@@ -48,6 +48,24 @@ def list_categories_me():
     )
     return ok(rows)
 
+@api_bp.post("/categories/me")
+@require_session
+def create_category_me():
+    u_id = g.u_id
+    data = request.get_json(silent=True) or {}
+    c_name = (data.get("c_name") or "").strip()
+
+    if not c_name:
+        return fail("c_name required", 400)
+
+    existing = fetch_one("SELECT c_id FROM categories WHERE u_id=%s AND c_name=%s", (u_id, c_name))
+    if existing:
+        return fail("Bunday nomli guruh allaqachon mavjud", 400, code="ALREADY_EXISTS")
+
+    execute("INSERT INTO categories (u_id, c_name) VALUES (%s, %s)", (u_id, c_name))
+    row = fetch_one("SELECT c_id FROM categories WHERE u_id=%s AND c_name=%s", (u_id, c_name))
+    return ok({"created": True, "c_id": int(row["c_id"]), "c_name": row["c_name"]})
+
 @api_bp.put("/categories/<int:c_id>")
 @require_api_key
 def update_category(c_id: int):

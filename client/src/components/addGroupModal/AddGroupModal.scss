@@ -1,0 +1,64 @@
+@use "../../style/variables.scss" as *;
+
+/* Add Group Modal & Form */
+.inv-modal__panel--small {
+    max-width: 440px;
+    height: auto;
+    max-height: 90vh;
+}
+
+.inv-modal__form {
+    padding: 0 28px 28px;
+}
+
+.inv-form-input {
+    width: 100%;
+    padding: 16px;
+    border-radius: $radius-card-sm;
+    background: $surface-row;
+    border: 2px solid transparent;
+    color: $text-strong;
+    font-family: $font-base;
+    font-weight: 700;
+    font-size: 16px;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+
+    &::placeholder {
+        color: $text-muted;
+        font-weight: 500;
+    }
+
+    &:focus {
+        outline: none;
+        border-color: $accent-main;
+        background: $surface-main;
+        box-shadow: $shadow-soft;
+    }
+}
+
+.inv-btn--full {
+    width: 100%;
+}
+
+@media (max-width: 768px) {
+    .inv-modal__panel--small {
+        max-width: 100%;
+        width: 100%;
+        position: fixed;
+        bottom: 0;
+        border-radius: 24px 24px 0 0;
+        height: auto;
+        animation: invSlideUp 0.3s ease;
+    }
+
+    @keyframes invSlideUp {
+        from {
+            transform: translateY(100%);
+        }
+
+        to {
+            transform: translateY(0);
+        }
+    }
+}

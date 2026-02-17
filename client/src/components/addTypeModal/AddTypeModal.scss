@@ -1,0 +1,30 @@
+@use "../../style/variables.scss" as *;
+
+/* Add Type Modal & Form */
+/* Reuse shared styles from Inventory or AddGroupModal if possible, but keep specific ones here */
+
+.inv-form-input--area {
+    resize: none;
+    min-height: 100px;
+    line-height: 1.4;
+}
+
+/* These should ideally be in a shared component SCSS, but for simplicity we keep them consistent */
+.inv-modal__panel--small {
+    max-width: 440px;
+    height: auto;
+    max-height: 90vh;
+}
+
+/* Reuse the same look and animation from AddGroupModal.scss */
+@media (max-width: 768px) {
+    .inv-modal__panel--small {
+        max-width: 100%;
+        width: 100%;
+        position: fixed;
+        bottom: 0;
+        border-radius: 24px 24px 0 0;
+        height: auto;
+        animation: invSlideUp 0.3s ease;
+    }
+}

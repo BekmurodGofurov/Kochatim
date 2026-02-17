@@ -1,6 +1,7 @@
 from flask import request, g
 from api import api_bp
 from middleware.require_api_key import require_api_key
+from middleware.require_session import require_session
 from utils.errors import ok, fail
 from db import execute, execute_returning, fetch_all, fetch_one
 
@@ -23,6 +24,37 @@ def _to_int(value, field_name: str):
         return int(value)
     except Exception:
         return None
+
+@api_bp.post("/types/me")
+@require_session
+def create_type_me():
+    u_id = g.u_id
+    data = request.get_json(silent=True) or {}
+
+    c_id = _to_int(data.get("c_id"), "c_id")
+    t_name = (data.get("t_name") or "").strip()
+    deff = (data.get("deff") or "").strip() or None
+
+    if not c_id:
+        return fail("c_id(int) required", 400)
+    if not t_name:
+        return fail("t_name required", 400)
+
+    # Check if category exists for this user
+    cat = fetch_one("SELECT c_id FROM categories WHERE c_id=%s AND u_id=%s", (c_id, u_id))
+    if not cat:
+        return fail("Guruh topilmadi yoki sizga tegishli emas", 404, code="NOT_FOUND")
+
+    row = execute_returning(
+        """
+        INSERT INTO types (u_id, c_id, t_name, deff)
+        VALUES (%s, %s, %s, %s)
+        RETURNING t_id, u_id, c_id, t_name, deff, added_at, updated_at
+        """,
+        (u_id, c_id, t_name, deff),
+    )
+
+    return ok(row)
 
 
 @api_bp.post("/types")
