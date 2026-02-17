@@ -5,6 +5,7 @@ from middleware.require_api_key import require_api_key
 from middleware.require_session import require_session
 from utils.errors import ok, fail
 from db import execute, fetch_all
+from utils.cache import invalidate_dashboard_cache
 
 
 @api_bp.post("/sales")
@@ -50,6 +51,7 @@ def add_sale():
         (q1, q2, q3, u_id, t_id),
     )
 
+    invalidate_dashboard_cache(u_id)
     return ok({"saved": True})
 
 

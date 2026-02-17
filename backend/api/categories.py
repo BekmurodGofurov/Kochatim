@@ -5,6 +5,7 @@ from middleware.require_api_key import require_api_key
 from middleware.require_session import require_session
 from utils.errors import ok, fail
 from db import execute, fetch_one, fetch_all
+from utils.cache import invalidate_dashboard_cache
 
 @api_bp.get("/categories/by-user")
 @require_api_key
@@ -34,6 +35,7 @@ def create_category():
         return ok({"created": False, "c_id": int(existing["c_id"])})
 
     execute("INSERT INTO categories (u_id, c_name) VALUES (%s, %s)", (u_id, c_name))
+    invalidate_dashboard_cache(u_id)
     row = fetch_one("SELECT c_id FROM categories WHERE u_id=%s AND c_name=%s", (u_id, c_name))
     return ok({"created": True, "c_id": int(row["c_id"])})
 
@@ -62,8 +64,14 @@ def create_category_me():
     if existing:
         return fail("Bunday nomli guruh allaqachon mavjud", 400, code="ALREADY_EXISTS")
 
-    execute("INSERT INTO categories (u_id, c_name) VALUES (%s, %s)", (u_id, c_name))
-    row = fetch_one("SELECT c_id FROM categories WHERE u_id=%s AND c_name=%s", (u_id, c_name))
+    row = execute_returning(
+        "INSERT INTO categories (u_id, c_name) VALUES (%s, %s) RETURNING c_id, c_name",
+        (u_id, c_name)
+    )
+    if not row:
+        return fail("Guruhni saqlashda xatolik yuz berdi", 500)
+
+    invalidate_dashboard_cache(u_id)
     return ok({"created": True, "c_id": int(row["c_id"]), "c_name": row["c_name"]})
 
 @api_bp.put("/categories/<int:c_id>")
@@ -80,6 +88,7 @@ def update_category(c_id: int):
         "UPDATE categories SET c_name=%s WHERE c_id=%s AND u_id=%s",
         (c_name, c_id, u_id),
     )
+    invalidate_dashboard_cache(u_id)
     return ok({"updated": True, "c_id": c_id})
 
 @api_bp.delete("/categories/<int:c_id>")
@@ -90,4 +99,5 @@ def delete_category(c_id: int):
         return fail("u_id query param required", 400)
 
     execute("DELETE FROM categories WHERE c_id=%s AND u_id=%s", (c_id, u_id))
+    invalidate_dashboard_cache(u_id)
     return ok({"deleted": True, "c_id": c_id})

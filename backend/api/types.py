@@ -4,6 +4,7 @@ from middleware.require_api_key import require_api_key
 from middleware.require_session import require_session
 from utils.errors import ok, fail
 from db import execute, execute_returning, fetch_all, fetch_one
+from utils.cache import invalidate_dashboard_cache
 
 
 def _to_int(value, field_name: str):
@@ -53,7 +54,7 @@ def create_type_me():
         """,
         (u_id, c_id, t_name, deff),
     )
-
+    invalidate_dashboard_cache(u_id)
     return ok(row)
 
 
@@ -82,7 +83,7 @@ def create_type():
         """,
         (u_id, c_id, t_name, deff),
     )
-
+    invalidate_dashboard_cache(u_id)
     return ok(row)
 
 
@@ -214,6 +215,7 @@ def update_type(t_id: int):
         "UPDATE types SET t_name=%s, deff=%s WHERE t_id=%s AND u_id=%s",
         (t_name, deff, t_id, u_id),
     )
+    invalidate_dashboard_cache(u_id)
     return ok({"updated": True, "t_id": t_id})
 
 
@@ -225,4 +227,5 @@ def delete_type(t_id: int):
         return fail("u_id query param required", 400)
 
     execute("DELETE FROM types WHERE t_id=%s AND u_id=%s", (t_id, u_id))
+    invalidate_dashboard_cache(u_id)
     return ok({"deleted": True, "t_id": t_id})

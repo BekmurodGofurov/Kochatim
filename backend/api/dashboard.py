@@ -8,9 +8,9 @@ from api import api_bp
 from middleware.require_session import require_session
 from utils.errors import ok
 from db import fetch_one, fetch_all
+from utils.cache import get_cached_dashboard, set_cached_dashboard
 
 # Global Cache & Executor
-result_cache = {}
 # Barcha requestlar uchun bitta pool (max 10 ta thread). 
 # DB_POOL_MAX=20 bo'lsa, 10 ta thread bemalol ishlaydi.
 global_executor = ThreadPoolExecutor(max_workers=10)
@@ -21,10 +21,9 @@ def dashboard_me():
     u_id = g.u_id
 
     # CACHING (60 seconds)
-    cache_key = f"dashboard_{u_id}"
-    cached = result_cache.get(cache_key)
-    if cached and (time.time() - cached["time"] < 60):
-        return ok(cached["data"])
+    cached_data = get_cached_dashboard(u_id)
+    if cached_data:
+        return ok(cached_data)
 
     def get_user():
         return fetch_one(
@@ -117,7 +116,7 @@ def dashboard_me():
         }
 
         # Save to global cache
-        result_cache[cache_key] = {"time": time.time(), "data": response_data}
+        set_cached_dashboard(u_id, response_data)
 
         return ok(response_data)
 

@@ -4,6 +4,7 @@ from middleware.require_api_key import require_api_key
 from middleware.require_session import require_session
 from utils.errors import ok, fail
 from db import fetch_one, execute
+from utils.cache import invalidate_dashboard_cache
 
 @api_bp.get("/seedlings/count")
 @require_api_key
@@ -74,6 +75,7 @@ def seedlings_set():
             (u_id, t_id, q1, q2, q3),
         )
 
+    invalidate_dashboard_cache(u_id)
     return ok({"saved": True})
 
 
