@@ -87,7 +87,7 @@ export default function Sidebar() {
 
       <div className="sidebar__footer">
         <p className="sidebar__plan">Premium Reja</p>
-        <p className="sidebar__version">V1.1.3 build</p>
+        <p className="sidebar__version">V1.2.0 build</p>
       </div>
     </aside>
   );
