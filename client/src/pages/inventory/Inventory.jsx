@@ -47,6 +47,7 @@ export default function Inventory() {
 
   // Modal state
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddTypeModal, setShowAddTypeModal] = useState(false);
 
   // 10s aylanish (guruh card rasmlari)
   const [tick, setTick] = useState(0);
