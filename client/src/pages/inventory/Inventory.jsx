@@ -6,6 +6,7 @@ import Loader from "../../components/loader/Loader";
 import GroupCard from "../../components/groupCard/GroupCard";
 import SortCard from "../../components/sortCard/SortCard";
 import AddGroupModal from "../../components/addGroupModal/AddGroupModal";
+import AddTypeModal from "../../components/addTypeModal/AddTypeModal";
 import { useDashboard } from "../../context/DashboardContext";
 import "./Inventory.scss";
 
