@@ -3,12 +3,17 @@
 /* Add Group Modal & Form */
 .inv-modal__panel--small {
     max-width: 440px;
-    height: auto;
+    height: auto !important;
     max-height: 90vh;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 28px;
+    background: $surface-main;
 }
 
 .inv-modal__form {
-    padding: 0 28px 28px;
+    padding: 0;
+    /* padding is now on the panel */
 }
 
 .inv-form-input {

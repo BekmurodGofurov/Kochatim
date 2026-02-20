@@ -1,7 +1,32 @@
 @use "../../style/variables.scss" as *;
 
 /* Add Type Modal & Form */
-/* Reuse shared styles from Inventory or AddGroupModal if possible, but keep specific ones here */
+
+.inv-modal__panel--small {
+    max-width: 440px;
+    height: auto !important;
+    max-height: 90vh;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 28px;
+    background: $surface-main;
+    overflow-y: auto;
+    position: relative;
+    z-index: 2;
+    border-radius: $radius-card;
+    box-shadow: $shadow-main;
+}
+
+.inv-modal__form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.inv-modal__stats {
+    display: grid;
+    gap: 12px;
+}
 
 .inv-form-input--area {
     resize: none;
@@ -9,14 +34,34 @@
     line-height: 1.4;
 }
 
-/* These should ideally be in a shared component SCSS, but for simplicity we keep them consistent */
-.inv-modal__panel--small {
-    max-width: 440px;
-    height: auto;
-    max-height: 90vh;
+/* Reuse shared look */
+.inv-form-input {
+    width: 100%;
+    padding: 16px;
+    border-radius: $radius-card-sm;
+    background: $surface-row;
+    border: 2px solid transparent;
+    color: $text-strong;
+    font-family: $font-base;
+    font-weight: 700;
+    font-size: 16px;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+
+    &::placeholder {
+        color: $text-muted;
+        font-weight: 500;
+    }
+
+    &:focus {
+        outline: none;
+        border-color: $accent-main;
+        background: $surface-main;
+        box-shadow: $shadow-soft;
+    }
 }
 
-/* Reuse the same look and animation from AddGroupModal.scss */
+/* Animations and mobile adjustments */
 @media (max-width: 768px) {
     .inv-modal__panel--small {
         max-width: 100%;
@@ -24,7 +69,18 @@
         position: fixed;
         bottom: 0;
         border-radius: 24px 24px 0 0;
-        height: auto;
+        height: auto !important;
         animation: invSlideUp 0.3s ease;
+        padding: 24px 20px 40px;
+    }
+}
+
+@keyframes invSlideUp {
+    from {
+        transform: translateY(100%);
+    }
+
+    to {
+        transform: translateY(0);
     }
 }
