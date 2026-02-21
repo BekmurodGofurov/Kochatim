@@ -132,6 +132,17 @@ export default function Inventory() {
     return (selectedGroup.sorts || []).find((s) => Number(s.id) === Number(tId)) || null;
   }, [selectedGroup, tId]);
 
+  // Handle body blur when modal is open
+  useEffect(() => {
+    const isAnyModalOpen = showAddModal || showAddTypeModal || !!selectedSort;
+    if (isAnyModalOpen) {
+      document.body.classList.add("has-modal");
+    } else {
+      document.body.classList.remove("has-modal");
+    }
+    return () => document.body.classList.remove("has-modal");
+  }, [showAddModal, showAddTypeModal, selectedSort]);
+
   if (pageLoading) return <Loader text="Yuklanmoqda..." />;
   if (pageError) return <Loader text={pageError} />;
 
@@ -314,10 +325,6 @@ export default function Inventory() {
                       Number(selectedSort.nav3 || 0)}
                   </div>
                 </div>
-                {/* 
-                <button type="button" className="inv-btn inv-btn--dark">
-                  Tahrirlash
-                </button> */}
               </div>
             </div>
           </div>
