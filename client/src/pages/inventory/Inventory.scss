@@ -236,7 +236,8 @@
 .inv-modal {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: 1000;
+  /* Higher than sidebar (99) */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -291,6 +292,13 @@
 .inv-modal__media {
   width: 100%;
   background: #000;
+}
+
+/* Add Group Modal & Form */
+.inv-modal__panel--small {
+  max-width: 400px;
+  /* Reduced from 440px */
+  height: auto !important;
 }
 
 @media (min-width: 768px) {
