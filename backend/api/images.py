@@ -7,6 +7,7 @@ from config import Config
 from middleware.require_api_key import require_api_key
 from utils.errors import ok, fail
 from db import fetch_one, execute
+from utils.images_v2 import process_image_input
 
 TELEGRAM_API = "https://api.telegram.org"
 
@@ -19,10 +20,13 @@ def add_img():
     """
     data = request.get_json(silent=True) or {}
     t_id = data.get("t_id")
-    i_url = data.get("i_url")
+    i_url_raw = data.get("i_url")
 
-    if not t_id or not i_url:
+    if not t_id or not i_url_raw:
         return fail("t_id and i_url required", 400)
+
+    # Smart convert (Telegram ID -> ImgBB URL)
+    i_url = process_image_input(i_url_raw)
 
     try:
         t_id_int = int(t_id)

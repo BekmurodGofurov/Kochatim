@@ -5,6 +5,7 @@ from middleware.require_session import require_session
 from utils.errors import ok, fail
 from db import execute, execute_returning, fetch_all, fetch_one
 from utils.cache import invalidate_dashboard_cache
+from utils.images_v2 import process_image_input
 
 
 def _to_int(value, field_name: str):
@@ -36,6 +37,9 @@ def create_type_me():
     t_name = (data.get("t_name") or "").strip()
     deff = (data.get("deff") or "").strip() or None
 
+    image_url_raw = data.get("image_url")
+    image_url = process_image_input(image_url_raw)
+
     if not c_id:
         return fail("c_id(int) required", 400)
     if not t_name:
@@ -54,6 +58,15 @@ def create_type_me():
         """,
         (u_id, c_id, t_name, deff),
     )
+    if not row:
+        return fail("Nav saqlashda xatloik", 500)
+
+    t_id = row["t_id"]
+
+    # If image_url provided, save it
+    if image_url:
+        execute("INSERT INTO img (t_id, i_url) VALUES (%s, %s)", (t_id, image_url))
+
     invalidate_dashboard_cache(u_id)
     return ok(row)
 
