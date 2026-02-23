@@ -69,17 +69,17 @@
     display: block;
     width: 100%;
     aspect-ratio: 16 / 9;
-    border: 2px dashed v.$border-main;
-    border-radius: v.$radius-card-sm;
-    background: v.$surface-soft;
+    border: 2px dashed $border-main;
+    border-radius: $radius-card-sm;
+    background: $surface-soft;
     cursor: pointer;
     overflow: hidden;
     position: relative;
     transition: all 0.2s ease;
 
     &:hover {
-        border-color: v.$accent-main;
-        background: v.$surface-row-active;
+        border-color: $accent-main;
+        background: $surface-row-active;
     }
 }
 
@@ -98,7 +98,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: v.$text-muted;
+    color: $text-muted;
     font-weight: 600;
     font-size: 14px;
     text-align: center;
