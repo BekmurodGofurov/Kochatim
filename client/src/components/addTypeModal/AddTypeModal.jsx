@@ -22,32 +22,26 @@ export default function AddTypeModal({ cId, onClose, onSuccess }) {
         }
     };
 
-    const uploadToImgBB = async (file) => {
-        const apiKey = import.meta.env.VITE_IMGBB_API_KEY || "YOUR_IMGBB_API_KEY";
-        const formData = new FormData();
-        formData.append("image", file);
-
-        const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
-            method: "POST",
-            body: formData,
-        });
-
-        const data = await response.json();
-        if (data.success) {
-            return data.data.url;
-        } else {
-            throw new Error("Rasm yuklashda xatolik yuz berdi");
-        }
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!typeName.trim() || !description.trim() || !image || isSubmitting) return;
 
         setIsSubmitting(true);
         try {
-            // 1. Upload image
-            const imageUrl = await uploadToImgBB(image);
+            // 1. Upload image to backend (which handles ImgBB)
+            const uploadFormData = new FormData();
+            uploadFormData.append("image", image);
+
+            const uploadRes = await apiFetch("/api/img/upload", {
+                method: "POST",
+                body: uploadFormData,
+            });
+
+            if (!uploadRes || !uploadRes.url) {
+                throw new Error("Rasm yuklashda xatolik yuz berdi");
+            }
+
+            const imageUrl = uploadRes.url;
 
             // 2. Save type
             await apiFetch("/api/types/me", {

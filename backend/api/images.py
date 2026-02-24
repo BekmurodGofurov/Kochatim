@@ -43,6 +43,30 @@ def add_img():
     return ok({"saved": True})
 
 
+@api_bp.post("/img/upload")
+@require_api_key
+def upload_img_direct():
+    """
+    Website: POST /api/img/upload (form-data)
+    """
+    if 'image' not in request.files:
+        return fail("No image file", 400)
+    
+    file = request.files['image']
+    if file.filename == '':
+        return fail("No selected file", 400)
+
+    from utils.images_v2 import upload_to_imgbb
+    
+    img_content = file.read()
+    url = upload_to_imgbb(img_content)
+    
+    if not url:
+        return fail("Upload to ImgBB failed", 500)
+        
+    return ok({"url": url})
+
+
 @api_bp.get("/img/by-type")
 @require_api_key
 def get_img_by_type():
