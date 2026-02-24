@@ -96,7 +96,7 @@ export default function Inventory() {
           nav2: q.q2,
           nav3: q.q3,
           images,
-          description: t?.deff || t?.description || t?.t_desc || "",
+          description: t?.deff || t?.description || t?.t_desc || t?.t_deff || "",
           updated_at: q.updated_at || t?.updated_at || null,
           added_at: q.added_at || t?.added_at || null,
         };

@@ -15,7 +15,7 @@ export default function SortCard({ sort, toWebImgUrl, onClick }) {
       </div>
 
       <div className="inv-sortCard__body">
-        <h3 className="inv-sortCard__title" title={sort.name}>
+        <h3 className="inv-sortCard__title" title={`${sort.name}${sort.description ? ' - ' + sort.description : ''}`}>
           {sort.name}
         </h3>
 
