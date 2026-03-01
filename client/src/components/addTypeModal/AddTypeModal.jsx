@@ -55,7 +55,11 @@ export default function AddTypeModal({ cId, onClose, onSuccess }) {
             });
             onSuccess?.();
         } catch (err) {
-            alert(err.message || "Nav qo'shishda xatolik yuz berdi");
+            if (err.status === 401 || err.code === "UNAUTHORIZED") {
+                alert("Sessiya muddati tugagan. Iltimos, sahifani yangilang va qayta kiring.");
+            } else {
+                alert(err.message || "Nav qo'shishda xatolik yuz berdi");
+            }
         } finally {
             setIsSubmitting(false);
         }

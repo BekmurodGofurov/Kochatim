@@ -20,7 +20,11 @@ export default function AddGroupModal({ onClose, onSuccess }) {
             setNewGroupName("");
             onSuccess?.();
         } catch (err) {
-            alert(err.message || "Guruh qo'shishda xatolik yuz berdi");
+            if (err.status === 401 || err.code === "UNAUTHORIZED") {
+                alert("Sessiya muddati tugagan. Iltimos, sahifani yangilang va qayta kiring.");
+            } else {
+                alert(err.message || "Guruh qo'shishda xatolik yuz berdi");
+            }
         } finally {
             setIsSubmitting(false);
         }

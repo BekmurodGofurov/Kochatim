@@ -7,6 +7,7 @@ from config import Config
 from middleware.require_api_key import require_api_key
 from utils.errors import ok, fail
 from db import fetch_one, execute
+from middleware.require_session import require_session
 from utils.images_v2 import process_image_input
 
 TELEGRAM_API = "https://api.telegram.org"
@@ -44,7 +45,7 @@ def add_img():
 
 
 @api_bp.post("/img/upload")
-@require_api_key
+@require_session
 def upload_img_direct():
     """
     Website: POST /api/img/upload (form-data)

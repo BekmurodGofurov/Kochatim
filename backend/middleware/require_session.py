@@ -24,7 +24,7 @@ def require_session(fn):
             SELECT u_id
             FROM sessions
             WHERE token_hash=%s
-              AND (expires_at IS NULL OR expires_at > NOW())
+              AND (expires_at IS NULL OR expires_at > (NOW() AT TIME ZONE 'utc'))
             """,
             (token_hash,),
         )
