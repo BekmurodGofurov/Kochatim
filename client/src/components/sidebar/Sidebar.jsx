@@ -87,6 +87,9 @@ export default function Sidebar() {
 
       <div className="sidebar__footer">
         <p className="sidebar__plan">Premium Reja</p>
+        <a href="https://t.me/kochatim_bot" target="_blank" rel="noopener noreferrer" className="sidebar__support">
+          Murojaat uchun: @kochatim_bot
+        </a>
         <p className="sidebar__version">V1.2.0 build</p>
       </div>
     </aside>

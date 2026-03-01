@@ -219,6 +219,19 @@
   color: v.$text-light;
 }
 
+.sidebar__support {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: v.$accent-main;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
 .sidebar__version {
   margin-top: 4px;
   font-size: 10px;
