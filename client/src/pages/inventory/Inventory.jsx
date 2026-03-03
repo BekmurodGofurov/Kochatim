@@ -268,75 +268,141 @@ export default function Inventory() {
 
       {/* ✅ MODAL (URL: /u/:uId/inventory/group/:cId/sort/:tId) */}
       {selectedSort && (
-        <div className="inv-modal" role="dialog" aria-modal="true">
-          <div className="inv-modal__panel">
-            <div className="inv-modal__media">
-              <img src={toWebImgUrl(selectedSort.images?.[0])} alt={selectedSort.name} />
-            </div>
+        <SortDetailModal
+          selectedSort={selectedSort}
+          selectedGroup={selectedGroup}
+          uId={uId}
+          onRefresh={refreshDashboard}
+          onClose={() => navigate(`/u/${uId}/inventory/group/${selectedGroup.id}`)}
+        />
+      )}
+    </div>
+  );
+}
 
-            <div className="inv-modal__body">
-              <div className="inv-modal__top">
-                <h2 className="inv-modal__title">{selectedSort.name}</h2>
-                <button
-                  type="button"
-                  className="inv-modal__close"
-                  onClick={() => navigate(`/u/${uId}/inventory/group/${selectedGroup.id}`)}
-                >
-                  <X size={26} />
-                </button>
-              </div>
+function SortDetailModal({ selectedSort, selectedGroup, uId, onRefresh, onClose }) {
+  const [deltas, setDeltas] = useState({ q1: 0, q2: 0, q3: 0 });
+  const [comment, setComment] = useState("");
+  const [saving, setSaving] = useState(false);
 
-              <div className="inv-modal__accent" />
+  const hasChanges = deltas.q1 !== 0 || deltas.q2 !== 0 || deltas.q3 !== 0;
 
-              <div className="inv-modal__block">
-                <div className="inv-modal__kicker">Sifat bo'yicha zaxira</div>
+  const handleDelta = (field, amount) => {
+    setDeltas((prev) => ({ ...prev, [field]: prev[field] + amount }));
+  };
 
-                <div className="inv-modal__stats">
-                  <div className="inv-stat inv-stat--a">
-                    <div className="inv-stat__label">1-NAV</div>
-                    <div className="inv-stat__value">{selectedSort.nav1} ta</div>
+  const handleSave = async () => {
+    if (!hasChanges) return;
+    setSaving(true);
+    try {
+      const { apiFetch } = await import("../../api/https");
+      await apiFetch("/api/seedlings/update", {
+        method: "POST",
+        body: JSON.stringify({
+          t_id: selectedSort.t_id,
+          change_q1: deltas.q1,
+          change_q2: deltas.q2,
+          change_q3: deltas.q3,
+          comment: comment,
+        }),
+      });
+      onRefresh();
+      onClose();
+    } catch (err) {
+      alert("Xatolik yuz berdi: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="inv-modal" role="dialog" aria-modal="true">
+      <div className="inv-modal__panel">
+        <div className="inv-modal__media">
+          <img src={toWebImgUrl(selectedSort.images?.[0])} alt={selectedSort.name} />
+        </div>
+
+        <div className="inv-modal__body">
+          <div className="inv-modal__top">
+            <h2 className="inv-modal__title">{selectedSort.name}</h2>
+            <button type="button" className="inv-modal__close" onClick={onClose}>
+              <X size={26} />
+            </button>
+          </div>
+
+          <div className="inv-modal__accent" />
+
+          <div className="inv-modal__block">
+            <div className="inv-modal__kicker">Sifat bo'yicha zaxira</div>
+
+            <div className="inv-modal__stats">
+              {[
+                { label: "1-NAV", val: selectedSort.nav1, delta: deltas.q1, key: "q1", color: "a" },
+                { label: "2-NAV", val: selectedSort.nav2, delta: deltas.q2, key: "q2", color: "b" },
+                { label: "3-NAV", val: selectedSort.nav3, delta: deltas.q3, key: "q3", color: "c" },
+              ].map((item) => (
+                <div key={item.key} className={`inv-stat inv-stat--${item.color}`}>
+                  <div className="inv-stat__info">
+                    <div className="inv-stat__label">{item.label}</div>
+                    <div className="inv-stat__value">
+                      {item.val + item.delta} ta
+                      {item.delta !== 0 && (
+                        <span className="inv-stat__delta">
+                          ({item.delta > 0 ? "+" : ""}{item.delta})
+                        </span>
+                      )}
+                    </div>
                   </div>
-
-                  <div className="inv-stat inv-stat--b">
-                    <div className="inv-stat__label">2-NAV</div>
-                    <div className="inv-stat__value">{selectedSort.nav2} ta</div>
-                  </div>
-
-                  <div className="inv-stat inv-stat--c">
-                    <div className="inv-stat__label">3-NAV</div>
-                    <div className="inv-stat__value">{selectedSort.nav3} ta</div>
+                  <div className="inv-stat__controls">
+                    <button onClick={() => handleDelta(item.key, -1)} className="inv-stat__btn">-</button>
+                    <button onClick={() => handleDelta(item.key, 1)} className="inv-stat__btn inv-stat__btn--plus">+</button>
                   </div>
                 </div>
-              </div>
-
-              <div className="inv-modal__block inv-modal__block--grow">
-                <div className="inv-modal__kicker">Nav haqida ma'lumot</div>
-                <p className="inv-modal__text">
-                  {selectedSort.description || "Ushbu nav haqida qo'shimcha ma'lumot mavjud emas."}
-                </p>
-              </div>
-
-              <div className="inv-modal__footer">
-                <div className="inv-modal__total">
-                  <div className="inv-modal__totalLabel">Umumiy soni</div>
-                  <div className="inv-modal__totalValue">
-                    {Number(selectedSort.nav1 || 0) +
-                      Number(selectedSort.nav2 || 0) +
-                      Number(selectedSort.nav3 || 0)}
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
 
-          <button
-            type="button"
-            className="inv-modal__backdrop"
-            onClick={() => navigate(`/u/${uId}/inventory/group/${selectedGroup.id}`)}
-            aria-label="Close modal"
-          />
+          <div className="inv-modal__block inv-modal__block--grow">
+            <div className="inv-modal__kicker">Izoh (majburiy emas)</div>
+            <textarea
+              className="inv-modal__textarea"
+              placeholder="O'zgarish sababini yozing..."
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              disabled={!hasChanges}
+            />
+          </div>
+
+          <div className="inv-modal__footer">
+            <div className="inv-modal__total">
+              <div className="inv-modal__totalLabel">Umumiy soni</div>
+              <div className="inv-modal__totalValue">
+                {Number(selectedSort.nav1 || 0) +
+                  Number(selectedSort.nav2 || 0) +
+                  Number(selectedSort.nav3 || 0) +
+                  deltas.q1 + deltas.q2 + deltas.q3}
+              </div>
+            </div>
+
+            {hasChanges && (
+              <button
+                className={`inv-btn inv-btn--primary inv-btn--save ${saving ? "is-loading" : ""}`}
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving ? "Saqlanmoqda..." : "Saqlash"}
+              </button>
+            )}
+          </div>
         </div>
-      )}
+      </div>
+
+      <button
+        type="button"
+        className="inv-modal__backdrop"
+        onClick={onClose}
+        aria-label="Close modal"
+      />
     </div>
   );
 }

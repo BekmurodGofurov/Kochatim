@@ -94,6 +94,19 @@ def init_db():
     );
     """)
 
+    execute("""
+    CREATE TABLE IF NOT EXISTS seedlings_logs(
+        log_id SERIAL PRIMARY KEY,
+        u_id BIGINT NOT NULL,
+        t_id INTEGER NOT NULL,
+        change_q1 INTEGER DEFAULT 0,
+        change_q2 INTEGER DEFAULT 0,
+        change_q3 INTEGER DEFAULT 0,
+        comment TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+
     # 3) auth tables (OTP + sessions)
     execute("""
     CREATE TABLE IF NOT EXISTS login_codes(

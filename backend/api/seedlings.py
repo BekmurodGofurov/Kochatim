@@ -105,3 +105,52 @@ def seedlings_get_me():
             "quality_3": int(row["quality_3"] or 0),
         }
     )
+@api_bp.post("/seedlings/update")
+@require_session
+def seedlings_update_me():
+    """
+    Website: POST /api/seedlings/update
+    body: {t_id, change_q1, change_q2, change_q3, comment}
+    """
+    u_id = g.u_id
+    data = request.get_json(silent=True) or {}
+    t_id = data.get("t_id")
+
+    if not isinstance(t_id, int):
+        return fail("t_id(int) required", 400)
+
+    cq1 = int(data.get("change_q1", 0) or 0)
+    cq2 = int(data.get("change_q2", 0) or 0)
+    cq3 = int(data.get("change_q3", 0) or 0)
+    comment = data.get("comment", "")
+
+    # 1. Update seedlings table
+    row = fetch_one("SELECT s_id FROM seedlings WHERE u_id=%s AND t_id=%s", (u_id, t_id))
+    if row:
+        execute(
+            """
+            UPDATE seedlings 
+            SET quality_1 = quality_1 + %s, 
+                quality_2 = quality_2 + %s, 
+                quality_3 = quality_3 + %s 
+            WHERE s_id=%s
+            """,
+            (cq1, cq2, cq3, int(row["s_id"])),
+        )
+    else:
+        execute(
+            "INSERT INTO seedlings (u_id, t_id, quality_1, quality_2, quality_3) VALUES (%s, %s, %s, %s, %s)",
+            (u_id, t_id, cq1, cq2, cq3),
+        )
+
+    # 2. Log the change
+    execute(
+        """
+        INSERT INTO seedlings_logs (u_id, t_id, change_q1, change_q2, change_q3, comment)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        """,
+        (u_id, t_id, cq1, cq2, cq3, comment),
+    )
+
+    invalidate_dashboard_cache(u_id)
+    return ok({"saved": True})

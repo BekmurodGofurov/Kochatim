@@ -449,28 +449,54 @@
 
 .inv-modal__footer {
   margin-top: 24px;
+  margin-top: auto;
   padding-top: 24px;
-  border-top: 1px solid $border-main;
-
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 14px;
-}
+  align-items: center;
+  gap: 16px;
 
-.inv-modal__totalLabel {
-  font-size: 11px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  color: $text-light;
-}
+  @media (max-width: 640px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 
-.inv-modal__totalValue {
-  font-size: 34px;
-  font-weight: 900;
-  color: $text-strong;
-  letter-spacing: -0.02em;
+  .inv-modal__total {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    .inv-modal__totalLabel {
+      font-size: 11px;
+      font-weight: 900;
+      color: $text-light; // Assuming 'v.$text-light' refers to '$text-light'
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .inv-modal__totalValue {
+      font-size: 32px;
+      font-weight: 900;
+      color: $text-strong; // Assuming 'v.$text-strong' refers to '$text-strong'
+      line-height: 1;
+    }
+  }
+
+  .inv-btn--save {
+    flex: 1;
+    max-width: 200px;
+    height: 54px;
+    font-size: 16px;
+
+    @media (max-width: 640px) {
+      max-width: none;
+    }
+
+    &.is-loading {
+      opacity: 0.8;
+      cursor: wait;
+    }
+  }
 }
 
 /* Mobile Optimizations */
