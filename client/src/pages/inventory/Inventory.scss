@@ -407,27 +407,69 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+
+  .inv-stat__info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .inv-stat__delta {
+    margin-left: 8px;
+    font-size: 13px;
+    font-weight: 800;
+    color: $accent-main;
+    opacity: 0.9;
+  }
+
+  .inv-stat__controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
 }
 
-.inv-stat__label {
-  font-weight: 800;
+.inv-qbtn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid $border-main;
+  border-radius: 10px;
+  background: $surface-main;
   color: $text-main;
-}
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: $shadow-soft;
 
-.inv-stat__value {
-  font-weight: 900;
-  color: $text-strong;
-  font-size: 18px;
+  &:active {
+    transform: scale(0.92);
+  }
+
+  &--minus:hover {
+    background: rgba($danger-text, 0.1);
+    border-color: $danger-text;
+    color: $danger-text;
+  }
+
+  &--plus:hover {
+    background: rgba($accent-main, 0.1);
+    border-color: $accent-main;
+    color: $accent-main;
+  }
 }
 
 .inv-stat--a {
   border-color: $border-active;
   background: $surface-row-active;
-}
 
-.inv-stat--a .inv-stat__label,
-.inv-stat--a .inv-stat__value {
-  color: $accent-main;
+  .inv-stat__label,
+  .inv-stat__value {
+    color: $accent-main;
+  }
 }
 
 .inv-stat--b {
@@ -447,8 +489,34 @@
   line-height: 1.6;
 }
 
+.inv-modal__textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 16px;
+  border-radius: $radius-card-sm;
+  border: 1px solid $border-main;
+  background: $surface-soft;
+  color: $text-main;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  resize: vertical;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: $accent-main;
+    background: $surface-main;
+    box-shadow: 0 0 0 3px rgba($accent-main, 0.15);
+  }
+
+  &:required:invalid:focus {
+    border-color: $danger-text;
+  }
+}
+
 .inv-modal__footer {
-  margin-top: 24px;
   margin-top: auto;
   padding-top: 24px;
   display: flex;
@@ -469,7 +537,7 @@
     .inv-modal__totalLabel {
       font-size: 11px;
       font-weight: 900;
-      color: $text-light; // Assuming 'v.$text-light' refers to '$text-light'
+      color: $text-light;
       text-transform: uppercase;
       letter-spacing: 0.1em;
     }
@@ -477,7 +545,7 @@
     .inv-modal__totalValue {
       font-size: 32px;
       font-weight: 900;
-      color: $text-strong; // Assuming 'v.$text-strong' refers to '$text-strong'
+      color: $text-strong;
       line-height: 1;
     }
   }
@@ -495,6 +563,12 @@
     &.is-loading {
       opacity: 0.8;
       cursor: wait;
+    }
+
+    &:disabled:not(.is-loading) {
+      opacity: 0.5;
+      cursor: not-allowed;
+      filter: grayscale(1);
     }
   }
 }

@@ -286,6 +286,7 @@ function SortDetailModal({ selectedSort, selectedGroup, uId, onRefresh, onClose 
   const [saving, setSaving] = useState(false);
 
   const hasChanges = deltas.q1 !== 0 || deltas.q2 !== 0 || deltas.q3 !== 0;
+  const isSubtracting = deltas.q1 < 0 || deltas.q2 < 0 || deltas.q3 < 0;
 
   const handleDelta = (field, amount) => {
     setDeltas((prev) => ({ ...prev, [field]: prev[field] + amount }));
@@ -298,13 +299,13 @@ function SortDetailModal({ selectedSort, selectedGroup, uId, onRefresh, onClose 
       const { apiFetch } = await import("../../api/https");
       await apiFetch("/api/seedlings/update", {
         method: "POST",
-        body: JSON.stringify({
+        body: {
           t_id: selectedSort.t_id,
           change_q1: deltas.q1,
           change_q2: deltas.q2,
           change_q3: deltas.q3,
           comment: comment,
-        }),
+        },
       });
       onRefresh();
       onClose();
@@ -354,24 +355,33 @@ function SortDetailModal({ selectedSort, selectedGroup, uId, onRefresh, onClose 
                     </div>
                   </div>
                   <div className="inv-stat__controls">
-                    <button onClick={() => handleDelta(item.key, -1)} className="inv-stat__btn">-</button>
-                    <button onClick={() => handleDelta(item.key, 1)} className="inv-stat__btn inv-stat__btn--plus">+</button>
+                    <QuantityButton onClick={() => handleDelta(item.key, -1)} type="minus" />
+                    <QuantityButton onClick={() => handleDelta(item.key, 1)} type="plus" />
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="inv-modal__block inv-modal__block--grow">
-            <div className="inv-modal__kicker">Izoh (majburiy emas)</div>
-            <textarea
-              className="inv-modal__textarea"
-              placeholder="O'zgarish sababini yozing..."
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              disabled={!hasChanges}
-            />
-          </div>
+          {isSubtracting && (
+            <div className="inv-modal__block inv-modal__block--grow">
+              <div className="inv-modal__kicker">Izoh (majburiy)</div>
+              <textarea
+                className="inv-modal__textarea"
+                placeholder="Nega ayrilayotganini yozing (masalan: buzilgan yoki sotilgan)..."
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                required
+              />
+            </div>
+          )}
+
+          {!isSubtracting && selectedSort.description && (
+            <div className="inv-modal__block inv-modal__block--grow">
+              <div className="inv-modal__kicker">Nav haqida ma'lumot</div>
+              <p className="inv-modal__text">{selectedSort.description}</p>
+            </div>
+          )}
 
           <div className="inv-modal__footer">
             <div className="inv-modal__total">
@@ -388,7 +398,7 @@ function SortDetailModal({ selectedSort, selectedGroup, uId, onRefresh, onClose 
               <button
                 className={`inv-btn inv-btn--primary inv-btn--save ${saving ? "is-loading" : ""}`}
                 onClick={handleSave}
-                disabled={saving}
+                disabled={saving || (isSubtracting && !comment.trim())}
               >
                 {saving ? "Saqlanmoqda..." : "Saqlash"}
               </button>
@@ -404,5 +414,18 @@ function SortDetailModal({ selectedSort, selectedGroup, uId, onRefresh, onClose 
         aria-label="Close modal"
       />
     </div>
+  );
+}
+
+function QuantityButton({ onClick, type }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inv-qbtn inv-qbtn--${type}`}
+      title={type === "plus" ? "Qo'shish" : "Ayirish"}
+    >
+      {type === "plus" ? "+" : "-"}
+    </button>
   );
 }
