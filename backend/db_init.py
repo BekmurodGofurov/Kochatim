@@ -102,6 +102,7 @@ def init_db():
         change_q1 INTEGER DEFAULT 0,
         change_q2 INTEGER DEFAULT 0,
         change_q3 INTEGER DEFAULT 0,
+        price REAL DEFAULT 0,
         comment TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );

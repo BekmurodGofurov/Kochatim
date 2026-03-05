@@ -144,12 +144,13 @@ def seedlings_update_me():
         )
 
     # 2. Log the change
+    price = data.get("price", 0)
     execute(
         """
-        INSERT INTO seedlings_logs (u_id, t_id, change_q1, change_q2, change_q3, comment)
-        VALUES (%s, %s, %s, %s, %s, %s)
+        INSERT INTO seedlings_logs (u_id, t_id, change_q1, change_q2, change_q3, price, comment)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         """,
-        (u_id, t_id, cq1, cq2, cq3, comment),
+        (u_id, t_id, cq1, cq2, cq3, price, comment),
     )
 
     invalidate_dashboard_cache(u_id)

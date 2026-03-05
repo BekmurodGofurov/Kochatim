@@ -282,7 +282,7 @@ export default function Inventory() {
 
 function SortDetailModal({ selectedSort, selectedGroup, uId, onRefresh, onClose }) {
   const [deltas, setDeltas] = useState({ q1: 0, q2: 0, q3: 0 });
-  const [comment, setComment] = useState("");
+  const [price, setPrice] = useState("");
   const [saving, setSaving] = useState(false);
 
   const hasChanges = deltas.q1 !== 0 || deltas.q2 !== 0 || deltas.q3 !== 0;
@@ -304,7 +304,7 @@ function SortDetailModal({ selectedSort, selectedGroup, uId, onRefresh, onClose 
           change_q1: deltas.q1,
           change_q2: deltas.q2,
           change_q3: deltas.q3,
-          comment: comment,
+          price: Number(price) || 0,
         },
       });
       onRefresh();
@@ -365,12 +365,13 @@ function SortDetailModal({ selectedSort, selectedGroup, uId, onRefresh, onClose 
 
           {isSubtracting && (
             <div className="inv-modal__block inv-modal__block--grow">
-              <div className="inv-modal__kicker">Izoh (majburiy)</div>
-              <textarea
-                className="inv-modal__textarea"
-                placeholder="Nega ayrilayotganini yozing (masalan: buzilgan yoki sotilgan)..."
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
+              <div className="inv-modal__kicker">Sotuv summasi (majburiy)</div>
+              <input
+                type="number"
+                className="inv-modal__input"
+                placeholder="Necha pulga sotilganini yozing (masalan: 150000)..."
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
                 required
               />
             </div>
@@ -398,7 +399,7 @@ function SortDetailModal({ selectedSort, selectedGroup, uId, onRefresh, onClose 
               <button
                 className={`inv-btn inv-btn--primary inv-btn--save ${saving ? "is-loading" : ""}`}
                 onClick={handleSave}
-                disabled={saving || (isSubtracting && !comment.trim())}
+                disabled={saving || (isSubtracting && (!price || Number(price) <= 0))}
               >
                 {saving ? "Saqlanmoqda..." : "Saqlash"}
               </button>

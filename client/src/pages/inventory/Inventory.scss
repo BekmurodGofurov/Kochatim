@@ -489,9 +489,9 @@
   line-height: 1.6;
 }
 
+.inv-modal__input,
 .inv-modal__textarea {
   width: 100%;
-  min-height: 100px;
   padding: 16px;
   border-radius: $radius-card-sm;
   border: 1px solid $border-main;
@@ -499,8 +499,7 @@
   color: $text-main;
   font-family: inherit;
   font-size: 14px;
-  font-weight: 500;
-  resize: vertical;
+  font-weight: 600;
   transition: all 0.2s ease;
   box-sizing: border-box;
 
@@ -514,6 +513,16 @@
   &:required:invalid:focus {
     border-color: $danger-text;
   }
+}
+
+.inv-modal__input {
+  height: 54px;
+  font-size: 18px;
+}
+
+.inv-modal__textarea {
+  min-height: 100px;
+  resize: vertical;
 }
 
 .inv-modal__footer {
