@@ -3,10 +3,10 @@ import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor
 
-from flask import g
+from flask import g, request
 from api import api_bp
 from middleware.require_session import require_session
-from utils.errors import ok
+from utils.errors import ok, fail
 from db import fetch_one, fetch_all
 from utils.cache import get_cached_dashboard, set_cached_dashboard
 
@@ -126,3 +126,65 @@ def dashboard_me():
         # Xatoni foydalanuvchiga qaytarmasdan 500 beradi (Flask default), 
         # yoki bu yerda raise qilib logsga yozdik.
         raise e
+
+
+@api_bp.get("/users/<int:u_id>/dashboard")
+def dashboard_user(u_id: int):
+    """
+    Public read-only dashboard for a user (bog'bon profili uchun).
+    """
+    # no caching here (partners view can be larger & less frequent)
+    user = fetch_one(
+        "SELECT u_id, u_name, u_phone, u_username, u_age, u_photo, added_at FROM users WHERE u_id=%s",
+        (u_id,),
+    )
+    if not user:
+        return fail("User not found", 404, code="NOT_FOUND")
+    categories = fetch_all(
+        "SELECT c_id, c_name FROM categories WHERE u_id=%s ORDER BY c_id DESC",
+        (u_id,),
+    )
+    types = fetch_all(
+        """
+        SELECT
+            t.t_id,
+            t.c_id,
+            c.c_name,
+            t.t_name,
+            t.deff,
+            t.updated_at,
+            t.added_at,
+            img.i_url
+        FROM types t
+        LEFT JOIN categories c ON c.c_id = t.c_id
+        LEFT JOIN LATERAL (
+            SELECT i_url
+            FROM img
+            WHERE t_id = t.t_id
+            ORDER BY i_id DESC
+            LIMIT 1
+        ) img ON TRUE
+        WHERE t.u_id=%s
+        ORDER BY t.t_id DESC
+        """,
+        (u_id,),
+    )
+    seedlings = fetch_all(
+        """
+        SELECT s.t_id, t.t_name, s.quality_1, s.quality_2, s.quality_3, s.updated_at, s.added_at
+        FROM seedlings s
+        LEFT JOIN types t ON t.t_id = s.t_id
+        WHERE s.u_id=%s
+        ORDER BY s.s_id DESC
+        """,
+        (u_id,),
+    )
+
+    return ok(
+        {
+            "user": user,
+            "categories": categories,
+            "types": types,
+            "seedlings": seedlings,
+        }
+    )

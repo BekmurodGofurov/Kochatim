@@ -10,6 +10,7 @@ class Config:
     DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
     API_KEY = os.getenv("API_KEY", "").strip()
     BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
+    TG_BOT_USERNAME = os.getenv("TG_BOT_USERNAME", "").strip().lstrip("@")
     IMGBB_API_KEY = os.getenv("IMGBB_API_KEY", "").strip()
 
     OTP_TTL_SECONDS = int(os.getenv("OTP_TTL_SECONDS", "120"))

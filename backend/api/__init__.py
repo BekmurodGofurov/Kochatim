@@ -11,3 +11,4 @@ from api import seedlings  # noqa: F401
 from api import sales  # noqa: F401
 from api import images  # noqa: F401  <- MUHIM
 from api import dashboard  # noqa: F401
+from api import partners  # noqa: F401

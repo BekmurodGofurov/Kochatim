@@ -61,3 +61,19 @@ async def ensure_user(
 
 async def get_user(u_id: int):
     return await _request("GET", f"/api/users/{u_id}")
+
+
+async def partners_accept(token: str, u_id: int):
+    return await _request(
+        "POST",
+        "/api/partners/accept",
+        json={"token": token, "u_id": int(u_id)},
+    )
+
+
+async def partners_decline(token: str, u_id: int):
+    return await _request(
+        "POST",
+        "/api/partners/decline",
+        json={"token": token, "u_id": int(u_id)},
+    )

@@ -129,6 +129,16 @@ def init_db():
     );
     """)
 
+    # 3.1) partners (hamkorlar) - symmetric relation (A<->B as two rows)
+    execute("""
+    CREATE TABLE IF NOT EXISTS partners(
+        u_id BIGINT NOT NULL,
+        p_id BIGINT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (u_id, p_id)
+    );
+    """)
+
     # 4) triggers for updated_at
     for table in ("users", "categories", "types", "seedlings", "img"):
         execute(f"DROP TRIGGER IF EXISTS update_{table}_modtime ON {table};")
@@ -152,3 +162,5 @@ def init_db():
     execute("CREATE INDEX IF NOT EXISTS idx_img_lookup ON img (t_id, i_id DESC);")
     execute("CREATE INDEX IF NOT EXISTS idx_types_lookup ON types (u_id, t_id DESC);")
     execute("CREATE INDEX IF NOT EXISTS idx_sessions_u_id ON sessions (u_id);")
+    execute("CREATE INDEX IF NOT EXISTS idx_partners_u_id ON partners (u_id);")
+    execute("CREATE INDEX IF NOT EXISTS idx_partners_p_id ON partners (p_id);")

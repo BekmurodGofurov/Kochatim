@@ -1,13 +1,38 @@
-import React from "react";
-import { Link } from "react-router-dom";
-import { ArrowRight, Leaf, Shield, Zap } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight, Leaf, Shield, Zap, Search } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
+import { apiFetch, getSessionToken } from "../../api/https";
 import Header from "../../components/header/Header";
 import "./Home.scss";
 
 export default function Home() {
     const { theme } = useTheme();
-    const isLoggedIn = !!localStorage.getItem("session_token");
+    const navigate = useNavigate();
+    const isLoggedIn = !!getSessionToken();
+
+    const [q, setQ] = useState("");
+    const [gardeners, setGardeners] = useState([]);
+    const [loadingGardeners, setLoadingGardeners] = useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+        const t = setTimeout(async () => {
+            setLoadingGardeners(true);
+            try {
+                const rows = await apiFetch(`/api/gardeners?q=${encodeURIComponent(q)}&limit=8`);
+                if (!cancelled) setGardeners(Array.isArray(rows) ? rows : []);
+            } catch {
+                if (!cancelled) setGardeners([]);
+            } finally {
+                if (!cancelled) setLoadingGardeners(false);
+            }
+        }, 250);
+        return () => {
+            cancelled = true;
+            clearTimeout(t);
+        };
+    }, [q]);
 
     return (
         <div className={`home-page ${theme}-mode`}>
@@ -35,6 +60,44 @@ export default function Home() {
                                         Boshqaruv paneli
                                     </Link>
                                 </>
+                            )}
+                        </div>
+                    </div>
+                </section>
+
+                <section className="gardeners">
+                    <div className="container">
+                        <div className="gardeners-head">
+                            <h2>Bog‘bonlar</h2>
+                            <p>Faol bog‘bonlarni toping va profilini ko‘ring.</p>
+                        </div>
+
+                        <div className="gardeners-search">
+                            <Search size={18} />
+                            <input
+                                value={q}
+                                onChange={(e) => setQ(e.target.value)}
+                                placeholder="Bog‘bon ID yoki ism bilan qidiring..."
+                            />
+                            {loadingGardeners && <span className="gardeners-loading">...</span>}
+                        </div>
+
+                        <div className="gardeners-grid">
+                            {(gardeners || []).map((g) => (
+                                <button
+                                    key={g.u_id}
+                                    type="button"
+                                    className="gardener-card"
+                                    onClick={() => navigate(`/gardeners/${g.u_id}`)}
+                                >
+                                    <div className="gardener-title">{g.u_name || g.u_id}</div>
+                                    <div className="gardener-sub">
+                                        {g.u_username ? `@${g.u_username}` : "—"} • {g.u_id}
+                                    </div>
+                                </button>
+                            ))}
+                            {(!loadingGardeners && gardeners.length === 0) && (
+                                <div className="gardeners-empty">Hech narsa topilmadi.</div>
                             )}
                         </div>
                     </div>

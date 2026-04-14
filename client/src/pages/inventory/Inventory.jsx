@@ -8,6 +8,7 @@ import SortCard from "../../components/sortCard/SortCard";
 import AddGroupModal from "../../components/addGroupModal/AddGroupModal";
 import AddTypeModal from "../../components/addTypeModal/AddTypeModal";
 import { useDashboard } from "../../context/DashboardContext";
+import { apiFetch } from "../../api/https";
 import "./Inventory.scss";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://api.kochatim.uz";
@@ -34,6 +35,61 @@ function pickImagesFromType(t) {
   return one ? [one] : [];
 }
 
+function buildGroupsFromDashboard(dashboard) {
+  if (!dashboard) return [];
+
+  const cats = dashboard.categories || [];
+  const types = dashboard.types || [];
+  const seedlings = dashboard.seedlings || [];
+
+  const seedMap = new Map();
+  for (const s of seedlings) {
+    seedMap.set(Number(s.t_id), {
+      q1: Number(s.quality_1 || 0),
+      q2: Number(s.quality_2 || 0),
+      q3: Number(s.quality_3 || 0),
+      updated_at: s.updated_at || null,
+      added_at: s.added_at || null,
+    });
+  }
+
+  return cats.map((c) => {
+    const c_id = Number(c.c_id);
+    const c_name = String(c.c_name || "");
+    const myTypes = types.filter((t) => Number(t.c_id) === c_id);
+
+    const sorts = myTypes.map((t) => {
+      const t_id = Number(t.t_id);
+      const name = String(t.t_name || "");
+      const q = seedMap.get(t_id) || { q1: 0, q2: 0, q3: 0 };
+      const images = pickImagesFromType(t);
+      return {
+        id: t_id,
+        t_id,
+        name,
+        nav1: q.q1,
+        nav2: q.q2,
+        nav3: q.q3,
+        images,
+        description: t?.deff || t?.description || t?.t_desc || t?.t_deff || "",
+        updated_at: q.updated_at || t?.updated_at || null,
+        added_at: q.added_at || t?.added_at || null,
+      };
+    });
+
+    const totalValue = sorts.reduce((sum, x) => sum + (x.nav1 || 0) + (x.nav2 || 0) + (x.nav3 || 0), 0);
+    const groupImages = sorts.flatMap((s) => (Array.isArray(s.images) ? s.images : [])).filter(Boolean);
+
+    return {
+      id: c_id,
+      groupName: c_name,
+      totalValue,
+      sorts,
+      groupImages,
+    };
+  });
+}
+
 export default function Inventory() {
   const navigate = useNavigate();
   const params = useParams();
@@ -49,6 +105,45 @@ export default function Inventory() {
   // Modal state
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAddTypeModal, setShowAddTypeModal] = useState(false);
+  const [searchQ, setSearchQ] = useState("");
+
+  // Partners dashboards (read-only)
+  const [partners, setPartners] = useState([]);
+  const [partnerDash, setPartnerDash] = useState([]); // [{ partner, groups }]
+  const [partnersLoading, setPartnersLoading] = useState(false);
+
+  useEffect(() => {
+    // load partners only in groups view to avoid heavy loading
+    if (cId) return;
+    let cancelled = false;
+    (async () => {
+      setPartnersLoading(true);
+      try {
+        const p = await apiFetch("/api/partners");
+        if (cancelled) return;
+        const arr = Array.isArray(p) ? p : [];
+        setPartners(arr);
+
+        const dashboards = await Promise.all(
+          arr.map(async (partner) => {
+            const d = await apiFetch(`/api/users/${partner.u_id}/dashboard`);
+            return { partner, groups: buildGroupsFromDashboard(d) };
+          })
+        );
+        if (!cancelled) setPartnerDash(dashboards);
+      } catch {
+        if (!cancelled) {
+          setPartners([]);
+          setPartnerDash([]);
+        }
+      } finally {
+        if (!cancelled) setPartnersLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [cId]);
 
   // 10s aylanish (guruh card rasmlari)
   const [tick, setTick] = useState(0);
@@ -59,67 +154,40 @@ export default function Inventory() {
 
   // Backend -> Inventory UI format
   const groups = useMemo(() => {
-    if (!dashboard) return [];
-
-    const cats = dashboard.categories || [];
-    const types = dashboard.types || [];
-    const seedlings = dashboard.seedlings || [];
-
-    const seedMap = new Map();
-    for (const s of seedlings) {
-      seedMap.set(Number(s.t_id), {
-        q1: Number(s.quality_1 || 0),
-        q2: Number(s.quality_2 || 0),
-        q3: Number(s.quality_3 || 0),
-        updated_at: s.updated_at || null,
-        added_at: s.added_at || null,
-      });
-    }
-
-    return cats.map((c) => {
-      const c_id = Number(c.c_id);
-      const c_name = String(c.c_name || "");
-      const myTypes = types.filter((t) => Number(t.c_id) === c_id);
-
-      const sorts = myTypes.map((t) => {
-        const t_id = Number(t.t_id);
-        const name = String(t.t_name || "");
-        const q = seedMap.get(t_id) || { q1: 0, q2: 0, q3: 0 };
-
-        const images = pickImagesFromType(t);
-
-        return {
-          id: t_id,
-          t_id,
-          name,
-          nav1: q.q1,
-          nav2: q.q2,
-          nav3: q.q3,
-          images,
-          description: t?.deff || t?.description || t?.t_desc || t?.t_deff || "",
-          updated_at: q.updated_at || t?.updated_at || null,
-          added_at: q.added_at || t?.added_at || null,
-        };
-      });
-
-      const totalValue = sorts.reduce(
-        (sum, x) => sum + (x.nav1 || 0) + (x.nav2 || 0) + (x.nav3 || 0),
-        0
-      );
-
-      const groupImages = sorts
-        .flatMap((s) => (Array.isArray(s.images) ? s.images : []))
-        .filter(Boolean);
-
-      return {
-        id: c_id,
-        groupName: c_name,
-        totalValue,
-        sorts,
-        groupImages,
-      };
-    });
+    return buildGroupsFromDashboard(dashboard);
   }, [dashboard]);
+
+  const normalizedQuery = searchQ.trim().toLowerCase();
+  const filterGroups = (arr) => {
+    if (!normalizedQuery) return arr;
+    return (arr || []).filter((g) => {
+      const gName = String(g.groupName || "").toLowerCase();
+      if (gName.includes(normalizedQuery)) return true;
+      // match any type inside group
+      return (g.sorts || []).some((s) => String(s.name || "").toLowerCase().includes(normalizedQuery));
+    });
+  };
+
+  const groupsFiltered = useMemo(() => filterGroups(groups), [groups, normalizedQuery]);
+  const partnerDashFiltered = useMemo(() => {
+    if (!normalizedQuery) return partnerDash;
+    return partnerDash
+      .map((x) => ({
+        ...x,
+        groups: filterGroups(x.groups),
+      }))
+      .filter((x) => {
+        const pName = String(x.partner?.u_name || "").toLowerCase();
+        const pUser = String(x.partner?.u_username || "").toLowerCase();
+        const pId = String(x.partner?.u_id || "");
+        return (
+          x.groups.length > 0 ||
+          pName.includes(normalizedQuery) ||
+          pUser.includes(normalizedQuery) ||
+          pId.includes(normalizedQuery)
+        );
+      });
+  }, [partnerDash, normalizedQuery]);
 
   // URL params bo‘yicha tanlangan group/sort topish
   const selectedGroup = useMemo(() => {
@@ -181,8 +249,17 @@ export default function Inventory() {
           <div className="inv-section__line" />
         </div>
 
+        <div className="inv-searchRow">
+          <input
+            className="inv-searchInput"
+            value={searchQ}
+            onChange={(e) => setSearchQ(e.target.value)}
+            placeholder="Guruh, nav yoki hamkor ismi bo‘yicha qidirish..."
+          />
+        </div>
+
         <div className="inv-grid inv-grid--groups">
-          {groups.map((group, idx) => (
+          {groupsFiltered.map((group, idx) => (
             <GroupCard
               key={group.id}
               group={group}
@@ -192,6 +269,48 @@ export default function Inventory() {
               onClick={() => navigate(`/u/${uId}/inventory/group/${group.id}`)}
             />
           ))}
+        </div>
+
+        <div className="inv-partners">
+          <div className="inv-section">
+            <h2 className="inv-section__title">Hamkorlar</h2>
+            <div className="inv-section__line" />
+          </div>
+
+          {partnersLoading ? (
+            <div className="inv-partners__muted">Yuklanmoqda...</div>
+          ) : partnerDashFiltered.length === 0 ? (
+            <div className="inv-partners__muted">Hamkorlar topilmadi.</div>
+          ) : (
+            partnerDashFiltered.map((pd, pIdx) => (
+              <div key={pd.partner.u_id} className="inv-partnerBlock">
+                <div className="inv-partnerBlock__head">
+                  <div className="inv-partnerBlock__name">
+                    {pd.partner.u_name || pd.partner.u_id}
+                  </div>
+                  <button
+                    type="button"
+                    className="inv-partnerBlock__open"
+                    onClick={() => navigate(`/gardeners/${pd.partner.u_id}`)}
+                  >
+                    Profil
+                  </button>
+                </div>
+                <div className="inv-grid inv-grid--groups inv-grid--partners">
+                  {pd.groups.map((g, idx) => (
+                    <GroupCard
+                      key={`${pd.partner.u_id}-${g.id}`}
+                      group={g}
+                      index={idx + pIdx * 100}
+                      tick={tick}
+                      toWebImgUrl={toWebImgUrl}
+                      onClick={() => navigate(`/gardeners/${pd.partner.u_id}/group/${g.id}`)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     );

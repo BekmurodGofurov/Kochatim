@@ -6,6 +6,7 @@ from loader import dp
 from api_client import ensure_user, get_user
 from data.database import get_all_cat, get_all_types_for_user
 from keyboards.default.main_keyboards import contact_kb, get_main_menu
+from .partners import _kb as partner_invite_kb
 
 
 @dp.message_handler(CommandStart())
@@ -43,6 +44,18 @@ async def bot_start(message: types.Message):
         )
         print(f"[START] total {(time.perf_counter() - t0) * 1000:.0f}ms (need phone)")
         return
+
+    # Deep-link payload: partner invite
+    # /start partner_<token>
+    if message.get_args():
+        args = message.get_args().strip()
+        if args.startswith("partner_"):
+            token = args[len("partner_"):]
+            await message.answer(
+                "Sizni hamkorlikka chaqirishdi.\nRozimisiz?",
+                reply_markup=partner_invite_kb(token),
+            )
+            return
 
     # 3) Dinamik menu
     cats = await get_all_cat(u.id)

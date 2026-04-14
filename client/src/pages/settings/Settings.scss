@@ -278,6 +278,247 @@
     }
   }
 
+  /* Partners */
+  .partnersCard {
+    padding: 24px;
+    font-size: 14px;
+
+    .partnersHeader {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 18px;
+
+      .partnersIcon {
+        color: $accent-main;
+      }
+
+      .partnersTitle {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 900;
+        color: $text-strong;
+      }
+    }
+
+    .partnersBody {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+
+      .partnersList {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+
+        .muted {
+          color: $text-muted;
+          font-weight: 650;
+          padding: 10px 2px;
+        }
+
+        .partnerRow {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 14px 16px;
+          border-radius: $radius-card-sm;
+          border: 1px solid $border-main;
+          background: $surface-row;
+
+          .partnerLeft {
+            min-width: 0;
+          }
+
+          .partnerName {
+            font-weight: 900;
+            color: $text-strong;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+
+          .partnerSub {
+            margin-top: 2px;
+            font-size: 12px;
+            color: $text-muted;
+            font-weight: 650;
+          }
+
+          .partnerActions {
+            display: flex;
+            gap: 8px;
+          }
+
+          .iconBtn {
+            width: 40px;
+            height: 40px;
+            border-radius: $radius-pill;
+            border: 1px solid $border-main;
+            background: $surface-soft;
+            color: $text-main;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+
+            &:hover {
+              border-color: $border-active;
+            }
+
+            &.danger {
+              color: $danger-text;
+              background: $danger-soft;
+              border-color: transparent;
+
+              &:hover {
+                background: $danger-main;
+                color: $surface-main;
+              }
+            }
+          }
+        }
+      }
+
+      .addPartnerBtn {
+        width: 100%;
+        padding: 14px 0;
+        border: 1px solid $border-main;
+        border-radius: $radius-card-sm;
+        background: $surface-soft;
+        color: $text-main;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        font-size: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover:not(:disabled) {
+          border-color: $border-active;
+          box-shadow: $shadow-soft;
+          color: $accent-main;
+        }
+
+        &:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+      }
+    }
+  }
+
+  .addPartnerModal {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+  }
+
+  .addPartnerBackdrop {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background: rgba(15, 23, 42, 0.72);
+    backdrop-filter: blur(4px);
+    cursor: pointer;
+  }
+
+  .addPartnerPanel {
+    position: relative;
+    z-index: 2;
+    width: min(560px, 100%);
+    background: $surface-main;
+    border: 1px solid $border-main;
+    border-radius: $radius-card-md;
+    box-shadow: $shadow-main;
+    padding: 18px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    .addPartnerTitle {
+      font-weight: 900;
+      color: $text-strong;
+      font-size: 18px;
+    }
+
+    .addPartnerText {
+      color: $text-muted;
+      font-weight: 650;
+      line-height: 1.45;
+    }
+
+    .monoBox {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        "Liberation Mono", "Courier New", monospace;
+      background: $surface-soft;
+      padding: 10px;
+      border-radius: $radius-card-sm;
+      border: 1px solid $border-main;
+      color: $text-main;
+      font-weight: 650;
+      word-break: break-all;
+    }
+
+    .addPartnerActions {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 4px;
+
+      @media (min-width: 520px) {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+
+      .copyBtn,
+      .shareBtn,
+      .closeBtn {
+        height: 44px;
+        border-radius: $radius-card-sm;
+        border: 1px solid $border-main;
+        background: $surface-soft;
+        color: $text-main;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-size: 11px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+      }
+
+      .copyBtn:hover:not(:disabled),
+      .shareBtn:hover:not(:disabled),
+      .closeBtn:hover {
+        border-color: $border-active;
+        box-shadow: $shadow-soft;
+      }
+
+      .copyBtn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .shareBtn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+  }
+
   /* Logout */
   .logoutButton {
     width: 100%;
