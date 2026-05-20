@@ -8,10 +8,8 @@ import SortCard from "../../components/sortCard/SortCard";
 import AddGroupModal from "../../components/addGroupModal/AddGroupModal";
 import AddTypeModal from "../../components/addTypeModal/AddTypeModal";
 import { useDashboard } from "../../context/DashboardContext";
-import { apiFetch } from "../../api/https";
+import { apiFetch, API_BASE } from "../../api/https";
 import "./Inventory.scss";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://api.kochatim.uz";
 
 
 function toWebImgUrl(raw) {

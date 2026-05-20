@@ -5,11 +5,9 @@ import { ArrowLeft, User, X } from "lucide-react";
 import Loader from "../../components/loader/Loader";
 import GroupCard from "../../components/groupCard/GroupCard";
 import SortCard from "../../components/sortCard/SortCard";
-import { apiFetch } from "../../api/https";
+import { apiFetch, API_BASE } from "../../api/https";
 import Header from "../../components/header/Header";
 import "./Gardener.scss";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://api.kochatim.uz";
 
 function toWebImgUrl(raw) {
   if (!raw) return "";

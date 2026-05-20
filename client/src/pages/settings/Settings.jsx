@@ -5,12 +5,9 @@ import { User, Shield, Bot, Smartphone, LogOut, Info, Moon, Sun, Link2, Trash2, 
 import Loader from "../../components/loader/Loader.jsx";
 import { useDashboard } from "../../context/DashboardContext";
 import { useTheme } from "../../context/ThemeContext";
-import { apiFetch, getSessionToken } from "../../api/https";
+import { apiFetch, getSessionToken, API_BASE } from "../../api/https";
 import { useNavigate } from "react-router-dom";
 import "./Settings.scss";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://api.kochatim.uz";
-const BOT_USERNAME_FALLBACK = (import.meta.env.VITE_TG_BOT_USERNAME || "").replace(/^@/, "");
 
 function formatDate(value) {
   if (!value) return "-";
@@ -46,7 +43,7 @@ export default function Settings() {
 
   const inviteLink = useMemo(() => {
     if (!inviteToken) return "";
-    const u = (botUsername || BOT_USERNAME_FALLBACK || "").trim();
+    const u = botUsername.trim();
     if (!u) return "";
     return `https://t.me/${u}?start=partner_${inviteToken}`;
   }, [inviteToken, botUsername]);
@@ -260,7 +257,13 @@ export default function Settings() {
                     Quyidagi linkni Telegram’da hamkorga yuboring. U linkni bosib, botda “Qabul qilaman” desa hamkor bo‘ladi.
                   </div>
                   <div className="monoBox">
-                    {inviteLoading ? "Yuklanmoqda..." : (inviteLink || "Bot username sozlanmagan (TG_BOT_USERNAME)")}
+                    {inviteLoading
+                      ? "Yuklanmoqda..."
+                      : inviteLink
+                        ? inviteLink
+                        : !inviteToken
+                          ? "Yuklanmoqda..."
+                          : "Bot username backend'da sozlanmagan (TG_BOT_USERNAME)"}
                   </div>
 
                   <div className="addPartnerActions">

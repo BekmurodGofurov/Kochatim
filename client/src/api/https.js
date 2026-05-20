@@ -1,10 +1,17 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://api.kochatim.uz";
+export const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+
+if (!API_BASE) {
+  console.error("[CONFIG] VITE_API_BASE_URL muhit o'zgaruvchisi sozlanmagan! client/.env faylini tekshiring.");
+}
 
 export function getSessionToken() {
   return localStorage.getItem("session_token") || "";
 }
 
 export async function apiFetch(path, { method = "GET", body, headers } = {}) {
+  if (!API_BASE) {
+    throw new Error("VITE_API_BASE_URL sozlanmagan. client/.env faylini tekshiring.");
+  }
   const token = getSessionToken();
 
   const isFormData = body instanceof FormData;

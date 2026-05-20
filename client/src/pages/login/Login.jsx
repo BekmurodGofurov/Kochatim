@@ -1,11 +1,10 @@
 // src/pages/login/Login.jsx
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../context/ThemeContext";
+import { apiFetch } from "../../api/https";
 import Header from "../../components/header/Header";
 import "./Login.scss";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://api.kochatim.uz";
 
 export default function Login() {
   const [userId, setUserId] = useState("");
@@ -24,23 +23,14 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/auth/user-id-login`, {
+      const data = await apiFetch("/auth/user-id-login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ u_id: userId }),
+        body: { u_id: Number(userId) },
       });
-
-      const data = await res.json().catch(() => null);
-
-      if (!data?.ok) {
-        setError(data?.error?.message || "Foydalanuvchi topilmadi. Botga /start bering.");
-        return;
-      }
-
-      localStorage.setItem("session_token", data.data.session_token);
+      localStorage.setItem("session_token", data.session_token);
       navigate("/dashboard", { replace: true });
-    } catch {
-      setError("Server bilan bog‘lanib bo‘lmadi");
+    } catch (err) {
+      setError(err.message || "Foydalanuvchi topilmadi. Botga /start bering.");
     } finally {
       setLoading(false);
     }

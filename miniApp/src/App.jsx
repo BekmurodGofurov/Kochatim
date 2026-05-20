@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import './App.scss';
 
-// Backend URL - Load from env or default
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.kochatim.uz';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+if (!API_BASE_URL) {
+    console.error("[CONFIG] VITE_API_BASE_URL muhit o'zgaruvchisi sozlanmagan!");
+}
 
 export default function App() {
     const [user, setUser] = useState(null);
