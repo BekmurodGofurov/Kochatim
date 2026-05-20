@@ -9,6 +9,14 @@ from utils.errors import ok, fail
 from extensions import init_pool
 from db_init import init_db
 
+_ALLOWED_ORIGINS = {
+    "https://kochatim.uz",
+    "https://www.kochatim.uz",
+    "https://app.kochatim.uz",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+}
+
 from auth import auth_bp
 from api import api_bp
 
@@ -42,11 +50,17 @@ def create_app() -> Flask:
 
 app = create_app()
 
+def _cors_origin(request_origin: str) -> str:
+    if request_origin in _ALLOWED_ORIGINS:
+        return request_origin
+    return "null"
+
+
 @app.before_request
 def _cors_preflight():
     if request.method == "OPTIONS":
         resp = make_response("", 204)
-        origin = request.headers.get("Origin", "*")
+        origin = _cors_origin(request.headers.get("Origin", ""))
         resp.headers["Access-Control-Allow-Origin"] = origin
         resp.headers["Vary"] = "Origin"
         resp.headers["Access-Control-Allow-Credentials"] = "true"
@@ -57,7 +71,7 @@ def _cors_preflight():
 
 @app.after_request
 def _add_cors_headers(resp):
-    origin = request.headers.get("Origin", "*")
+    origin = _cors_origin(request.headers.get("Origin", ""))
     resp.headers["Access-Control-Allow-Origin"] = origin
     resp.headers["Vary"] = "Origin"
     resp.headers["Access-Control-Allow-Credentials"] = "true"

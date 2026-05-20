@@ -10,7 +10,7 @@ import TransactionCard from "../../components/transaction-card/TransactionCard";
 
 import "./Sales.scss";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://api.kochatim.uz";
 
 const PIE_COLORS = ["#16a34a", "#2563eb", "#f59e0b", "#db2777", "#8b5cf6", "#06b6d4"];
 

@@ -43,21 +43,33 @@ async def sale_type(message: Message, state: FSMContext):
 
 @dp.message_handler(state=sale_state.q1)
 async def sale_q1(message: Message, state: FSMContext):
-    await state.update_data(q1=int(message.text))
+    try:
+        await state.update_data(q1=int(message.text))
+    except ValueError:
+        await message.answer("Iltimos faqat raqam kiriting. 1-navdan necha dona?")
+        return
     await message.answer("2-navdan necha dona sotildi?")
     await sale_state.q2.set()
 
 
 @dp.message_handler(state=sale_state.q2)
 async def sale_q2(message: Message, state: FSMContext):
-    await state.update_data(q2=int(message.text))
+    try:
+        await state.update_data(q2=int(message.text))
+    except ValueError:
+        await message.answer("Iltimos faqat raqam kiriting. 2-navdan necha dona?")
+        return
     await message.answer("3-navdan necha dona sotildi?")
     await sale_state.q3.set()
 
 
 @dp.message_handler(state=sale_state.q3)
 async def sale_q3(message: Message, state: FSMContext):
-    await state.update_data(q3=int(message.text))
+    try:
+        await state.update_data(q3=int(message.text))
+    except ValueError:
+        await message.answer("Iltimos faqat raqam kiriting. 3-navdan necha dona?")
+        return
     await message.answer("Umumiy qanchaga sotildi (narxi)?")
     await sale_state.price.set()
 

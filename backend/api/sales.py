@@ -4,7 +4,7 @@ from api import api_bp
 from middleware.require_api_key import require_api_key
 from middleware.require_session import require_session
 from utils.errors import ok, fail
-from db import execute, fetch_all
+from db import execute, fetch_all, fetch_one
 from utils.cache import invalidate_dashboard_cache
 
 
@@ -34,6 +34,30 @@ def add_sale():
         price = int(price)
     except Exception:
         return fail("price(int) required", 400)
+
+    # Ownership: t_id va c_id bu u_id ga tegishli ekanligini tekshirish
+    owner_row = fetch_one(
+        "SELECT t_id FROM types WHERE t_id=%s AND c_id=%s AND u_id=%s",
+        (t_id, c_id, u_id),
+    )
+    if not owner_row:
+        return fail("Type not found for this user/category", 404, code="NOT_FOUND")
+
+    # Manfiy inventar: yetarli miqdor borligini tekshirish
+    stock = fetch_one(
+        "SELECT quality_1, quality_2, quality_3 FROM seedlings WHERE u_id=%s AND t_id=%s",
+        (u_id, t_id),
+    )
+    if stock:
+        cur1 = int(stock.get("quality_1") or 0)
+        cur2 = int(stock.get("quality_2") or 0)
+        cur3 = int(stock.get("quality_3") or 0)
+        if cur1 - q1 < 0 or cur2 - q2 < 0 or cur3 - q3 < 0:
+            return fail(
+                f"Yetarli ko'chat yo'q. Mavjud: q1={cur1}, q2={cur2}, q3={cur3}",
+                400,
+                code="INSUFFICIENT_STOCK",
+            )
 
     execute(
         "INSERT INTO sales (u_id,c_id,t_id,q1_sold,q2_sold,q3_sold,price) VALUES (%s,%s,%s,%s,%s,%s,%s)",

@@ -139,11 +139,10 @@ def init_db():
     );
     """)
 
-    # 4) triggers for updated_at
+    # 4) triggers for updated_at (CREATE OR REPLACE avoids DROP+CREATE on every startup)
     for table in ("users", "categories", "types", "seedlings", "img"):
-        execute(f"DROP TRIGGER IF EXISTS update_{table}_modtime ON {table};")
         execute(f"""
-        CREATE TRIGGER update_{table}_modtime
+        CREATE OR REPLACE TRIGGER update_{table}_modtime
         BEFORE UPDATE ON {table}
         FOR EACH ROW
         EXECUTE PROCEDURE update_modified_column();

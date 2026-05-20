@@ -5,7 +5,7 @@ import { useTheme } from "../../context/ThemeContext";
 import Header from "../../components/header/Header";
 import "./Login.scss";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://api.kochatim.uz";
 
 export default function Login() {
   const [userId, setUserId] = useState("");

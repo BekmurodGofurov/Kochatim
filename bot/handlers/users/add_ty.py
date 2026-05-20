@@ -5,7 +5,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemo
 
 from loader import dp
 from data.database import get_all_cat, get_all_types_for_user, get_cat_id, new_ty, add_new_img
-from keyboards.default.main_keyboards import cat_keyboard, get_main_menu
+from keyboards.default.main_keyboards import cat_keyboard, get_main_menu, main_manu
 
 
 ST_ADD_TY_CAT = "add_ty:cat"

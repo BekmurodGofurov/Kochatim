@@ -6,12 +6,14 @@ from db import execute, fetch_one
 from utils.errors import ok, fail
 from utils.security import generate_otp_6, sha256_hex, generate_token
 from utils.time import utc_in_seconds, utcnow, naive_utc
+from middleware.require_api_key import require_api_key
 
 
 @auth_bp.post("/request-code")
+@require_api_key
 def request_code():
     """
-    Bot chaqiradi (xohlasangiz keyin bu route'ga ham API key qo'shasiz).
+    Bot chaqiradi (X-API-KEY header talab qilinadi).
     body: { u_id, u_name, u_username?, u_phone?, u_age? }
     return: { code, expires_in }
     """

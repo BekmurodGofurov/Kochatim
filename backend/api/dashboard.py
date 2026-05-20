@@ -9,11 +9,11 @@ from middleware.require_session import require_session
 from utils.errors import ok, fail
 from db import fetch_one, fetch_all
 from utils.cache import get_cached_dashboard, set_cached_dashboard
+from config import Config
 
-# Global Cache & Executor
-# Barcha requestlar uchun bitta pool (max 10 ta thread). 
-# DB_POOL_MAX=20 bo'lsa, 10 ta thread bemalol ishlaydi.
-global_executor = ThreadPoolExecutor(max_workers=10)
+# Dashboard uchun bitta executor — max_workers DB pool hajmidan oshmasin
+_EXECUTOR_WORKERS = max(2, Config.DB_POOL_MAX // 2)
+global_executor = ThreadPoolExecutor(max_workers=_EXECUTOR_WORKERS)
 
 @api_bp.get("/me/dashboard")
 @require_session

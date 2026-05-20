@@ -9,7 +9,7 @@ import { apiFetch, getSessionToken } from "../../api/https";
 import { useNavigate } from "react-router-dom";
 import "./Settings.scss";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://api.kochatim.uz";
 const BOT_USERNAME_FALLBACK = (import.meta.env.VITE_TG_BOT_USERNAME || "").replace(/^@/, "");
 
 function formatDate(value) {

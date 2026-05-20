@@ -125,19 +125,34 @@ def seedlings_update_me():
     comment = data.get("comment", "")
 
     # 1. Update seedlings table
-    row = fetch_one("SELECT s_id FROM seedlings WHERE u_id=%s AND t_id=%s", (u_id, t_id))
+    row = fetch_one(
+        "SELECT s_id, quality_1, quality_2, quality_3 FROM seedlings WHERE u_id=%s AND t_id=%s",
+        (u_id, t_id),
+    )
     if row:
+        new1 = int(row.get("quality_1") or 0) + cq1
+        new2 = int(row.get("quality_2") or 0) + cq2
+        new3 = int(row.get("quality_3") or 0) + cq3
+        if new1 < 0 or new2 < 0 or new3 < 0:
+            return fail(
+                f"Ko'chat soni manfiy bo'lmaydi. Mavjud: q1={int(row.get('quality_1') or 0)}, "
+                f"q2={int(row.get('quality_2') or 0)}, q3={int(row.get('quality_3') or 0)}",
+                400,
+                code="INSUFFICIENT_STOCK",
+            )
         execute(
             """
-            UPDATE seedlings 
-            SET quality_1 = quality_1 + %s, 
-                quality_2 = quality_2 + %s, 
-                quality_3 = quality_3 + %s 
+            UPDATE seedlings
+            SET quality_1 = quality_1 + %s,
+                quality_2 = quality_2 + %s,
+                quality_3 = quality_3 + %s
             WHERE s_id=%s
             """,
             (cq1, cq2, cq3, int(row["s_id"])),
         )
     else:
+        if cq1 < 0 or cq2 < 0 or cq3 < 0:
+            return fail("Ko'chat soni manfiy bo'lmaydi", 400, code="INSUFFICIENT_STOCK")
         execute(
             "INSERT INTO seedlings (u_id, t_id, quality_1, quality_2, quality_3) VALUES (%s, %s, %s, %s, %s)",
             (u_id, t_id, cq1, cq2, cq3),
