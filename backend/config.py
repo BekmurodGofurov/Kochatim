@@ -2,8 +2,8 @@
 import os
 from dotenv import load_dotenv
 
-# .env ni har doim yuklash (backend papkadan ishga tushsa ham, snippet bo'lsa ham)
-load_dotenv()
+# __file__ orqali .env ni har doim to'g'ri papkadan topadi
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 
 class Config:
