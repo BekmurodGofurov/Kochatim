@@ -77,3 +77,23 @@ async def partners_decline(token: str, u_id: int):
         "/api/partners/decline",
         json={"token": token, "u_id": int(u_id)},
     )
+
+
+async def request_login_code(
+    u_id: int,
+    u_name: Optional[str],
+    u_username: Optional[str],
+    u_phone: Optional[str] = None,
+    u_age: Optional[int] = None,
+):
+    return await _request(
+        "POST",
+        "/auth/request-code",
+        json={
+            "u_id": u_id,
+            "u_name": u_name,
+            "u_username": u_username,
+            "u_phone": u_phone,
+            "u_age": u_age,
+        },
+    )

@@ -80,34 +80,39 @@
     letter-spacing: 0.05em;
   }
 
-  &__input {
-    width: 100%;
-    box-sizing: border-box;
-    text-align: center;
-
-    padding: 14px 16px;
-    border-radius: $radius-card-sm;
-    border: 1px solid $border-strong;
-    background: $surface-soft;
-
-    font-size: 15px;
-    font-weight: 700;
-    color: $text-strong;
-
-    outline: none;
+  &__otp-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
     margin-bottom: 16px;
+  }
 
-    transition: all 0.2s ease;
+  &__otp-box {
+    width: 48px;
+    height: 56px;
+    text-align: center;
+    font-size: 22px;
+    font-weight: 900;
+    color: $text-strong;
+    background: $surface-soft;
+    border: 2px solid $border-strong;
+    border-radius: $radius-card-sm;
+    caret-color: transparent;
+    outline: none;
+    transition: all 0.15s ease;
 
     &:focus {
       border-color: $accent-main;
       background: $surface-main;
-      box-shadow: 0 0 0 4px $accent-subtle;
+      box-shadow: 0 0 0 3px $accent-subtle;
     }
 
-    &::placeholder {
-      color: $text-light;
-      font-weight: 500;
+    &.filled {
+      border-color: $accent-main;
+    }
+
+    &:disabled {
+      opacity: 0.6;
     }
   }
 
