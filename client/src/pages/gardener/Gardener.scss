@@ -1,5 +1,8 @@
 @use "../../style/variables" as *;
 
+/* TEMP: Bog'bon profil sahifasi vaqtincha yashirilgan */
+.gardenerPage { display: none !important; }
+
 .gardenerPage {
   padding: 24px;
   font-family: $font-base;
