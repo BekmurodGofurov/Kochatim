@@ -39,6 +39,7 @@ async def bot_start(message: types.Message, state: FSMContext):
     # Deep-link tekshiruvi — phone gate DAN OLDIN
     partner_token = None
     args = message.get_args().strip()
+    print(f"[START] args raw={repr(args)} len={len(args)}")
     if args.startswith("partner_"):
         partner_token = args[len("partner_"):]
 
