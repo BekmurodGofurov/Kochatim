@@ -139,6 +139,17 @@ def init_db():
     );
     """)
 
+    # 3.2) partner_invites — short token (Telegram deep-link safe)
+    execute("""
+    CREATE TABLE IF NOT EXISTS partner_invites(
+        token VARCHAR(32) PRIMARY KEY,
+        inviter_u_id BIGINT NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        used_at TIMESTAMP DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+
     # 4) triggers for updated_at (CREATE OR REPLACE avoids DROP+CREATE on every startup)
     for table in ("users", "categories", "types", "seedlings", "img"):
         execute(f"""

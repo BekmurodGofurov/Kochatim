@@ -27,6 +27,11 @@ def generate_otp_6() -> str:
     return f"{secrets.randbelow(1_000_000):06d}"
 
 
+def generate_invite_token() -> str:
+    """Telegram deep-link uchun xavfsiz token: faqat [A-Za-z0-9_-], 24 belgi."""
+    return secrets.token_urlsafe(18)
+
+
 def safe_equal(a: str, b: str) -> bool:
     return hmac.compare_digest(a.encode("utf-8"), b.encode("utf-8"))
 
