@@ -1,14 +1,30 @@
 # backend/api/sessions.py
-from flask import g
+from flask import g, request
 from api import api_bp
 from middleware.require_session import require_session
 from db import fetch_all, execute, fetch_one
 from utils.errors import ok, fail
+from utils.device import parse_device, get_city, get_client_ip
 
 
 @api_bp.get("/sessions")
 @require_session
 def list_sessions():
+    # Joriy session uchun device ma'lumotlari bo'sh bo'lsa — hozirgi so'rovdan to'ldiramiz
+    cur = fetch_one(
+        "SELECT device_name, ip_address FROM sessions WHERE token_hash = %s",
+        (g.token_hash,),
+    )
+    if cur and not (cur.get("device_name") or "").strip():
+        ua = request.headers.get("User-Agent", "")
+        ip = get_client_ip(request)
+        device_name = parse_device(ua)
+        city = get_city(ip)
+        execute(
+            "UPDATE sessions SET device_name=%s, ip_address=%s, city=%s WHERE token_hash=%s",
+            (device_name, ip, city, g.token_hash),
+        )
+
     rows = fetch_all(
         """
         SELECT session_id, device_name, city, ip_address, created_at, token_hash

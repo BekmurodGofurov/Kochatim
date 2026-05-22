@@ -388,7 +388,7 @@ export default function Settings() {
                           {s.is_current && <span className="currentBadge">Joriy</span>}
                         </div>
                         <div className="deviceSub">
-                          {formatDate(s.created_at)}
+                          <span>{formatDate(s.created_at)}</span>
                           {s.ip_address && <span className="deviceIp">IP: {s.ip_address}</span>}
                         </div>
                       </div>
