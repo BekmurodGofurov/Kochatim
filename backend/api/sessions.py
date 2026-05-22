@@ -11,7 +11,7 @@ from utils.errors import ok, fail
 def list_sessions():
     rows = fetch_all(
         """
-        SELECT session_id, device_name, city, created_at, token_hash
+        SELECT session_id, device_name, city, ip_address, created_at, token_hash
         FROM sessions
         WHERE u_id = %s
           AND (expires_at IS NULL OR expires_at > (NOW() AT TIME ZONE 'utc'))
@@ -26,6 +26,7 @@ def list_sessions():
             "session_id": r["session_id"],
             "device_name": r["device_name"] or "",
             "city": r["city"] or "",
+            "ip_address": r["ip_address"] or "",
             "created_at": r["created_at"].isoformat() if r["created_at"] else None,
             "is_current": r["token_hash"] == current_hash,
         })

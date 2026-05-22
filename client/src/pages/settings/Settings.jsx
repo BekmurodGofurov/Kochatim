@@ -1,6 +1,13 @@
 // src/pages/Settings.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { User, Shield, Smartphone, LogOut, Info, Moon, Sun, Link2, Trash2, ExternalLink, Plus, Monitor } from "lucide-react";
+import { User, Shield, Smartphone, Tablet, LogOut, Info, Moon, Sun, Link2, Trash2, ExternalLink, Plus, Monitor } from "lucide-react";
+
+function getDeviceType(deviceName) {
+  if (!deviceName) return "desktop";
+  if (deviceName.includes("iPad") || deviceName.includes("Tablet")) return "tablet";
+  if (deviceName.includes("iPhone") || deviceName.includes("Android")) return "mobile";
+  return "desktop";
+}
 
 import Loader from "../../components/loader/Loader.jsx";
 import { useDashboard } from "../../context/DashboardContext";
@@ -369,17 +376,21 @@ export default function Settings() {
             ) : (
               sessions.map((s) => {
                 const label = [s.device_name || "Browser", s.city].filter(Boolean).join("  ");
-                const isDesktop = ["macOS", "Windows", "Linux"].includes(s.device_name);
+                const dtype = getDeviceType(s.device_name);
+                const DeviceIcon = dtype === "tablet" ? Tablet : dtype === "mobile" ? Smartphone : Monitor;
                 return (
                   <div key={s.session_id} className="deviceRow">
                     <div className="deviceLeft">
-                      {isDesktop ? <Monitor size={18} className="deviceTypeIcon" /> : <Smartphone size={18} className="deviceTypeIcon" />}
+                      <DeviceIcon size={18} className="deviceTypeIcon" />
                       <div className="deviceInfo">
                         <div className="deviceName">
                           {label}
                           {s.is_current && <span className="currentBadge">Joriy</span>}
                         </div>
-                        <div className="deviceSub">{formatDate(s.created_at)}</div>
+                        <div className="deviceSub">
+                          {formatDate(s.created_at)}
+                          {s.ip_address && <span className="deviceIp">IP: {s.ip_address}</span>}
+                        </div>
                       </div>
                     </div>
                     {!s.is_current && (
