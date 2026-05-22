@@ -178,22 +178,22 @@
     }
   }
 
-  /* Bot card */
-  .botCard {
+  /* Devices card */
+  .devicesCard {
     padding: 24px;
     font-size: 14px;
 
-    .botHeader {
+    .devicesHeader {
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 24px;
+      margin-bottom: 16px;
 
-      .botIcon {
+      .devicesIcon {
         color: $accent-main;
       }
 
-      .botTitle {
+      .devicesTitle {
         margin: 0;
         font-size: 18px;
         font-weight: 900;
@@ -201,79 +201,124 @@
       }
     }
 
-    .botContent {
+    .toggleRow {
+      padding: 14px 20px;
+      background: $surface-row;
+      border-radius: $radius-card-sm;
+      color: $text-main;
+      margin-bottom: 12px;
+
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid transparent;
+      transition: all 0.2s ease;
+
+      &:hover {
+        border-color: $border-main;
+      }
+
+      .toggleLabel {
+        font-weight: 700;
+      }
+
+      .toggleState {
+        font-weight: 900;
+        font-size: 11px;
+        text-transform: uppercase;
+        color: $accent-main;
+      }
+    }
+
+    .devicesList {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 8px;
 
-      .metaLabel {
-        color: $text-light;
-        font-size: 11px;
-        font-weight: 900;
-        margin-bottom: 4px;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
+      .muted {
+        color: $text-muted;
+        font-weight: 650;
+        padding: 8px 2px;
       }
 
-      .monoBox {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-          "Liberation Mono", "Courier New", monospace;
-        background: $surface-soft;
-        padding: 10px;
+      .deviceRow {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 14px;
         border-radius: $radius-card-sm;
         border: 1px solid $border-main;
-        color: $text-main;
-        font-weight: 600;
-      }
-
-      .toggleRow {
-        padding: 14px 20px;
         background: $surface-row;
-        border-radius: $radius-card-sm;
-        color: $text-main;
 
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border: 1px solid transparent;
-        transition: all 0.2s ease;
+        .deviceLeft {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-width: 0;
 
-        &:hover {
-          border-color: $border-main;
+          .deviceTypeIcon {
+            color: $text-muted;
+            flex-shrink: 0;
+          }
+
+          .deviceInfo {
+            min-width: 0;
+
+            .deviceName {
+              font-weight: 800;
+              color: $text-strong;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              flex-wrap: wrap;
+
+              .currentBadge {
+                background: $accent-main;
+                color: $surface-main;
+                padding: 2px 8px;
+                border-radius: $radius-pill;
+                font-size: 10px;
+                font-weight: 900;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+              }
+            }
+
+            .deviceSub {
+              margin-top: 2px;
+              font-size: 12px;
+              color: $text-muted;
+              font-weight: 650;
+            }
+          }
         }
 
-        .toggleLabel {
-          font-weight: 700;
+        .iconBtn {
+          width: 36px;
+          height: 36px;
+          flex-shrink: 0;
+          border-radius: $radius-pill;
+          border: 1px solid $border-main;
+          background: $surface-soft;
+          color: $text-main;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s ease;
+
+          &.danger {
+            color: $danger-text;
+            background: $danger-soft;
+            border-color: transparent;
+
+            &:hover {
+              background: $danger-main;
+              color: $surface-main;
+            }
+          }
         }
-
-        .toggleState {
-          font-weight: 900;
-          font-size: 11px;
-          text-transform: uppercase;
-          color: $accent-main;
-        }
-      }
-
-      .disabledButton {
-        width: 100%;
-        padding: 14px 0;
-        border: none;
-        border-radius: $radius-card-sm;
-
-        background: $surface-row;
-        color: $text-light;
-
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        font-size: 12px;
-
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-
-        cursor: not-allowed;
       }
     }
   }

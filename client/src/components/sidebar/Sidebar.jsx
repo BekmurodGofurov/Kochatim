@@ -90,7 +90,7 @@ export default function Sidebar() {
         <a href="https://t.me/kochatim_bot" target="_blank" rel="noopener noreferrer" className="sidebar__support">
           Murojaat uchun: @kochatim_bot
         </a>
-        <p className="sidebar__version">V1.2.0 build</p>
+        <p className="sidebar__version">V2.2.0 build</p>
       </div>
     </aside>
   );

@@ -32,6 +32,7 @@ def require_session(fn):
             return fail("Unauthorized", 401, code="UNAUTHORIZED")
 
         g.u_id = int(sess["u_id"])
+        g.token_hash = token_hash
         return fn(*args, **kwargs)
 
     return wrapper

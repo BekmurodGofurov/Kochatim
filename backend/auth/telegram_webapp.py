@@ -2,10 +2,32 @@
 from flask import request
 from auth import auth_bp
 from config import Config
-from db import execute, fetch_one
+from db import execute, fetch_one, fetch_all
 from utils.errors import ok, fail
 from utils.security import telegram_webapp_verify, parse_telegram_user, generate_token, sha256_hex
 from utils.time import utc_in_seconds, naive_utc
+from utils.device import parse_device, get_city, get_client_ip
+
+_MAX_SESSIONS = 3
+
+
+def _insert_session(token_hash, u_id, expires_at, user_agent="", ip=""):
+    device_name = parse_device(user_agent)
+    city = get_city(ip)
+    execute(
+        "INSERT INTO sessions (token_hash, u_id, expires_at, device_name, ip_address, city) VALUES (%s, %s, %s, %s, %s, %s)",
+        (token_hash, u_id, expires_at, device_name, ip, city),
+    )
+    rows = fetch_all(
+        "SELECT token_hash FROM sessions WHERE u_id=%s ORDER BY created_at DESC",
+        (u_id,),
+    )
+    if len(rows) > _MAX_SESSIONS:
+        keep = [r["token_hash"] for r in rows[:_MAX_SESSIONS]]
+        execute(
+            "DELETE FROM sessions WHERE u_id=%s AND token_hash <> ALL(%s)",
+            (u_id, keep),
+        )
 
 
 @auth_bp.post("/telegram-webapp")
@@ -41,10 +63,9 @@ def telegram_webapp_login():
     token_hash = sha256_hex(token)
     expires_at = naive_utc(utc_in_seconds(Config.SESSION_TTL_SECONDS))
 
-    execute(
-        "INSERT INTO sessions (token_hash, u_id, expires_at) VALUES (%s, %s, %s)",
-        (token_hash, u_id, expires_at),
-    )
+    ua = request.headers.get("User-Agent", "")
+    ip = get_client_ip(request)
+    _insert_session(token_hash, u_id, expires_at, ua, ip)
 
     # Foydalanuvchi ma'lumotlarini tekshirish
     user = fetch_one("SELECT u_phone FROM users WHERE u_id=%s", (u_id,))

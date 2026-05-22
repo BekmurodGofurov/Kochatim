@@ -1,6 +1,6 @@
 // src/pages/Settings.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { User, Shield, Bot, Smartphone, LogOut, Info, Moon, Sun, Link2, Trash2, ExternalLink, Plus } from "lucide-react";
+import { User, Shield, Smartphone, LogOut, Info, Moon, Sun, Link2, Trash2, ExternalLink, Plus, Monitor } from "lucide-react";
 
 import Loader from "../../components/loader/Loader.jsx";
 import { useDashboard } from "../../context/DashboardContext";
@@ -42,6 +42,9 @@ export default function Settings() {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [copyToast, setCopyToast] = useState(false);
 
+  const [sessions, setSessions] = useState([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+
   const inviteLink = useMemo(() => {
     if (!inviteToken) return "";
     const u = botUsername.trim();
@@ -54,23 +57,30 @@ export default function Settings() {
     let cancelled = false;
     (async () => {
       setPartnersLoading(true);
+      setSessionsLoading(true);
       try {
-        const [p, tok] = await Promise.all([
+        const [p, tok, sess] = await Promise.all([
           apiFetch("/api/partners"),
           apiFetch("/api/partners/invite-token"),
+          apiFetch("/api/sessions"),
         ]);
         if (cancelled) return;
         setPartners(Array.isArray(p) ? p : []);
         setInviteToken(tok?.token || "");
         setBotUsername((tok?.bot_username || "").replace(/^@/, ""));
+        setSessions(Array.isArray(sess) ? sess : []);
       } catch (e) {
         if (!cancelled) {
           setPartners([]);
           setInviteToken("");
           setBotUsername("");
+          setSessions([]);
         }
       } finally {
-        if (!cancelled) setPartnersLoading(false);
+        if (!cancelled) {
+          setPartnersLoading(false);
+          setSessionsLoading(false);
+        }
       }
     })();
     return () => {
@@ -334,37 +344,66 @@ export default function Settings() {
           </div>
         </div>
 
-        <div className="card botCard">
-          <div className="botHeader">
-            <Bot className="botIcon" size={24} />
-            <h3 className="botTitle">Bot Ma'lumotlari</h3>
+        <div className="card devicesCard">
+          <div className="devicesHeader">
+            <Smartphone className="devicesIcon" size={22} />
+            <h3 className="devicesTitle">Qurilmalar</h3>
           </div>
 
-          <div className="botContent">
-            <div>
-              <p className="metaLabel">Telegram ID</p>
-              <p className="monoBox">{userId}</p>
-            </div>
+          {/* Mobile Only Theme Toggle */}
+          <div className="toggleRow mobileOnly" onClick={toggleTheme} style={{ cursor: "pointer" }}>
+            <span className="toggleLabel" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+              Ilova Mavzusi
+            </span>
+            <span className="toggleState">
+              {theme === "light" ? "KUNDUZGI" : "TUNGI"}
+            </span>
+          </div>
 
-            {/* Mobile Only Theme Toggle */}
-            <div className="toggleRow mobileOnly" onClick={toggleTheme} style={{ cursor: "pointer" }}>
-              <span className="toggleLabel" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
-                Ilova Mavzusi
-              </span>
-              <span className="toggleState">
-                {theme === "light" ? "KUNDUZGI" : "TUNGI"}
-              </span>
-            </div>
-
-            <div className="toggleRow">
-              <span className="toggleLabel">Sotuv xabarnomalari</span>
-              <span className="toggleState">YOQILGAN</span>
-            </div>
-
-            <button className="disabledButton">
-              <Smartphone size={18} /> Botni sozlash (Yopiq)
-            </button>
+          <div className="devicesList">
+            {sessionsLoading ? (
+              <div className="muted">Yuklanmoqda...</div>
+            ) : sessions.length === 0 ? (
+              <div className="muted">Faol qurilmalar yo'q.</div>
+            ) : (
+              sessions.map((s) => {
+                const label = [s.device_name || "Browser", s.city].filter(Boolean).join("  ");
+                const isDesktop = ["macOS", "Windows", "Linux"].includes(s.device_name);
+                return (
+                  <div key={s.session_id} className="deviceRow">
+                    <div className="deviceLeft">
+                      {isDesktop ? <Monitor size={18} className="deviceTypeIcon" /> : <Smartphone size={18} className="deviceTypeIcon" />}
+                      <div className="deviceInfo">
+                        <div className="deviceName">
+                          {label}
+                          {s.is_current && <span className="currentBadge">Joriy</span>}
+                        </div>
+                        <div className="deviceSub">{formatDate(s.created_at)}</div>
+                      </div>
+                    </div>
+                    {!s.is_current && (
+                      <button
+                        className="iconBtn danger"
+                        type="button"
+                        title="Sessiyani tugatish"
+                        onClick={async () => {
+                          if (!confirm("Bu qurilmani o'chirasizmi?")) return;
+                          try {
+                            await apiFetch(`/api/sessions/${s.session_id}`, { method: "DELETE" });
+                            setSessions((prev) => prev.filter((x) => x.session_id !== s.session_id));
+                          } catch {
+                            alert("Xatolik: o'chirib bo'lmadi.");
+                          }
+                        }}
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 

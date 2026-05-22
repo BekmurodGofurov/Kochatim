@@ -125,9 +125,22 @@ def init_db():
         token_hash TEXT PRIMARY KEY,
         u_id BIGINT NOT NULL,
         expires_at TIMESTAMP NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        session_id SERIAL,
+        device_name TEXT DEFAULT '',
+        ip_address TEXT DEFAULT '',
+        city TEXT DEFAULT ''
     );
     """)
+
+    # MIGRATION: sessions device columns (for existing tables)
+    try:
+        execute("ALTER TABLE sessions ADD COLUMN session_id SERIAL;")
+    except Exception:
+        pass
+    execute("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS device_name TEXT DEFAULT '';")
+    execute("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS ip_address TEXT DEFAULT '';")
+    execute("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS city TEXT DEFAULT '';")
 
     # 3.1) partners (hamkorlar) - symmetric relation (A<->B as two rows)
     execute("""

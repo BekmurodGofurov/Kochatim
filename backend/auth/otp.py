@@ -2,11 +2,33 @@
 from flask import request
 from auth import auth_bp
 from config import Config
-from db import execute, fetch_one
+from db import execute, fetch_one, fetch_all
 from utils.errors import ok, fail
 from utils.security import generate_otp_6, sha256_hex, generate_token
 from utils.time import utc_in_seconds, utcnow, naive_utc
+from utils.device import parse_device, get_city, get_client_ip
 from middleware.require_api_key import require_api_key
+
+_MAX_SESSIONS = 3
+
+
+def _insert_session(token_hash, u_id, expires_at, user_agent="", ip=""):
+    device_name = parse_device(user_agent)
+    city = get_city(ip)
+    execute(
+        "INSERT INTO sessions (token_hash, u_id, expires_at, device_name, ip_address, city) VALUES (%s, %s, %s, %s, %s, %s)",
+        (token_hash, u_id, expires_at, device_name, ip, city),
+    )
+    rows = fetch_all(
+        "SELECT token_hash FROM sessions WHERE u_id=%s ORDER BY created_at DESC",
+        (u_id,),
+    )
+    if len(rows) > _MAX_SESSIONS:
+        keep = [r["token_hash"] for r in rows[:_MAX_SESSIONS]]
+        execute(
+            "DELETE FROM sessions WHERE u_id=%s AND token_hash <> ALL(%s)",
+            (u_id, keep),
+        )
 
 
 @auth_bp.post("/request-code")
@@ -95,9 +117,8 @@ def verify_code():
     token_hash = sha256_hex(token)
     expires_at = naive_utc(utc_in_seconds(Config.SESSION_TTL_SECONDS))
 
-    execute(
-        "INSERT INTO sessions (token_hash, u_id, expires_at) VALUES (%s, %s, %s)",
-        (token_hash, row["u_id"], expires_at),
-    )
+    ua = request.headers.get("User-Agent", "")
+    ip = get_client_ip(request)
+    _insert_session(token_hash, row["u_id"], expires_at, ua, ip)
 
     return ok({"session_token": token, "u_id": int(row["u_id"])})
