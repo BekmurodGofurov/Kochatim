@@ -39,3 +39,6 @@ class manage_ty_state(StatesGroup):
     t_id = State()
     t_name = State()
     t_def = State()
+
+class PartnerInviteState(StatesGroup):
+    pending = State()
