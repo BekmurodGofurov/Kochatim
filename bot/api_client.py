@@ -79,6 +79,10 @@ async def partners_decline(token: str, u_id: int):
     )
 
 
+async def get_partners(u_id: int):
+    return await _request("GET", f"/api/users/{u_id}/partners")
+
+
 async def request_login_code(
     u_id: int,
     u_name: Optional[str],

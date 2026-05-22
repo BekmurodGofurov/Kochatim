@@ -470,6 +470,25 @@
       word-break: break-all;
     }
 
+    .copyToast {
+      background: $accent-subtle;
+      border: 1px solid $accent-main;
+      color: $accent-active;
+      border-radius: $radius-card-sm;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+      animation: fadeInOut 2.5s ease forwards;
+    }
+
+    @keyframes fadeInOut {
+      0%   { opacity: 0; transform: translateY(-4px); }
+      15%  { opacity: 1; transform: translateY(0); }
+      75%  { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
     .addPartnerActions {
       display: grid;
       grid-template-columns: 1fr;

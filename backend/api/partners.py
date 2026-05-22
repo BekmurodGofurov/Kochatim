@@ -6,10 +6,11 @@ from middleware.require_api_key import require_api_key
 from middleware.require_session import require_session
 from utils.errors import ok, fail
 from utils.security import generate_invite_token
-from utils.time import utc_in_seconds, naive_utc
+from utils.time import utc_in_seconds, naive_utc, utcnow
+from utils.telegram_notify import send_message
 from config import Config
 
-INVITE_TTL_SECONDS = 7 * 24 * 3600  # 7 kun
+INVITE_TTL_SECONDS = 7 * 24 * 3600
 
 
 def _partner_exists(u_id: int, p_id: int) -> bool:
@@ -46,6 +47,12 @@ def remove_partner_me():
         return fail("p_id(int) required", 400)
 
     execute("DELETE FROM partners WHERE (u_id=%s AND p_id=%s) OR (u_id=%s AND p_id=%s)", (u_id, p_id, p_id, u_id))
+
+    # O'chirilgan hamkorga Telegram xabari
+    remover = fetch_one("SELECT u_name FROM users WHERE u_id=%s", (u_id,))
+    remover_name = (remover or {}).get("u_name") or "Hamkoringiz"
+    send_message(p_id, f"❌ *{remover_name}* sizni hamkorlar ro'yxatidan olib tashladi.")
+
     return ok({"removed": True, "p_id": p_id})
 
 
@@ -63,6 +70,23 @@ def get_partner_invite_token():
     )
 
     return ok({"token": token, "bot_username": Config.TG_BOT_USERNAME})
+
+
+@api_bp.get("/users/<int:u_id>/partners")
+@require_api_key
+def get_user_partners(u_id: int):
+    """Bot chaqiradi: foydalanuvchining hamkorlar ro'yxati."""
+    rows = fetch_all(
+        """
+        SELECT u.u_id, u.u_name, u.u_username
+        FROM partners p
+        JOIN users u ON u.u_id = p.p_id
+        WHERE p.u_id=%s
+        ORDER BY p.created_at DESC
+        """,
+        (u_id,),
+    )
+    return ok(rows)
 
 
 @api_bp.post("/partners/accept")
@@ -87,7 +111,6 @@ def accept_partner_invite():
     if not invite:
         return fail("Invalid invite token", 400, code="INVALID_TOKEN")
 
-    from utils.time import utcnow
     now = naive_utc(utcnow())
     if invite["used_at"] is not None:
         return fail("Invite already used", 400, code="INVITE_USED")
@@ -104,14 +127,18 @@ def accept_partner_invite():
     if not inviter or not invitee:
         return fail("User not found", 404, code="NOT_FOUND")
 
+    # Allaqachon hamkormi?
+    if _partner_exists(inviter_u_id, invitee_u_id):
+        return ok({"accepted": False, "already_partners": True,
+                   "inviter_u_id": inviter_u_id, "invitee_u_id": invitee_u_id})
+
     execute("UPDATE partner_invites SET used_at=%s WHERE token=%s", (now, token))
 
-    if not _partner_exists(inviter_u_id, invitee_u_id):
-        execute("INSERT INTO partners (u_id, p_id) VALUES (%s, %s) ON CONFLICT DO NOTHING", (inviter_u_id, invitee_u_id))
-    if not _partner_exists(invitee_u_id, inviter_u_id):
-        execute("INSERT INTO partners (u_id, p_id) VALUES (%s, %s) ON CONFLICT DO NOTHING", (invitee_u_id, inviter_u_id))
+    execute("INSERT INTO partners (u_id, p_id) VALUES (%s, %s) ON CONFLICT DO NOTHING", (inviter_u_id, invitee_u_id))
+    execute("INSERT INTO partners (u_id, p_id) VALUES (%s, %s) ON CONFLICT DO NOTHING", (invitee_u_id, inviter_u_id))
 
-    return ok({"accepted": True, "inviter_u_id": inviter_u_id, "invitee_u_id": invitee_u_id})
+    return ok({"accepted": True, "already_partners": False,
+               "inviter_u_id": inviter_u_id, "invitee_u_id": invitee_u_id})
 
 
 @api_bp.post("/partners/decline")
@@ -130,7 +157,7 @@ def decline_partner_invite():
         return fail("token required", 400)
 
     invite = fetch_one(
-        "SELECT inviter_u_id, expires_at, used_at FROM partner_invites WHERE token=%s",
+        "SELECT inviter_u_id FROM partner_invites WHERE token=%s",
         (token,),
     )
     if not invite:

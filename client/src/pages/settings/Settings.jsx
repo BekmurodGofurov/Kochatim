@@ -40,6 +40,7 @@ export default function Settings() {
   const [partnersLoading, setPartnersLoading] = useState(false);
   const [showAddPartner, setShowAddPartner] = useState(false);
   const [inviteLoading, setInviteLoading] = useState(false);
+  const [copyToast, setCopyToast] = useState(false);
 
   const inviteLink = useMemo(() => {
     if (!inviteToken) return "";
@@ -209,13 +210,12 @@ export default function Settings() {
                         type="button"
                         title="Hamkorlikni to‘xtatish"
                         onClick={async () => {
-                          if (!confirm("Hamkorlikni to‘xtatasizmi?")) return;
+                          if (!confirm("Hamkorlikni to’xtatasizmi?")) return;
                           try {
                             await apiFetch("/api/partners/remove", { method: "POST", body: { p_id: p.u_id } });
                             setPartners((prev) => prev.filter((x) => x.u_id !== p.u_id));
-                            alert("Hamkor o‘chirildi ✅");
-                          } catch (e) {
-                            alert("Xatolik: " + (e?.message || "O‘chirib bo‘lmadi"));
+                          } catch {
+                            alert("Xatolik: o’chirib bo’lmadi.");
                           }
                         }}
                       >
@@ -263,8 +263,12 @@ export default function Settings() {
                         ? inviteLink
                         : !inviteToken
                           ? "Yuklanmoqda..."
-                          : "Bot username backend'da sozlanmagan (TG_BOT_USERNAME)"}
+                          : "Bot username sozlanmagan"}
                   </div>
+
+                  {copyToast && (
+                    <div className="copyToast">✅ Link nusxalandi!</div>
+                  )}
 
                   <div className="addPartnerActions">
                     <button
@@ -272,16 +276,15 @@ export default function Settings() {
                       className="copyBtn"
                       onClick={async () => {
                         if (!inviteLink) {
-                          try {
-                            await ensureInviteToken();
-                          } catch {}
+                          try { await ensureInviteToken(); } catch {}
                         }
                         if (!inviteLink) return;
                         try {
                           await navigator.clipboard.writeText(inviteLink);
-                          alert("Link nusxalandi ✅");
+                          setCopyToast(true);
+                          setTimeout(() => setCopyToast(false), 2500);
                         } catch {
-                          alert("Nusxalab bo‘lmadi. Linkni qo‘lda belgilang.");
+                          alert("Nusxalab bo’lmadi. Linkni qo’lda belgilang.");
                         }
                       }}
                       disabled={inviteLoading || !inviteLink}
@@ -297,20 +300,22 @@ export default function Settings() {
                         if (navigator.share) {
                           try {
                             await navigator.share({
-                              title: "Ko‘chatim hamkorlik taklifi",
-                              text: "Hamkor bo‘lish uchun linkni bosing:",
+                              title: "Ko’chatim hamkorlik taklifi",
+                              text: "Hamkor bo’lish uchun linkni bosing:",
                               url: inviteLink,
                             });
+                            setShowAddPartner(false);
                             return;
                           } catch {
-                            // user cancelled or unsupported; fallback below
+                            // foydalanuvchi bekor qildi yoki qo’llab-quvvatlanmaydi
                           }
                         }
                         try {
                           await navigator.clipboard.writeText(inviteLink);
-                          alert("Share qo‘llab-quvvatlanmadi. Link nusxalandi ✅");
+                          setCopyToast(true);
+                          setTimeout(() => setCopyToast(false), 2500);
                         } catch {
-                          alert("Share ham, nusxalash ham ishlamadi. Linkni qo‘lda belgilang.");
+                          alert("Linkni qo’lda nusxalang.");
                         }
                       }}
                       disabled={inviteLoading || !inviteLink}

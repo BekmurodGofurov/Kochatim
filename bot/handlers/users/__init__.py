@@ -10,3 +10,4 @@ from . import add_handler
 from . import manage
 from . import echo
 from . import partners
+from . import hamkorlar
