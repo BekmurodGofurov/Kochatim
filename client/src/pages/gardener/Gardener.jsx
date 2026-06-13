@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { ArrowLeft, User, X } from "lucide-react";
 
 import Loader from "../../components/loader/Loader";
@@ -31,9 +31,13 @@ function pickImagesFromType(t) {
 
 export default function Gardener() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { uId, cId: cIdParam, tId: tIdParam } = useParams();
   const cId = cIdParam ? Number(cIdParam) : null;
   const tId = tIdParam ? Number(tIdParam) : null;
+
+  const isPartnerView = location.pathname.startsWith("/partners/");
+  const basePath = isPartnerView ? "/partners" : "/gardeners";
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -125,7 +129,7 @@ export default function Gardener() {
 
   return (
     <div className="gardenerPage">
-      <Header />
+      {!isPartnerView && <Header />}
 
       <div className="gardenerTop">
         <button type="button" className="gardenerBack" onClick={() => navigate(-1)}>
@@ -172,7 +176,7 @@ export default function Gardener() {
               index={idx}
               tick={0}
               toWebImgUrl={toWebImgUrl}
-              onClick={() => navigate(`/gardeners/${uId}/group/${group.id}`)}
+              onClick={() => navigate(`${basePath}/${uId}/group/${group.id}`)}
             />
           ))}
         </div>
@@ -189,7 +193,7 @@ export default function Gardener() {
               key={sort.id}
               sort={sort}
               toWebImgUrl={toWebImgUrl}
-              onClick={() => navigate(`/gardeners/${uId}/group/${selectedGroup.id}/sort/${sort.id}`)}
+              onClick={() => navigate(`${basePath}/${uId}/group/${selectedGroup.id}/sort/${sort.id}`)}
             />
           ))}
         </div>
@@ -198,7 +202,7 @@ export default function Gardener() {
       {selectedSort && (
         <SortDetailModal
           selectedSort={selectedSort}
-          onClose={() => navigate(`/gardeners/${uId}/group/${selectedGroup.id}`)}
+          onClose={() => navigate(`${basePath}/${uId}/group/${selectedGroup.id}`)}
         />
       )}
         </>

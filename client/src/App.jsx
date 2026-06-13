@@ -49,6 +49,10 @@ export default function App() {
 
             <Route element={<RequireAuth />}>
               <Route element={<AppLayout />}>
+                <Route path="/partners/:uId" element={<Gardener />} />
+                <Route path="/partners/:uId/group/:cId" element={<Gardener />} />
+                <Route path="/partners/:uId/group/:cId/sort/:tId" element={<Gardener />} />
+
                 <Route path="/dashboard" element={<Dashboard />} />
 
                 <Route path="/u/:uId/inventory" element={<Inventory />} />

@@ -218,7 +218,7 @@ export default function Settings() {
                         className="iconBtn"
                         type="button"
                         title="Profil"
-                        onClick={() => navigate(`/gardeners/${p.u_id}`)}
+                        onClick={() => navigate(`/partners/${p.u_id}`)}
                       >
                         <ExternalLink size={18} />
                       </button>
