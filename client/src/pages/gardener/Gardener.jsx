@@ -3,31 +3,13 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { ArrowLeft, User, X } from "lucide-react";
 
 import Loader from "../../components/loader/Loader";
-import GroupCard from "../../components/groupCard/GroupCard";
-import SortCard from "../../components/sortCard/SortCard";
+import GroupsGrid from "../../components/groupsGrid/GroupsGrid";
+import SortsGrid from "../../components/sortsGrid/SortsGrid";
 import { apiFetch, API_BASE } from "../../api/https";
+import { toWebImgUrl } from "../../utils/imageUtils";
+import { buildGroupsFromDashboard } from "../../utils/buildGroups";
 import Header from "../../components/header/Header";
 import "./Gardener.scss";
-
-function toWebImgUrl(raw) {
-  if (!raw) return "";
-  if (typeof raw === "string" && (raw.startsWith("http://") || raw.startsWith("https://"))) {
-    return raw;
-  }
-  return `${API_BASE}/api/img/${encodeURIComponent(String(raw))}`;
-}
-
-function pickImagesFromType(t) {
-  const one =
-    t?.i_url ||
-    t?.image ||
-    t?.image_url ||
-    t?.t_image ||
-    t?.img ||
-    t?.photo ||
-    t?.photo_url;
-  return one ? [one] : [];
-}
 
 export default function Gardener() {
   const navigate = useNavigate();
@@ -52,7 +34,7 @@ export default function Gardener() {
         const d = await apiFetch(`/api/users/${encodeURIComponent(String(uId))}/dashboard`);
         if (!cancelled) setData(d);
       } catch (e) {
-        if (!cancelled) setError(e?.message || "Yuklab bo‘lmadi");
+        if (!cancelled) setError(e?.message || "Yuklab bo'lmadi");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -62,58 +44,7 @@ export default function Gardener() {
     };
   }, [uId]);
 
-  const groups = useMemo(() => {
-    if (!data) return [];
-    const cats = data.categories || [];
-    const types = data.types || [];
-    const seedlings = data.seedlings || [];
-
-    const seedMap = new Map();
-    for (const s of seedlings) {
-      seedMap.set(Number(s.t_id), {
-        q1: Number(s.quality_1 || 0),
-        q2: Number(s.quality_2 || 0),
-        q3: Number(s.quality_3 || 0),
-        updated_at: s.updated_at || null,
-        added_at: s.added_at || null,
-      });
-    }
-
-    return cats.map((c) => {
-      const c_id = Number(c.c_id);
-      const c_name = String(c.c_name || "");
-      const myTypes = types.filter((t) => Number(t.c_id) === c_id);
-
-      const sorts = myTypes.map((t) => {
-        const t_id = Number(t.t_id);
-        const q = seedMap.get(t_id) || { q1: 0, q2: 0, q3: 0 };
-        const images = pickImagesFromType(t);
-        return {
-          id: t_id,
-          t_id,
-          name: String(t.t_name || ""),
-          nav1: q.q1,
-          nav2: q.q2,
-          nav3: q.q3,
-          images,
-          description: t?.deff || t?.description || t?.t_desc || t?.t_deff || "",
-          updated_at: q.updated_at || t?.updated_at || null,
-          added_at: q.added_at || t?.added_at || null,
-        };
-      });
-
-      const totalValue = sorts.reduce((sum, x) => sum + (x.nav1 || 0) + (x.nav2 || 0) + (x.nav3 || 0), 0);
-      const groupImages = sorts.flatMap((s) => (Array.isArray(s.images) ? s.images : [])).filter(Boolean);
-
-      return {
-        id: c_id,
-        groupName: c_name,
-        totalValue,
-        sorts,
-        groupImages,
-      };
-    });
-  }, [data]);
+  const groups = useMemo(() => buildGroupsFromDashboard(data), [data]);
 
   const me = data?.user;
 
@@ -145,7 +76,7 @@ export default function Gardener() {
         <div className="gardenerHeader">
           <div className="gardenerAvatar">
             {me?.u_photo ? (
-              <img src={`${API_BASE}/api/img/${me.u_photo}`} alt={me?.u_name || "Bog‘bon"} />
+              <img src={`${API_BASE}/api/img/${me.u_photo}`} alt={me?.u_name || "Bog'bon"} />
             ) : (
               <User size={28} />
             )}
@@ -163,23 +94,16 @@ export default function Gardener() {
       {loading || error ? null : (
         <>
       <div className="gardenerSection">
-        <div className="gardenerSectionTitle">Omborxona (faqat ko‘rish)</div>
+        <div className="gardenerSectionTitle">Omborxona (faqat ko'rish)</div>
         <div className="gardenerSectionLine" />
       </div>
 
       {!cId && (
-        <div className="gardenerGrid">
-          {groups.map((group, idx) => (
-            <GroupCard
-              key={group.id}
-              group={group}
-              index={idx}
-              tick={0}
-              toWebImgUrl={toWebImgUrl}
-              onClick={() => navigate(`${basePath}/${uId}/group/${group.id}`)}
-            />
-          ))}
-        </div>
+        <GroupsGrid
+          groups={groups}
+          className="gardenerGrid"
+          onGroupClick={(group) => navigate(`${basePath}/${uId}/group/${group.id}`)}
+        />
       )}
 
       {cId && !selectedGroup && (
@@ -187,16 +111,11 @@ export default function Gardener() {
       )}
 
       {cId && selectedGroup && (
-        <div className="gardenerGrid">
-          {selectedGroup.sorts.map((sort) => (
-            <SortCard
-              key={sort.id}
-              sort={sort}
-              toWebImgUrl={toWebImgUrl}
-              onClick={() => navigate(`${basePath}/${uId}/group/${selectedGroup.id}/sort/${sort.id}`)}
-            />
-          ))}
-        </div>
+        <SortsGrid
+          sorts={selectedGroup.sorts}
+          className="gardenerGrid"
+          onSortClick={(sort) => navigate(`${basePath}/${uId}/group/${selectedGroup.id}/sort/${sort.id}`)}
+        />
       )}
 
       {selectedSort && (
@@ -257,4 +176,3 @@ function SortDetailModal({ selectedSort, onClose }) {
     </div>
   );
 }
-

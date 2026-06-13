@@ -4,33 +4,40 @@ import { apiFetch, getSessionToken } from "../api/https";
 
 const DashboardContext = createContext(null);
 
+const DASHBOARD_TTL         = 5  * 60 * 1000; // 5 daqiqa
+const SALES_TTL             = 5  * 60 * 1000; // 5 daqiqa
+const SETTINGS_TTL          = 2  * 60 * 1000; // 2 daqiqa (sessions o'zgaruvchan)
+const PARTNER_DASHBOARDS_TTL = 5 * 60 * 1000; // 5 daqiqa
+
 export function DashboardProvider({ children }) {
     const location = useLocation();
+
+    // --- Dashboard ---
     const [dashboardData, setDashboardData] = useState(null);
-    const [loading, setLoading] = useState(false); // Initially not loading until we have a token
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [lastFetched, setLastFetched] = useState(0);
 
-    // Sales caching
+    // --- Sales ---
     const [salesData, setSalesData] = useState(null);
     const [salesLoading, setSalesLoading] = useState(false);
     const [salesError, setSalesError] = useState(null);
     const [salesLastFetched, setSalesLastFetched] = useState(0);
 
-    // Ma'lumotni yuklash funksiyasi
+    // --- Settings (partners + sessions + invite_token — bitta endpoint) ---
+    const [settingsData, setSettingsData] = useState(null);
+    const [settingsLoading, setSettingsLoading] = useState(false);
+    const [settingsLastFetched, setSettingsLastFetched] = useState(0);
+
+    // --- Partner dashboards (Inventory N+1 fix) ---
+    const [partnerDashboardsData, setPartnerDashboardsData] = useState(null);
+    const [partnerDashboardsLoading, setPartnerDashboardsLoading] = useState(false);
+    const [partnerDashboardsLastFetched, setPartnerDashboardsLastFetched] = useState(0);
+
     const fetchDashboard = useCallback(async (force = false) => {
-        // 0) Token borligini tekshirish
-        if (!getSessionToken()) {
-            setLoading(false);
-            return;
-        }
-
-        // Agar majburiy bo'lmasa va ma'lumot 5 minut ichida olingan bo'lsa, qayta yuklamaymiz
+        if (!getSessionToken()) { setLoading(false); return; }
         const now = Date.now();
-        if (!force && dashboardData && now - lastFetched < 5 * 60 * 1000) {
-            return; // Cache valid
-        }
-
+        if (!force && dashboardData && now - lastFetched < DASHBOARD_TTL) return;
         setLoading(true);
         try {
             const data = await apiFetch("/api/me/dashboard");
@@ -38,7 +45,6 @@ export function DashboardProvider({ children }) {
             setLastFetched(now);
             setError(null);
         } catch (err) {
-            console.error("Dashboard fetch error:", err);
             setError(err.message || "Ma'lumotlarni yuklashda xatolik");
         } finally {
             setLoading(false);
@@ -47,12 +53,8 @@ export function DashboardProvider({ children }) {
 
     const fetchSales = useCallback(async (force = false) => {
         if (!getSessionToken()) return;
-
         const now = Date.now();
-        if (!force && salesData && now - salesLastFetched < 5 * 60 * 1000) {
-            return; // Cache valid
-        }
-
+        if (!force && salesData && now - salesLastFetched < SALES_TTL) return;
         setSalesLoading(true);
         try {
             const data = await apiFetch("/api/sales");
@@ -60,42 +62,87 @@ export function DashboardProvider({ children }) {
             setSalesLastFetched(now);
             setSalesError(null);
         } catch (err) {
-            console.error("Sales fetch error:", err);
             setSalesError(err.message || "Sotuvlar tarixini yuklashda xatolik");
         } finally {
             setSalesLoading(false);
         }
     }, [salesData, salesLastFetched]);
 
-    // Token bor bo'lsa va data yo'q bo'lsa har gal path o'zgarganda yuklashga harakat qilamiz
-    useEffect(() => {
-        const token = getSessionToken();
-        if (token && !dashboardData && !loading) {
-            fetchDashboard();
+    const fetchSettings = useCallback(async (force = false) => {
+        if (!getSessionToken()) return;
+        const now = Date.now();
+        if (!force && settingsData && now - settingsLastFetched < SETTINGS_TTL) return;
+        setSettingsLoading(true);
+        try {
+            const data = await apiFetch("/api/me/settings");
+            setSettingsData(data);
+            setSettingsLastFetched(now);
+        } catch {
+            // mavjud ma'lumot saqlanadi
+        } finally {
+            setSettingsLoading(false);
         }
+    }, [settingsData, settingsLastFetched]);
+
+    const fetchPartnerDashboards = useCallback(async (force = false) => {
+        if (!getSessionToken()) return;
+        const now = Date.now();
+        if (!force && partnerDashboardsData && now - partnerDashboardsLastFetched < PARTNER_DASHBOARDS_TTL) return;
+        setPartnerDashboardsLoading(true);
+        try {
+            const data = await apiFetch("/api/partners/dashboards");
+            setPartnerDashboardsData(Array.isArray(data) ? data : []);
+            setPartnerDashboardsLastFetched(now);
+        } catch {
+            setPartnerDashboardsData([]);
+        } finally {
+            setPartnerDashboardsLoading(false);
+        }
+    }, [partnerDashboardsData, partnerDashboardsLastFetched]);
+
+    // Hamkor o'chirilganda yoki qo'shilganda ikkala keshni tozalash
+    const invalidatePartners = useCallback(() => {
+        setSettingsData(null);
+        setSettingsLastFetched(0);
+        setPartnerDashboardsData(null);
+        setPartnerDashboardsLastFetched(0);
+    }, []);
+
+    // Sessiya o'chirilganda
+    const invalidateSessions = useCallback(() => {
+        setSettingsData(null);
+        setSettingsLastFetched(0);
+    }, []);
+
+    // Token bor bo'lsa va dashboard yo'q bo'lsa — yuklash
+    useEffect(() => {
+        if (getSessionToken() && !dashboardData && !loading) fetchDashboard();
     }, [location.pathname, dashboardData, loading, fetchDashboard]);
 
-    // Dastur ishga tushganda bir marta DASHBOARD yuklaymiz
     useEffect(() => {
-        if (!dashboardData) {
-            fetchDashboard();
-        }
+        if (!dashboardData) fetchDashboard();
     }, [fetchDashboard, dashboardData]);
 
     const value = useMemo(() => ({
-        dashboardData,
-        loading,
-        error,
+        dashboardData, loading, error,
         refreshDashboard: () => fetchDashboard(true),
 
-        salesData,
-        salesLoading,
-        salesError,
-        fetchSales, // component ichida chaqiriladi
+        salesData, salesLoading, salesError,
+        fetchSales,
         refreshSales: () => fetchSales(true),
+
+        settingsData, settingsLoading,
+        fetchSettings,
+        invalidatePartners,
+        invalidateSessions,
+
+        partnerDashboardsData, partnerDashboardsLoading,
+        fetchPartnerDashboards,
     }), [
         dashboardData, loading, error, fetchDashboard,
-        salesData, salesLoading, salesError, fetchSales
+        salesData, salesLoading, salesError, fetchSales,
+        settingsData, settingsLoading, fetchSettings, invalidatePartners, invalidateSessions,
+        partnerDashboardsData, partnerDashboardsLoading, fetchPartnerDashboards,
     ]);
 
     return (
@@ -105,11 +152,8 @@ export function DashboardProvider({ children }) {
     );
 }
 
-// Hook
 export function useDashboard() {
     const context = useContext(DashboardContext);
-    if (!context) {
-        throw new Error("useDashboard must be used within a DashboardProvider");
-    }
+    if (!context) throw new Error("useDashboard must be used within a DashboardProvider");
     return context;
 }

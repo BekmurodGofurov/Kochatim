@@ -4,6 +4,7 @@ from api import api_bp
 from db import execute, fetch_all, fetch_one
 from middleware.require_api_key import require_api_key
 from middleware.require_session import require_session
+from utils.cache import get_cache, set_cache, invalidate_cache
 from utils.errors import ok, fail
 from utils.security import generate_invite_token
 from utils.time import utc_in_seconds, naive_utc, utcnow
@@ -11,6 +12,22 @@ from utils.telegram_notify import send_message
 from config import Config
 
 INVITE_TTL_SECONDS = 7 * 24 * 3600
+_PARTNERS_TTL = 300    # 5 daqiqa
+_INVITE_TTL   = 1800   # 30 daqiqa
+
+
+def _partners_key(u_id: int) -> str:
+    return f"partners_{u_id}"
+
+
+def _invite_key(u_id: int) -> str:
+    return f"invite_token_{u_id}"
+
+
+def _invalidate_partners(u_id: int):
+    invalidate_cache(_partners_key(u_id))
+    invalidate_cache(f"partner_dashboards_{u_id}")
+    invalidate_cache(f"settings_{u_id}")
 
 
 def _partner_exists(u_id: int, p_id: int) -> bool:
@@ -22,6 +39,12 @@ def _partner_exists(u_id: int, p_id: int) -> bool:
 @require_session
 def list_partners_me():
     u_id = int(g.u_id)
+    key = _partners_key(u_id)
+
+    cached = get_cache(key)
+    if cached is not None:
+        return ok(cached)
+
     rows = fetch_all(
         """
         SELECT u.u_id, u.u_name, u.u_phone, u.u_username, u.u_age, u.u_photo, p.created_at
@@ -32,6 +55,7 @@ def list_partners_me():
         """,
         (u_id,),
     )
+    set_cache(key, rows, ttl=_PARTNERS_TTL)
     return ok(rows)
 
 
@@ -48,7 +72,9 @@ def remove_partner_me():
 
     execute("DELETE FROM partners WHERE (u_id=%s AND p_id=%s) OR (u_id=%s AND p_id=%s)", (u_id, p_id, p_id, u_id))
 
-    # O'chirilgan hamkorga Telegram xabari
+    _invalidate_partners(u_id)
+    _invalidate_partners(p_id)
+
     remover = fetch_one("SELECT u_name FROM users WHERE u_id=%s", (u_id,))
     remover_name = (remover or {}).get("u_name") or "Hamkoringiz"
     send_message(p_id, f"❌ *{remover_name}* sizni hamkorlar ro'yxatidan olib tashladi.")
@@ -60,16 +86,35 @@ def remove_partner_me():
 @require_session
 def get_partner_invite_token():
     u_id = int(g.u_id)
+    key = _invite_key(u_id)
 
-    token = generate_invite_token()
-    expires_at = naive_utc(utc_in_seconds(INVITE_TTL_SECONDS))
+    cached = get_cache(key)
+    if cached is not None:
+        return ok(cached)
 
-    execute(
-        "INSERT INTO partner_invites (token, inviter_u_id, expires_at) VALUES (%s, %s, %s)",
-        (token, u_id, expires_at),
+    # DB da mavjud, muddati o'tmagan, ishlatilmagan tokenni olishga harakat qilamiz
+    now = naive_utc(utcnow())
+    existing = fetch_one(
+        """
+        SELECT token FROM partner_invites
+        WHERE inviter_u_id=%s AND used_at IS NULL AND expires_at > %s
+        ORDER BY expires_at DESC LIMIT 1
+        """,
+        (u_id, now),
     )
+    if existing:
+        token = existing["token"]
+    else:
+        token = generate_invite_token()
+        expires_at = naive_utc(utc_in_seconds(INVITE_TTL_SECONDS))
+        execute(
+            "INSERT INTO partner_invites (token, inviter_u_id, expires_at) VALUES (%s, %s, %s)",
+            (token, u_id, expires_at),
+        )
 
-    return ok({"token": token, "bot_username": Config.TG_BOT_USERNAME})
+    payload = {"token": token, "bot_username": Config.TG_BOT_USERNAME}
+    set_cache(key, payload, ttl=_INVITE_TTL)
+    return ok(payload)
 
 
 @api_bp.get("/users/<int:u_id>/partners")
@@ -127,15 +172,17 @@ def accept_partner_invite():
     if not inviter or not invitee:
         return fail("User not found", 404, code="NOT_FOUND")
 
-    # Allaqachon hamkormi?
     if _partner_exists(inviter_u_id, invitee_u_id):
         return ok({"accepted": False, "already_partners": True,
                    "inviter_u_id": inviter_u_id, "invitee_u_id": invitee_u_id})
 
     execute("UPDATE partner_invites SET used_at=%s WHERE token=%s", (now, token))
-
     execute("INSERT INTO partners (u_id, p_id) VALUES (%s, %s) ON CONFLICT DO NOTHING", (inviter_u_id, invitee_u_id))
     execute("INSERT INTO partners (u_id, p_id) VALUES (%s, %s) ON CONFLICT DO NOTHING", (invitee_u_id, inviter_u_id))
+
+    _invalidate_partners(inviter_u_id)
+    _invalidate_partners(invitee_u_id)
+    invalidate_cache(_invite_key(inviter_u_id))
 
     return ok({"accepted": True, "already_partners": False,
                "inviter_u_id": inviter_u_id, "invitee_u_id": invitee_u_id})

@@ -21,13 +21,11 @@ function formatDate(value) {
   try {
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return String(value);
-
-    const day = String(d.getDate()).padStart(2, "0");
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const year = d.getFullYear();
-    const hours = String(d.getHours()).padStart(2, "0");
+    const day    = String(d.getDate()).padStart(2, "0");
+    const month  = String(d.getMonth() + 1).padStart(2, "0");
+    const year   = d.getFullYear();
+    const hours  = String(d.getHours()).padStart(2, "0");
     const minutes = String(d.getMinutes()).padStart(2, "0");
-
     return `${hours}:${minutes} ${day}.${month}.${year}`;
   } catch {
     return String(value);
@@ -35,81 +33,34 @@ function formatDate(value) {
 }
 
 export default function Settings() {
-  const { dashboardData, loading: pageLoading, error: pageError } = useDashboard();
+  const {
+    dashboardData, loading: pageLoading, error: pageError,
+    settingsData, settingsLoading,
+    fetchSettings, invalidatePartners, invalidateSessions,
+  } = useDashboard();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const me = dashboardData?.user;
 
-  const [partners, setPartners] = useState([]);
-  const [inviteToken, setInviteToken] = useState("");
-  const [botUsername, setBotUsername] = useState("");
-  const [partnersLoading, setPartnersLoading] = useState(false);
   const [showAddPartner, setShowAddPartner] = useState(false);
-  const [inviteLoading, setInviteLoading] = useState(false);
-  const [copyToast, setCopyToast] = useState(false);
+  const [copyToast, setCopyToast]           = useState(false);
 
-  const [sessions, setSessions] = useState([]);
-  const [sessionsLoading, setSessionsLoading] = useState(false);
-
-  const inviteLink = useMemo(() => {
-    if (!inviteToken) return "";
-    const u = botUsername.trim();
-    if (!u) return "";
-    return `https://t.me/${u}?start=partner_${inviteToken}`;
-  }, [inviteToken, botUsername]);
-
+  // Sahifa ochilganda bitta endpoint (partners + sessions + invite_token)
   useEffect(() => {
-    if (!getSessionToken()) return;
-    let cancelled = false;
-    (async () => {
-      setPartnersLoading(true);
-      setSessionsLoading(true);
-      try {
-        const [p, tok, sess] = await Promise.all([
-          apiFetch("/api/partners"),
-          apiFetch("/api/partners/invite-token"),
-          apiFetch("/api/sessions"),
-        ]);
-        if (cancelled) return;
-        setPartners(Array.isArray(p) ? p : []);
-        setInviteToken(tok?.token || "");
-        setBotUsername((tok?.bot_username || "").replace(/^@/, ""));
-        setSessions(Array.isArray(sess) ? sess : []);
-      } catch (e) {
-        if (!cancelled) {
-          setPartners([]);
-          setInviteToken("");
-          setBotUsername("");
-          setSessions([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setPartnersLoading(false);
-          setSessionsLoading(false);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    if (getSessionToken()) fetchSettings();
   }, []);
 
-  const ensureInviteToken = async () => {
-    if (inviteToken) return inviteToken;
-    setInviteLoading(true);
-    try {
-      const tok = await apiFetch("/api/partners/invite-token");
-      const t = tok?.token || "";
-      setInviteToken(t);
-      setBotUsername((tok?.bot_username || "").replace(/^@/, ""));
-      return t;
-    } finally {
-      setInviteLoading(false);
-    }
-  };
+  const partners    = settingsData?.partners    ?? [];
+  const sessions    = settingsData?.sessions    ?? [];
+  const inviteToken = settingsData?.invite_token ?? "";
+  const botUsername = (settingsData?.bot_username ?? "").replace(/^@/, "");
 
-  // Agar contextdan error yoki loading kelsa
+  const inviteLink = useMemo(() => {
+    if (!inviteToken || !botUsername) return "";
+    return `https://t.me/${botUsername}?start=partner_${inviteToken}`;
+  }, [inviteToken, botUsername]);
+
   if (pageLoading || (!dashboardData && getSessionToken())) return <Loader text="Yuklanmoqda..." />;
   if (pageError) return <Loader text={pageError} />;
 
@@ -118,11 +69,10 @@ export default function Settings() {
     window.location.href = "/login";
   };
 
-
-  const name = me?.u_name || "-";
+  const name     = me?.u_name     || "-";
   const username = me?.u_username ? `@${me.u_username}` : "-";
-  const phone = me?.u_phone || "-";
-  const userId = me?.u_id != null ? String(me.u_id) : "-";
+  const phone    = me?.u_phone    || "-";
+  const userId   = me?.u_id != null ? String(me.u_id) : "-";
   const joinedAt = formatDate(me?.added_at);
 
   return (
@@ -135,18 +85,12 @@ export default function Settings() {
                 <img
                   src={`${API_BASE}/api/img/${me.u_photo}`}
                   alt={name}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    borderRadius: "50%",
-                  }}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
                 />
               ) : (
                 <User size={40} />
               )}
             </div>
-
             <div>
               <h2 className="profileTitle">{name}</h2>
               <p className="profileSubtitle">{username}</p>
@@ -158,12 +102,10 @@ export default function Settings() {
               <label className="fieldLabel">Telefon raqam</label>
               <div className="readOnlyField">+{phone}</div>
             </div>
-
             <div>
               <label className="fieldLabel">Telegram ID</label>
               <div className="readOnlyField">{userId}</div>
             </div>
-
             <div>
               <label className="fieldLabel">Ro'yxatdan o'tilgan sana</label>
               <div className="readOnlyField">{joinedAt}</div>
@@ -174,7 +116,11 @@ export default function Settings() {
             <Info size={20} className="infoIcon" />
             <p>
               Shaxsiy ma'lumotlarni o'zgartirish uchun tizim administratoriga
-              murojaat qiling: <a href="https://t.me/uzb_alex" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>@uzb_alex</a>
+              murojaat qiling:{" "}
+              <a href="https://t.me/uzb_alex" target="_blank" rel="noopener noreferrer"
+                 style={{ color: "inherit", textDecoration: "underline" }}>
+                @uzb_alex
+              </a>
             </p>
           </div>
         </div>
@@ -183,7 +129,6 @@ export default function Settings() {
           <h3 className="sectionTitle">
             <Shield className="securityIcon" /> Tizim himoyasi
           </h3>
-
           <div className="statusRow">
             <span className="statusLabel">Hisob holati:</span>
             <span className="statusBadge">Faol</span>
@@ -200,10 +145,10 @@ export default function Settings() {
 
           <div className="partnersBody">
             <div className="partnersList">
-              {partnersLoading ? (
+              {settingsLoading ? (
                 <div className="muted">Yuklanmoqda...</div>
               ) : partners.length === 0 ? (
-                <div className="muted">Hozircha hamkorlar yo‘q.</div>
+                <div className="muted">Hozircha hamkorlar yo'q.</div>
               ) : (
                 partners.map((p) => (
                   <div key={p.u_id} className="partnerRow">
@@ -214,25 +159,21 @@ export default function Settings() {
                       </div>
                     </div>
                     <div className="partnerActions">
-                      <button
-                        className="iconBtn"
-                        type="button"
-                        title="Profil"
-                        onClick={() => navigate(`/partners/${p.u_id}`)}
-                      >
+                      <button className="iconBtn" type="button" title="Profil"
+                              onClick={() => navigate(`/partners/${p.u_id}`)}>
                         <ExternalLink size={18} />
                       </button>
                       <button
-                        className="iconBtn danger"
-                        type="button"
-                        title="Hamkorlikni to‘xtatish"
+                        className="iconBtn danger" type="button"
+                        title="Hamkorlikni to'xtatish"
                         onClick={async () => {
-                          if (!confirm("Hamkorlikni to’xtatasizmi?")) return;
+                          if (!confirm("Hamkorlikni to'xtatasizmi?")) return;
                           try {
                             await apiFetch("/api/partners/remove", { method: "POST", body: { p_id: p.u_id } });
-                            setPartners((prev) => prev.filter((x) => x.u_id !== p.u_id));
+                            invalidatePartners();
+                            fetchSettings(true);
                           } catch {
-                            alert("Xatolik: o’chirib bo’lmadi.");
+                            alert("Xatolik: o'chirib bo'lmadi.");
                           }
                         }}
                       >
@@ -245,103 +186,80 @@ export default function Settings() {
             </div>
 
             <button
-              type="button"
-              className="addPartnerBtn"
-              onClick={async () => {
-                setShowAddPartner(true);
-                try {
-                  await ensureInviteToken();
-                } catch (e) {
-                  alert("Xatolik: linkni olib bo‘lmadi. Login bo‘lganingizni tekshiring.");
-                }
-              }}
-              title="Hamkor qo‘shish"
+              type="button" className="addPartnerBtn"
+              onClick={() => setShowAddPartner(true)}
+              title="Hamkor qo'shish"
             >
-              <Plus size={18} /> Hamkor qo‘shish
+              <Plus size={18} /> Hamkor qo'shish
             </button>
 
             {showAddPartner && (
               <div className="addPartnerModal" role="dialog" aria-modal="true">
-                <button
-                  type="button"
-                  className="addPartnerBackdrop"
-                  onClick={() => setShowAddPartner(false)}
-                  aria-label="Close"
-                />
+                <button type="button" className="addPartnerBackdrop"
+                        onClick={() => setShowAddPartner(false)} aria-label="Close" />
                 <div className="addPartnerPanel">
-                  <div className="addPartnerTitle">Hamkor qo‘shish</div>
+                  <div className="addPartnerTitle">Hamkor qo'shish</div>
                   <div className="addPartnerText">
-                    Quyidagi linkni Telegram’da hamkorga yuboring. U linkni bosib, botda “Qabul qilaman” desa hamkor bo‘ladi.
+                    Quyidagi linkni Telegram'da hamkorga yuboring. U linkni bosib,
+                    botda "Qabul qilaman" desa hamkor bo'ladi.
                   </div>
                   <div className="monoBox">
-                    {inviteLoading
+                    {settingsLoading
                       ? "Yuklanmoqda..."
-                      : inviteLink
-                        ? inviteLink
-                        : !inviteToken
-                          ? "Yuklanmoqda..."
-                          : "Bot username sozlanmagan"}
+                      : inviteLink || "Bot username sozlanmagan"}
                   </div>
 
-                  {copyToast && (
-                    <div className="copyToast">✅ Link nusxalandi!</div>
-                  )}
+                  {copyToast && <div className="copyToast">✅ Link nusxalandi!</div>}
 
                   <div className="addPartnerActions">
                     <button
-                      type="button"
-                      className="copyBtn"
+                      type="button" className="copyBtn"
                       onClick={async () => {
-                        if (!inviteLink) {
-                          try { await ensureInviteToken(); } catch {}
-                        }
                         if (!inviteLink) return;
                         try {
                           await navigator.clipboard.writeText(inviteLink);
                           setCopyToast(true);
                           setTimeout(() => setCopyToast(false), 2500);
                         } catch {
-                          alert("Nusxalab bo’lmadi. Linkni qo’lda belgilang.");
+                          alert("Nusxalab bo'lmadi. Linkni qo'lda belgilang.");
                         }
                       }}
-                      disabled={inviteLoading || !inviteLink}
+                      disabled={settingsLoading || !inviteLink}
                     >
                       Nusxalash
                     </button>
 
                     <button
-                      type="button"
-                      className="shareBtn"
+                      type="button" className="shareBtn"
                       onClick={async () => {
                         if (!inviteLink) return;
                         if (navigator.share) {
                           try {
                             await navigator.share({
-                              title: "Ko’chatim hamkorlik taklifi",
-                              text: "Hamkor bo’lish uchun linkni bosing:",
+                              title: "Ko'chatim hamkorlik taklifi",
+                              text: "Hamkor bo'lish uchun linkni bosing:",
                               url: inviteLink,
                             });
                             setShowAddPartner(false);
                             return;
-                          } catch {
-                            // foydalanuvchi bekor qildi yoki qo’llab-quvvatlanmaydi
-                          }
+                          } catch { /* bekor qilindi */ }
                         }
                         try {
                           await navigator.clipboard.writeText(inviteLink);
                           setCopyToast(true);
                           setTimeout(() => setCopyToast(false), 2500);
                         } catch {
-                          alert("Linkni qo’lda nusxalang.");
+                          alert("Linkni qo'lda nusxalang.");
                         }
                       }}
-                      disabled={inviteLoading || !inviteLink}
+                      disabled={settingsLoading || !inviteLink}
                       title="Ulashish"
                     >
                       Share
                     </button>
 
-                    <button type="button" className="closeBtn" onClick={() => setShowAddPartner(false)}>
+                    <button type="button" className="closeBtn"
+                            onClick={() => setShowAddPartner(false)}>
                       Yopish
                     </button>
                   </div>
@@ -357,19 +275,16 @@ export default function Settings() {
             <h3 className="devicesTitle">Qurilmalar</h3>
           </div>
 
-          {/* Mobile Only Theme Toggle */}
           <div className="toggleRow mobileOnly" onClick={toggleTheme} style={{ cursor: "pointer" }}>
             <span className="toggleLabel" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
               Ilova Mavzusi
             </span>
-            <span className="toggleState">
-              {theme === "light" ? "KUNDUZGI" : "TUNGI"}
-            </span>
+            <span className="toggleState">{theme === "light" ? "KUNDUZGI" : "TUNGI"}</span>
           </div>
 
           <div className="devicesList">
-            {sessionsLoading ? (
+            {settingsLoading ? (
               <div className="muted">Yuklanmoqda...</div>
             ) : sessions.length === 0 ? (
               <div className="muted">Faol qurilmalar yo'q.</div>
@@ -395,14 +310,14 @@ export default function Settings() {
                     </div>
                     {!s.is_current && (
                       <button
-                        className="iconBtn danger"
-                        type="button"
+                        className="iconBtn danger" type="button"
                         title="Sessiyani tugatish"
                         onClick={async () => {
                           if (!confirm("Bu qurilmani o'chirasizmi?")) return;
                           try {
                             await apiFetch(`/api/sessions/${s.session_id}`, { method: "DELETE" });
-                            setSessions((prev) => prev.filter((x) => x.session_id !== s.session_id));
+                            invalidateSessions();
+                            fetchSettings(true);
                           } catch {
                             alert("Xatolik: o'chirib bo'lmadi.");
                           }
