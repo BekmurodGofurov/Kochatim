@@ -174,7 +174,7 @@ export default function Settings() {
             <Info size={20} className="infoIcon" />
             <p>
               Shaxsiy ma'lumotlarni o'zgartirish uchun tizim administratoriga
-              murojaat qiling: <a href="https://t.me/Bekmurod_Gofurov" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>@Bekmurod_Gofurov</a>
+              murojaat qiling: <a href="https://t.me/uzb_alex" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>@uzb_alex</a>
             </p>
           </div>
         </div>
