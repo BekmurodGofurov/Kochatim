@@ -3,157 +3,60 @@ import { Plus, ArrowLeft, X } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import Loader from "../../components/loader/Loader";
-import GroupCard from "../../components/groupCard/GroupCard";
-import SortCard from "../../components/sortCard/SortCard";
+import GroupsGrid from "../../components/groupsGrid/GroupsGrid";
+import SortsGrid from "../../components/sortsGrid/SortsGrid";
 import AddGroupModal from "../../components/addGroupModal/AddGroupModal";
 import AddTypeModal from "../../components/addTypeModal/AddTypeModal";
 import { useDashboard } from "../../context/DashboardContext";
-import { apiFetch, API_BASE } from "../../api/https";
+import { API_BASE, getSessionToken } from "../../api/https";
+import { toWebImgUrl } from "../../utils/imageUtils";
+import { buildGroupsFromDashboard } from "../../utils/buildGroups";
 import "./Inventory.scss";
-
-
-function toWebImgUrl(raw) {
-  if (!raw) return "";
-  if (typeof raw === "string" && (raw.startsWith("http://") || raw.startsWith("https://"))) {
-    return raw;
-  }
-  return `${API_BASE}/api/img/${encodeURIComponent(String(raw))}`;
-}
-
-function pickImagesFromType(t) {
-  const one =
-    t?.i_url ||
-    t?.image ||
-    t?.image_url ||
-    t?.t_image ||
-    t?.img ||
-    t?.photo ||
-    t?.photo_url;
-
-  return one ? [one] : [];
-}
-
-function buildGroupsFromDashboard(dashboard) {
-  if (!dashboard) return [];
-
-  const cats = dashboard.categories || [];
-  const types = dashboard.types || [];
-  const seedlings = dashboard.seedlings || [];
-
-  const seedMap = new Map();
-  for (const s of seedlings) {
-    seedMap.set(Number(s.t_id), {
-      q1: Number(s.quality_1 || 0),
-      q2: Number(s.quality_2 || 0),
-      q3: Number(s.quality_3 || 0),
-      updated_at: s.updated_at || null,
-      added_at: s.added_at || null,
-    });
-  }
-
-  return cats.map((c) => {
-    const c_id = Number(c.c_id);
-    const c_name = String(c.c_name || "");
-    const myTypes = types.filter((t) => Number(t.c_id) === c_id);
-
-    const sorts = myTypes.map((t) => {
-      const t_id = Number(t.t_id);
-      const name = String(t.t_name || "");
-      const q = seedMap.get(t_id) || { q1: 0, q2: 0, q3: 0 };
-      const images = pickImagesFromType(t);
-      return {
-        id: t_id,
-        t_id,
-        name,
-        nav1: q.q1,
-        nav2: q.q2,
-        nav3: q.q3,
-        images,
-        description: t?.deff || t?.description || t?.t_desc || t?.t_deff || "",
-        updated_at: q.updated_at || t?.updated_at || null,
-        added_at: q.added_at || t?.added_at || null,
-      };
-    });
-
-    const totalValue = sorts.reduce((sum, x) => sum + (x.nav1 || 0) + (x.nav2 || 0) + (x.nav3 || 0), 0);
-    const groupImages = sorts.flatMap((s) => (Array.isArray(s.images) ? s.images : [])).filter(Boolean);
-
-    return {
-      id: c_id,
-      groupName: c_name,
-      totalValue,
-      sorts,
-      groupImages,
-    };
-  });
-}
 
 export default function Inventory() {
   const navigate = useNavigate();
   const params = useParams();
-  const uId = params.uId; // string
-  const cIdParam = params.cId; // string | undefined
-  const tIdParam = params.tId; // string | undefined
+  const uId = params.uId;
+  const cIdParam = params.cId;
+  const tIdParam = params.tId;
 
   const cId = cIdParam ? Number(cIdParam) : null;
   const tId = tIdParam ? Number(tIdParam) : null;
 
-  const { dashboardData: dashboard, loading: pageLoading, error: pageError, refreshDashboard } = useDashboard();
+  const {
+    dashboardData: dashboard, loading: pageLoading, error: pageError, refreshDashboard,
+    partnerDashboardsData, partnerDashboardsLoading, fetchPartnerDashboards,
+  } = useDashboard();
 
-  // Modal state
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAddTypeModal, setShowAddTypeModal] = useState(false);
   const [searchQ, setSearchQ] = useState("");
 
-  // Partners dashboards (read-only)
-  const [partners, setPartners] = useState([]);
-  const [partnerDash, setPartnerDash] = useState([]); // [{ partner, groups }]
-  const [partnersLoading, setPartnersLoading] = useState(false);
-
   useEffect(() => {
-    // load partners only in groups view to avoid heavy loading
-    if (cId) return;
-    let cancelled = false;
-    (async () => {
-      setPartnersLoading(true);
-      try {
-        const p = await apiFetch("/api/partners");
-        if (cancelled) return;
-        const arr = Array.isArray(p) ? p : [];
-        setPartners(arr);
-
-        const dashboards = await Promise.all(
-          arr.map(async (partner) => {
-            const d = await apiFetch(`/api/users/${partner.u_id}/dashboard`);
-            return { partner, groups: buildGroupsFromDashboard(d) };
-          })
-        );
-        if (!cancelled) setPartnerDash(dashboards);
-      } catch {
-        if (!cancelled) {
-          setPartners([]);
-          setPartnerDash([]);
-        }
-      } finally {
-        if (!cancelled) setPartnersLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    if (!cId && getSessionToken()) fetchPartnerDashboards();
   }, [cId]);
 
-  // 10s aylanish (guruh card rasmlari)
+  const partnerDash = useMemo(() => {
+    if (!partnerDashboardsData) return [];
+    return partnerDashboardsData.map((item) => ({
+      partner: item.partner,
+      groups: buildGroupsFromDashboard({
+        categories: item.categories,
+        types:      item.types,
+        seedlings:  item.seedlings,
+      }),
+    }));
+  }, [partnerDashboardsData]);
+
+  const partnersLoading = partnerDashboardsLoading;
+
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 10000);
     return () => clearInterval(id);
   }, []);
 
-  // Backend -> Inventory UI format
-  const groups = useMemo(() => {
-    return buildGroupsFromDashboard(dashboard);
-  }, [dashboard]);
+  const groups = useMemo(() => buildGroupsFromDashboard(dashboard), [dashboard]);
 
   const normalizedQuery = searchQ.trim().toLowerCase();
   const filterGroups = (arr) => {
@@ -161,7 +64,6 @@ export default function Inventory() {
     return (arr || []).filter((g) => {
       const gName = String(g.groupName || "").toLowerCase();
       if (gName.includes(normalizedQuery)) return true;
-      // match any type inside group
       return (g.sorts || []).some((s) => String(s.name || "").toLowerCase().includes(normalizedQuery));
     });
   };
@@ -187,7 +89,6 @@ export default function Inventory() {
       });
   }, [partnerDash, normalizedQuery]);
 
-  // URL params bo‘yicha tanlangan group/sort topish
   const selectedGroup = useMemo(() => {
     if (!cId) return null;
     return groups.find((g) => Number(g.id) === Number(cId)) || null;
@@ -198,7 +99,6 @@ export default function Inventory() {
     return (selectedGroup.sorts || []).find((s) => Number(s.id) === Number(tId)) || null;
   }, [selectedGroup, tId]);
 
-  // Handle body blur when modal is open
   useEffect(() => {
     const isAnyModalOpen = showAddModal || showAddTypeModal || !!selectedSort;
     if (isAnyModalOpen) {
@@ -212,7 +112,7 @@ export default function Inventory() {
   if (pageLoading) return <Loader text="Yuklanmoqda..." />;
   if (pageError) return <Loader text={pageError} />;
 
-  // ✅ 1) GROUPS VIEW (URL: /u/:uId/inventory)
+  // 1) GROUPS VIEW
   if (!cId) {
     return (
       <div className="inv-page">
@@ -252,22 +152,16 @@ export default function Inventory() {
             className="inv-searchInput"
             value={searchQ}
             onChange={(e) => setSearchQ(e.target.value)}
-            placeholder="Guruh, nav yoki hamkor ismi bo‘yicha qidirish..."
+            placeholder="Guruh, nav yoki hamkor ismi bo'yicha qidirish..."
           />
         </div>
 
-        <div className="inv-grid inv-grid--groups">
-          {groupsFiltered.map((group, idx) => (
-            <GroupCard
-              key={group.id}
-              group={group}
-              index={idx}
-              tick={tick}
-              toWebImgUrl={toWebImgUrl}
-              onClick={() => navigate(`/u/${uId}/inventory/group/${group.id}`)}
-            />
-          ))}
-        </div>
+        <GroupsGrid
+          groups={groupsFiltered}
+          tick={tick}
+          className="inv-grid inv-grid--groups"
+          onGroupClick={(group) => navigate(`/u/${uId}/inventory/group/${group.id}`)}
+        />
 
         <div className="inv-partners">
           <div className="inv-section">
@@ -294,18 +188,12 @@ export default function Inventory() {
                     Profil
                   </button>
                 </div>
-                <div className="inv-grid inv-grid--groups inv-grid--partners">
-                  {pd.groups.map((g, idx) => (
-                    <GroupCard
-                      key={`${pd.partner.u_id}-${g.id}`}
-                      group={g}
-                      index={idx + pIdx * 100}
-                      tick={tick}
-                      toWebImgUrl={toWebImgUrl}
-                      onClick={() => navigate(`/gardeners/${pd.partner.u_id}/group/${g.id}`)}
-                    />
-                  ))}
-                </div>
+                <GroupsGrid
+                  groups={pd.groups}
+                  tick={tick}
+                  className="inv-grid inv-grid--groups inv-grid--partners"
+                  onGroupClick={(g) => navigate(`/gardeners/${pd.partner.u_id}/group/${g.id}`)}
+                />
               </div>
             ))
           )}
@@ -314,7 +202,7 @@ export default function Inventory() {
     );
   }
 
-  // ✅ Agar URL’da cId bor, lekin group topilmasa
+  // Agar URL'da cId bor, lekin group topilmasa
   if (cId && !selectedGroup) {
     return (
       <div className="inv-page inv-page--detail">
@@ -332,7 +220,7 @@ export default function Inventory() {
     );
   }
 
-  // ✅ 2) SORTS VIEW (URL: /u/:uId/inventory/group/:cId)
+  // 2) SORTS VIEW
   return (
     <div className="inv-page inv-page--detail">
       <div className="inv-detailNav">
@@ -372,18 +260,12 @@ export default function Inventory() {
         />
       )}
 
-      <div className="inv-grid inv-grid--sorts">
-        {selectedGroup.sorts.map((sort) => (
-          <SortCard
-            key={sort.id}
-            sort={sort}
-            toWebImgUrl={toWebImgUrl}
-            onClick={() => navigate(`/u/${uId}/inventory/group/${selectedGroup.id}/sort/${sort.id}`)}
-          />
-        ))}
-      </div>
+      <SortsGrid
+        sorts={selectedGroup.sorts}
+        className="inv-grid inv-grid--sorts"
+        onSortClick={(sort) => navigate(`/u/${uId}/inventory/group/${selectedGroup.id}/sort/${sort.id}`)}
+      />
 
-      {/* ✅ MODAL (URL: /u/:uId/inventory/group/:cId/sort/:tId) */}
       {selectedSort && (
         <SortDetailModal
           selectedSort={selectedSort}

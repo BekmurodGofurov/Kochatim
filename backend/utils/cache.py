@@ -1,27 +1,44 @@
 import time
 
-# NOTE: bu in-process cache — Gunicorn multi-worker rejimida har worker o'z
-# nusxasini saqlaydi. Redis yoki shared cache kerak bo'lsa alohida sozlanadi.
-_result_cache = {}
-_TTL = 60
+# NOTE: in-process cache — Gunicorn multi-worker rejimida har worker o'z
+# nusxasini saqlaydi. Workerlar orasida ulashish kerak bo'lsa Redis kerak.
+_store: dict[str, dict] = {}
 
+
+def get_cache(key: str):
+    entry = _store.get(key)
+    if entry is None:
+        return None
+    if time.time() - entry["time"] >= entry["ttl"]:
+        del _store[key]
+        return None
+    return entry["data"]
+
+
+def set_cache(key: str, data, ttl: int = 60):
+    _store[key] = {"time": time.time(), "data": data, "ttl": ttl}
+
+
+def invalidate_cache(key: str):
+    _store.pop(key, None)
+
+
+def invalidate_prefix(prefix: str):
+    """prefix bilan boshlanadigan barcha kesh kalitlarini o'chiradi."""
+    to_del = [k for k in _store if k.startswith(prefix)]
+    for k in to_del:
+        del _store[k]
+
+
+# --- Dashboard uchun qulaylik wrappers (back-compat) ---
 
 def get_cached_dashboard(u_id):
-    cache_key = f"dashboard_{u_id}"
-    cached = _result_cache.get(cache_key)
-    if cached is None:
-        return None
-    if time.time() - cached["time"] >= _TTL:
-        del _result_cache[cache_key]
-        return None
-    return cached["data"]
+    return get_cache(f"dashboard_{u_id}")
 
 
 def set_cached_dashboard(u_id, data):
-    cache_key = f"dashboard_{u_id}"
-    _result_cache[cache_key] = {"time": time.time(), "data": data}
+    set_cache(f"dashboard_{u_id}", data, ttl=60)
 
 
 def invalidate_dashboard_cache(u_id):
-    cache_key = f"dashboard_{u_id}"
-    _result_cache.pop(cache_key, None)
+    invalidate_cache(f"dashboard_{u_id}")
