@@ -9,14 +9,6 @@ from utils.errors import ok, fail
 from extensions import init_pool
 from db_init import init_db
 
-_ALLOWED_ORIGINS = {
-    "https://kochatim.uz",
-    "https://www.kochatim.uz",
-    "https://app.kochatim.uz",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-}
-
 from auth import auth_bp
 from api import api_bp
 
@@ -51,7 +43,7 @@ def create_app() -> Flask:
 app = create_app()
 
 def _cors_origin(request_origin: str) -> str:
-    if request_origin in _ALLOWED_ORIGINS:
+    if request_origin in Config.ALLOWED_ORIGINS:
         return request_origin
     return "null"
 
@@ -80,6 +72,5 @@ def _add_cors_headers(resp):
     return resp
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", "8000"))
     debug = Config.FLASK_ENV != "production"
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    app.run(host="0.0.0.0", port=Config.PORT, debug=debug)
