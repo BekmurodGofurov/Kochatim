@@ -11,6 +11,7 @@ from db_init import init_db
 
 from auth import auth_bp
 from api import api_bp
+from api.public import public_bp
 
 
 def create_app() -> Flask:
@@ -24,6 +25,7 @@ def create_app() -> Flask:
     # blueprints
     app.register_blueprint(auth_bp)  # /auth/*
     app.register_blueprint(api_bp)   # /api/*
+    app.register_blueprint(public_bp) # /api/v1/public/*
 
     @app.get("/health")
     def health():
