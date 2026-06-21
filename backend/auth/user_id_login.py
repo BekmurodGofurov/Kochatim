@@ -1,4 +1,5 @@
 # backend/auth/user_id_login.py
+import threading
 from flask import request
 from auth import auth_bp
 from utils.errors import ok, fail
@@ -12,22 +13,41 @@ _MAX_SESSIONS = 3
 
 
 def _insert_session(token_hash, u_id, expires_at, user_agent="", ip=""):
-    device_name = parse_device(user_agent)
-    city = get_city(ip)
-    execute(
-        "INSERT INTO sessions (token_hash, u_id, expires_at, device_name, ip_address, city) VALUES (%s, %s, %s, %s, %s, %s)",
-        (token_hash, u_id, expires_at, device_name, ip, city),
-    )
-    rows = fetch_all(
-        "SELECT token_hash FROM sessions WHERE u_id=%s ORDER BY created_at DESC",
-        (u_id,),
-    )
-    if len(rows) > _MAX_SESSIONS:
-        keep = [r["token_hash"] for r in rows[:_MAX_SESSIONS]]
-        execute(
-            "DELETE FROM sessions WHERE u_id=%s AND token_hash <> ALL(%s)",
-            (u_id, keep),
+    try:
+        # 1. Bazadan mavjud sessiyalarni olish
+        rows = fetch_all(
+            "SELECT token_hash FROM sessions WHERE u_id=%s ORDER BY created_at DESC",
+            (u_id,),
         )
+        
+        # Sessiyalar sonini tekshirish va eskilarni o'chirish (yangi 1 ta qo'shilishi uchun joy ochamiz)
+        if len(rows) >= _MAX_SESSIONS:
+            keep = [r["token_hash"] for r in rows[:_MAX_SESSIONS - 1]]
+            if keep:
+                execute(
+                    "DELETE FROM sessions WHERE u_id=%s AND token_hash <> ALL(%s)",
+                    (u_id, keep),
+                )
+            else:
+                execute("DELETE FROM sessions WHERE u_id=%s", (u_id,))
+
+        # 2. Yangi sessiyani bazaga qo'shish (city boshlang'ich holatda bo'sh turadi)
+        device_name = parse_device(user_agent)
+        execute(
+            "INSERT INTO sessions (token_hash, u_id, expires_at, device_name, ip_address, city) VALUES (%s, %s, %s, %s, %s, %s)",
+            (token_hash, u_id, expires_at, device_name, ip, ""),
+        )
+
+        # 3. Shahar nomini aniqlash va sessiyani yangilash
+        city = get_city(ip)
+        if city:
+            execute(
+                "UPDATE sessions SET city=%s WHERE token_hash=%s",
+                (city, token_hash),
+            )
+    except Exception as e:
+        # Orqa fonda ishlaganligi sababli, xatoliklarni shu yerda ushlab qolish yaxshi amaliyotdir
+        print(f"Background session insertion failed: {e}")
 
 
 @auth_bp.post("/user-id-login")
@@ -49,6 +69,12 @@ def user_id_login():
 
     ua = request.headers.get("User-Agent", "")
     ip = get_client_ip(request)
-    _insert_session(token_hash, u_id, expires_at, ua, ip)
+    
+    # Sessiyani qo'shish va shaharni aniqlash kabi og'ir vazifalarni fonda ishga tushirish
+    threading.Thread(
+        target=_insert_session, 
+        args=(token_hash, u_id, expires_at, ua, ip)
+    ).start()
 
+    # Foydalanuvchiga hech narsani kutmasdan darhol javob qaytarish
     return ok({"session_token": session_token, "u_id": u_id, "expires_in": Config.SESSION_TTL_SECONDS})
