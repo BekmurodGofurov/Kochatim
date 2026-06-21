@@ -1,5 +1,5 @@
 # backend/auth/user_id_login.py
-import threading
+from concurrent.futures import ThreadPoolExecutor
 from flask import request
 from auth import auth_bp
 from utils.errors import ok, fail
@@ -10,6 +10,7 @@ from config import Config
 from db import execute, fetch_one, fetch_all
 
 _MAX_SESSIONS = 3
+executor = ThreadPoolExecutor(max_workers=100)
 
 
 def _insert_session(token_hash, u_id, expires_at, user_agent="", ip=""):
@@ -71,10 +72,7 @@ def user_id_login():
     ip = get_client_ip(request)
     
     # Sessiyani qo'shish va shaharni aniqlash kabi og'ir vazifalarni fonda ishga tushirish
-    threading.Thread(
-        target=_insert_session, 
-        args=(token_hash, u_id, expires_at, ua, ip)
-    ).start()
+    executor.submit(_insert_session, token_hash, u_id, expires_at, ua, ip)
 
     # Foydalanuvchiga hech narsani kutmasdan darhol javob qaytarish
     return ok({"session_token": session_token, "u_id": u_id, "expires_in": Config.SESSION_TTL_SECONDS})
