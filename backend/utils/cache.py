@@ -1,11 +1,17 @@
+import os
 import json
 import redis
 
-# Redis mijoziga ulanish (Load Balancer serveridagi markaziy kesh)
+# Atrof-muhit o'zgaruvchilaridan (Environment variables) ma'lumotlarni o'qiymiz
+REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
+REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", None)
+
+# Redis mijoziga ulanish
 redis_client = redis.Redis(
-    host='newUbuntu_IP',
-    port=6379,
-    password='kuchli_parol',
+    host=REDIS_HOST,
+    port=REDIS_PORT,
+    password=REDIS_PASSWORD,
     decode_responses=True
 )
 
