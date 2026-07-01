@@ -29,7 +29,11 @@ def create_app() -> Flask:
 
     @app.get("/health")
     def health():
-        return ok({"status": "up"})
+        server_identity = os.getenv('SERVER_NAME', 'unknown_server')
+        return ok({
+                "status": "up",
+                "server": server_identity
+            })
 
     @app.errorhandler(404)
     def not_found(_):
