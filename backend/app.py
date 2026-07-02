@@ -77,6 +77,16 @@ def _add_cors_headers(resp):
     resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
     return resp
 
+@app.after_request
+def _record_endpoint_stats(resp):
+    try:
+        from utils.cache import redis_client
+        if request.path.startswith("/api/") or request.path.startswith("/auth/"):
+            redis_client.zincrby("endpoint_stats", 1, request.path)
+    except Exception:
+        pass
+    return resp
+
 if __name__ == "__main__":
     debug = Config.FLASK_ENV != "production"
     app.run(host="0.0.0.0", port=Config.PORT, debug=debug)

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kochatim - Admin Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <h1>Kochatim <span>Analytics</span></h1>
+        </div>
+        <button id="theme-toggle" class="btn-theme">🌓 Dark Mode</button>
+    </header>
+
+    <main class="container">
+        <!-- Load Balancer Stats -->
+        <section class="card">
+            <h2>Nginx Server Yuklanishi</h2>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <h3>Bugun (Jami)</h3>
+                    <p id="today-total" class="value">0</p>
+                </div>
+                <div class="stat-box">
+                    <h3>Shu Hafta (Jami)</h3>
+                    <p id="week-total" class="value">0</p>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="loadChart"></canvas>
+            </div>
+        </section>
+
+        <!-- API Popularity Stats -->
+        <section class="card">
+            <h2>Top 10 API Yo'llari (Redis)</h2>
+            <div class="table-container">
+                <table id="api-table">
+                    <thead>
+                        <tr>
+                            <th>Endpoint (Yo'l)</th>
+                            <th>So'rovlar Soni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Data will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
