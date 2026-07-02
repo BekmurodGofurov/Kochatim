@@ -41,4 +41,5 @@ def get_stats():
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 9000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    host = os.getenv('HOST', '127.0.0.1')
+    app.run(host=host, port=port, debug=True)
