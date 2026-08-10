@@ -67,5 +67,5 @@ async def bot_start(message: types.Message, state: FSMContext):
     types_list = await get_all_types_for_user(u.id)
     markup = get_main_menu(has_cats=bool(cats), has_types=bool(types_list))
 
-    await message.answer("Xush kelibsiz. Ma'lumotlaringiz mavjud ✅", reply_markup=markup)
+    await message.answer("Qaytib kelganizdan hursadmiz ✅", reply_markup=markup)
     print(f"[START] total {(time.perf_counter() - t0) * 1000:.0f}ms (ok)")
