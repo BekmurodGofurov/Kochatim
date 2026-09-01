@@ -12,6 +12,7 @@ class Config:
     BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
     TG_BOT_USERNAME = os.getenv("TG_BOT_USERNAME", "").strip().lstrip("@")
     IMGBB_API_KEY = os.getenv("IMGBB_API_KEY", "").strip()
+    ADMINS = os.getenv("ADMINS", "").strip()
 
     OTP_TTL_SECONDS = int(os.getenv("OTP_TTL_SECONDS", "120"))
     SESSION_TTL_SECONDS = int(os.getenv("SESSION_TTL_SECONDS", str(30 * 24 * 3600)))

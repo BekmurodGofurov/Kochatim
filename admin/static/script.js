@@ -122,6 +122,60 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     fetchData();
-    // Auto-refresh every 10 seconds
+    // Auto-refresh every 10 seconds for standard stats
     setInterval(fetchData, 10000);
+
+    // ==========================================
+    // WebSockets (Live Data)
+    // ==========================================
+    const socket = io();
+
+    // Store metrics by server
+    const serverMetrics = {};
+
+    socket.on('metrics', (data) => {
+        serverMetrics[data.server] = data;
+        renderMetrics();
+    });
+
+    function renderMetrics() {
+        const container = document.getElementById('metrics-container');
+        container.innerHTML = '';
+        
+        Object.values(serverMetrics).forEach(m => {
+            const cpuColor = m.cpu > 90 ? 'red' : 'var(--primary-color)';
+            const ramColor = m.ram > 90 ? 'red' : 'var(--primary-color)';
+            
+            const box = document.createElement('div');
+            box.className = 'stat-box';
+            box.innerHTML = `
+                <h3>${m.server}</h3>
+                <p>CPU: <span style="color:${cpuColor}; font-weight:bold;">${m.cpu}%</span></p>
+                <p>RAM: <span style="color:${ramColor}; font-weight:bold;">${m.ram}%</span></p>
+                <small style="color:#888;">${m.time.split('T')[1].split('.')[0]}</small>
+            `;
+            container.appendChild(box);
+        });
+    }
+
+    const maxLiveRows = 20;
+    const liveTbody = document.querySelector('#live-requests-table tbody');
+
+    socket.on('live_request', (data) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${data.time}</td>
+            <td>${data.server}</td>
+            <td><strong>${data.method}</strong></td>
+            <td>${data.path}</td>
+            <td>${data.status}</td>
+        `;
+        liveTbody.insertBefore(tr, liveTbody.firstChild);
+        
+        // limit rows
+        while(liveTbody.children.length > maxLiveRows) {
+            liveTbody.removeChild(liveTbody.lastChild);
+        }
+    });
+
 });

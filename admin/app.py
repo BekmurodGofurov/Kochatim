@@ -1,5 +1,8 @@
 import os
+import json
+import threading
 from flask import Flask, jsonify, render_template
+from flask_socketio import SocketIO
 import redis
 from dotenv import load_dotenv
 from log_parser import parse_nginx_logs
@@ -8,6 +11,7 @@ from log_parser import parse_nginx_logs
 load_dotenv()
 
 app = Flask(__name__)
+socketio = SocketIO(app, async_mode='gevent', cors_allowed_origins="*")
 
 # .env orqali Redis ulanishi (izolyatsiya qilingan)
 redis_client = redis.Redis(
@@ -16,6 +20,24 @@ redis_client = redis.Redis(
     password=os.getenv('REDIS_PASSWORD', ''),
     decode_responses=True
 )
+
+def redis_listener():
+    pubsub = redis_client.pubsub()
+    pubsub.subscribe(['server_metrics', 'live_requests'])
+    for message in pubsub.listen():
+        if message['type'] == 'message':
+            channel = message['channel']
+            try:
+                data = json.loads(message['data'])
+                if channel == 'server_metrics':
+                    socketio.emit('metrics', data)
+                elif channel == 'live_requests':
+                    socketio.emit('live_request', data)
+            except Exception as e:
+                print("Error parsing pubsub message:", e)
+
+listener_thread = threading.Thread(target=redis_listener, daemon=True)
+listener_thread.start()
 
 @app.route('/')
 def index():
@@ -42,4 +64,4 @@ def get_stats():
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 9000))
     host = os.getenv('HOST', '0.0.0.0')
-    app.run(host=host, port=port, debug=True)
+    socketio.run(app, host=host, port=port, debug=True)
