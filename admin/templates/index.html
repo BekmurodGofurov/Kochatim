@@ -17,6 +17,35 @@
     </header>
 
     <main class="container">
+        <!-- Live Metrics -->
+        <section class="card">
+            <h2>Server Holati (Live CPU/RAM)</h2>
+            <div class="stats-grid" id="metrics-container">
+                <!-- Dynamically populated via WebSockets -->
+                <div class="stat-box">Kutilyapti...</div>
+            </div>
+        </section>
+
+        <!-- Live Requests -->
+        <section class="card">
+            <h2>Jonli So'rovlar (Live Feed)</h2>
+            <div class="table-container" style="max-height: 250px; overflow-y: auto;">
+                <table id="live-requests-table">
+                    <thead>
+                        <tr>
+                            <th>Vaqt</th>
+                            <th>Server</th>
+                            <th>Metod</th>
+                            <th>Yo'l</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
         <!-- Load Balancer Stats -->
         <section class="card">
             <h2>Nginx Server Yuklanishi</h2>
@@ -55,6 +84,7 @@
         </section>
     </main>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

@@ -173,6 +173,33 @@ PostgreSQL with the following core tables:
 
 ## Setup
 
+### Docker (recommended)
+
+Runs every service — client, backend, admin, bot, Postgres, and Redis — in containers on one Docker network. No local Python/Node/Postgres install needed.
+
+```bash
+cp .env.example .env                     # Postgres credentials for the db container
+cp backend/.env.example backend/.env     # fill in BOT_TOKEN, API_KEY, IMGBB_API_KEY, ...
+cp admin/.env.example admin/.env
+cp bot/.env.example bot/.env             # fill in BOT_TOKEN, ADMINS, API_KEY
+cp client/.env.example client/.env
+
+docker compose up -d --build
+```
+
+| Service | URL |
+|---|---|
+| Client | http://localhost:5174 |
+| Backend API | http://localhost:8000 |
+| Admin dashboard | http://localhost:9000 |
+| Postgres | localhost:5432 |
+
+The backend auto-creates the full schema on the local Postgres container at startup (`db_init.py`) — no manual migration needed. Inside the Docker network, services reach each other by container name (`db`, `redis`, `backend`); `DATABASE_URL` and `REDIS_HOST` in `backend/.env.example` / `admin/.env.example` already point there.
+
+Stop the stack with `docker compose down` (add `-v` to also drop the Postgres/Redis volumes).
+
+### Manual setup
+
 **Requirements:** Python 3.11+, Node.js 18+, PostgreSQL
 
 ### Backend
