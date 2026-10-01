@@ -1,0 +1,80 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-kochatim}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kochatim_local_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-kochatim}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kochatim} -d ${POSTGRES_DB:-kochatim}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [kochatim]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [kochatim]
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    networks: [kochatim]
+
+  admin:
+    build: ./admin
+    restart: unless-stopped
+    env_file:
+      - ./admin/.env
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "9000:9000"
+    networks: [kochatim]
+
+  bot:
+    build: ./bot
+    restart: unless-stopped
+    env_file:
+      - ./bot/.env
+    depends_on:
+      - backend
+    networks: [kochatim]
+
+  client:
+    build: ./client
+    restart: unless-stopped
+    ports:
+      - "5174:80"
+    networks: [kochatim]
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  kochatim:
+    driver: bridge

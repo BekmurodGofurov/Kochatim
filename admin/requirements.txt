@@ -4,3 +4,4 @@ python-dotenv==1.0.1
 Flask-SocketIO>=5.3.0
 gevent>=23.9.0
 gevent-websocket>=0.10.1
+gunicorn==23.0.0
