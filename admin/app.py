@@ -5,7 +5,7 @@ from flask import Flask, jsonify, render_template
 from flask_socketio import SocketIO
 import redis
 from dotenv import load_dotenv
-from log_parser import parse_nginx_logs
+from datetime import datetime, timedelta
 
 # Load environment variables
 load_dotenv()
@@ -43,10 +43,24 @@ listener_thread.start()
 def index():
     return render_template('index.html')
 
+def request_counts():
+    today = datetime.utcnow().date()
+    week_start = today - timedelta(days=today.weekday())
+    stats = {"today": {"total": 0}, "this_week": {"total": 0}}
+    try:
+        days = [week_start + timedelta(days=i) for i in range((today - week_start).days + 1)]
+        counts = redis_client.mget([f"req_count:{d}" for d in days])
+        stats["this_week"]["total"] = sum(int(c or 0) for c in counts)
+        stats["today"]["total"] = int(counts[-1] or 0)
+    except Exception as e:
+        print(f"Redis ulanish xatosi: {e}")
+    return stats
+
+
 @app.route('/api/stats')
 def get_stats():
-    # 1. Nginx loglaridan statistika (faqat mahalliy fayl)
-    log_stats = parse_nginx_logs()
+    # 1. Kunlik so'rovlar soni (backend Redis'ga yozadi)
+    log_stats = request_counts()
     
     # 2. Redis'dan Endpoint Popularity (faqat kesh orqali, tashqi tarmoqsiz)
     try:

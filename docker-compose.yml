@@ -9,7 +9,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kochatim} -d ${POSTGRES_DB:-kochatim}"]
       interval: 5s
@@ -65,10 +65,13 @@ services:
     networks: [kochatim]
 
   client:
-    build: ./client
+    build:
+      context: ./client
+      args:
+        VITE_API_BASE_URL: ${PUBLIC_URL:-http://localhost:8000}
     restart: unless-stopped
     ports:
-      - "5174:80"
+      - "80:80"
     networks: [kochatim]
 
 volumes:

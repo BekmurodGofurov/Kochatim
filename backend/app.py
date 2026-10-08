@@ -124,6 +124,9 @@ def _record_endpoint_stats(resp):
         from utils.cache import redis_client
         if request.path.startswith("/api/") or request.path.startswith("/auth/"):
             redis_client.zincrby("endpoint_stats", 1, request.path)
+            day_key = f"req_count:{datetime.utcnow():%Y-%m-%d}"
+            redis_client.incr(day_key)
+            redis_client.expire(day_key, 8 * 86400)
             server_identity = os.getenv('SERVER_NAME', 'unknown_server')
             req_data = {
                 "server": server_identity,
