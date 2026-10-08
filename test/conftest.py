@@ -214,11 +214,32 @@ FAKE_INVITE = {
 
 @pytest.fixture(scope="session")
 def app():
-    """Flask test app — haqiqiy DB ulanishisiz."""
+    """
+    Flask app — `backend/app.py` ning modul darajasidagi nusxasi.
+
+    MUHIM: `create_app()` ni qayta chaqirmaydi. CORS ishlovchilari
+    (`_cors_preflight`, `_add_cors_headers`) va so'rov statistikasi
+    (`_record_endpoint_stats`) `create_app()` ICHIDA emas, modul
+    darajasida `@app.before_request` / `@app.after_request` dekoratori
+    bilan ro'yxatga olingan. Shuning uchun `create_app()` dan qaytgan
+    yangi app'da CORS ham, statistika ham YO'Q.
+
+    Production gunicorn `app:app` ni, ya'ni aynan shu nusxani ishlatadi —
+    test ham shuni ishlatishi kerak, aks holda CORS siyosati hech qachon
+    tekshirilmaydi.
+    """
+    application = _app_module.app
+    application.config["TESTING"] = True
+    application.config["WTF_CSRF_ENABLED"] = False
+    return application
+
+
+@pytest.fixture
+def factory_app():
+    """`create_app()` dan qaytgan yangi app — fabrikani o'zini testlash uchun."""
     with patch("extensions.init_pool"), patch("db_init.init_db"):
         application = _app_module.create_app()
         application.config["TESTING"] = True
-        application.config["WTF_CSRF_ENABLED"] = False
     return application
 
 
