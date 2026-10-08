@@ -60,15 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 labels: ['Bugun', 'Shu Hafta'],
                 datasets: [
                     {
-                        label: logs.meta.server_one_label || 'Server 1',
-                        data: [logs.today.server_one, logs.this_week.server_one],
+                        label: "So'rovlar",
+                        data: [logs.today.total, logs.this_week.total],
                         backgroundColor: '#4CAF50',
-                        borderRadius: 4
-                    },
-                    {
-                        label: logs.meta.server_two_label || 'Server 2',
-                        data: [logs.today.server_two, logs.this_week.server_two],
-                        backgroundColor: '#2196F3',
                         borderRadius: 4
                     }
                 ]
