@@ -42,8 +42,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    # Loopback only. The host's nginx terminates TLS for
+    # api.kochatim.uz and proxies here — see deploy/nginx/.
+    # Never widen this to "8000:8000": that would expose the API over
+    # plain HTTP, bypassing nginx entirely.
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     networks: [kochatim]
 
   admin:
@@ -54,8 +58,11 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    # The panel has NO authentication (docs/security.md, issue 2), so it
+    # must never be published. Reach it with an SSH tunnel:
+    #   ssh -L 9000:127.0.0.1:9000 admin@<server>
     ports:
-      - "9000:9000"
+      - "127.0.0.1:9000:9000"
     networks: [kochatim]
 
   bot:
@@ -67,15 +74,22 @@ services:
       - backend
     networks: [kochatim]
 
+  # Only for running the whole stack locally. In production the frontend
+  # is built and served by Cloudflare Pages, and ports 80/443 belong to
+  # the host's nginx, so this container is not started:
+  #   docker compose up -d                    # server
+  #   docker compose --profile local up -d    # local, client on :8080
   client:
+    profiles: ["local"]
     build:
       context: ./client
       args:
         VITE_API_BASE_URL: ${PUBLIC_URL:-http://localhost:8000}
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "8080:80"
     networks: [kochatim]
+
 
 volumes:
   pgdata:
