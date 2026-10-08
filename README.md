@@ -25,6 +25,37 @@ graph TD
 
 ---
 
+## Documentation
+
+| File | Covers |
+|---|---|
+| [AGENTS.md](AGENTS.md) | Rules for AI coding agents working in this repo |
+| [docs/architecture.md](docs/architecture.md) | Services, request flows, what Redis is used for |
+| [docs/setup.md](docs/setup.md) | Running it locally |
+| [docs/api.md](docs/api.md) | Every route, its auth, and its response shape |
+| [docs/database.md](docs/database.md) | Tables, indexes, the no-migrations approach |
+| [docs/backend.md](docs/backend.md) | Flask structure, the db layer, caching |
+| [docs/bot.md](docs/bot.md) | aiogram handlers, FSM states, the two API clients |
+| [docs/admin.md](docs/admin.md) | The monitoring panel and its Redis contract |
+| [docs/frontend.md](docs/frontend.md) | React structure, `apiFetch`, the dashboard transform |
+| [docs/testing.md](docs/testing.md) | Suite layout, coverage, how to run it |
+| [docs/deployment.md](docs/deployment.md) | Docker Compose, single-server layout, nginx |
+| [docs/security.md](docs/security.md) | **Known issues and their fixes — read before deploying** |
+
+## Tests
+
+```bash
+./scripts/test.sh              # all four suites
+./scripts/test.sh --docker     # inside the service base images
+./scripts/test.sh backend      # one suite
+```
+
+925 tests: 655 backend, 148 bot, 93 client, 29 admin. None of them need
+a database, a Redis server, or network access. See
+[docs/testing.md](docs/testing.md).
+
+---
+
 ## Components
 
 ### 1. Client (`/client`)

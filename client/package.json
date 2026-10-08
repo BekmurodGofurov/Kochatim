@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run --config vitest.config.js",
+    "test:watch": "vitest --config vitest.config.js"
   },
   "dependencies": {
     "axios": "^1.7.9",
@@ -19,7 +21,9 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^29.1.1",
     "postcss": "^8.4.49",
-    "sass": "^1.97.3"
+    "sass": "^1.97.3",
+    "vitest": "^5.0.3"
   }
 }

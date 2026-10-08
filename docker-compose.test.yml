@@ -1,0 +1,95 @@
+# Test runners — one service per suite.
+#
+#   docker compose -f docker-compose.test.yml run --rm test-backend
+#   docker compose -f docker-compose.test.yml run --rm test-bot
+#   docker compose -f docker-compose.test.yml run --rm test-admin
+#   docker compose -f docker-compose.test.yml run --rm test-client
+#
+# Or all four at once: ./scripts/test.sh --docker
+#
+# No Postgres and no Redis service here on purpose. The DB layer is
+# mocked at the pool boundary and the cache runs on fakeredis, so each
+# suite is hermetic: nothing to wait for, nothing to clean up, and no
+# chance of a test run touching a real database.
+#
+# Each runner uses the same base image as its service's Dockerfile
+# (python:3.11-slim / node:20-alpine), so a suite that passes here
+# passes on the same interpreter that runs in production. That is what
+# makes the bot's aiogram tests runnable at all — aiogram 2.x does not
+# install on Python 3.13.
+
+services:
+  test-backend:
+    image: python:3.11-slim
+    working_dir: /app
+    volumes:
+      - .:/app:ro
+      - backend-test-cache:/root/.cache/pip
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+    command:
+      - sh
+      - -c
+      - |
+        pip install --quiet -r backend/requirements.txt -r test/requirements-test.txt
+        exec python -m pytest test -c test/pytest.ini -p no:cacheprovider "$${@}"
+
+  test-admin:
+    image: python:3.11-slim
+    working_dir: /app
+    volumes:
+      - .:/app:ro
+      - admin-test-cache:/root/.cache/pip
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+    command:
+      - sh
+      - -c
+      - |
+        pip install --quiet -r admin/requirements.txt -r test/requirements-test.txt
+        exec python -m pytest admin/tests -c admin/pytest.ini -p no:cacheprovider "$${@}"
+
+  test-bot:
+    image: python:3.11-slim
+    working_dir: /app
+    volumes:
+      - .:/app:ro
+      - bot-test-cache:/root/.cache/pip
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+      # bot/data/config.py bu o'zgaruvchilar bo'lmasa import vaqtida
+      # RuntimeError ko'taradi. conftest ham ularni o'rnatadi; bu yerda
+      # takrorlanishi — konteyner ichida .env fayli bo'lmasligi uchun.
+      BOT_TOKEN: "123456789:TEST_BOT_TOKEN_ABCDEF1234"
+      API_URL: "http://backend:8000"
+      API_KEY: "test-api-key-12345"
+      WEB_URL: "http://localhost:5173"
+      ADMINS: "111111,222222"
+    command:
+      - sh
+      - -c
+      - |
+        pip install --quiet -r bot/requirements.txt -r test/requirements-test.txt
+        exec python -m pytest bot/tests -c bot/pytest.ini -p no:cacheprovider "$${@}"
+
+  test-client:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./client:/app
+      - client-node-modules:/app/node_modules
+    command:
+      - sh
+      - -c
+      - |
+        npm ci --no-audit --no-fund
+        exec npm test
+
+volumes:
+  backend-test-cache:
+  admin-test-cache:
+  bot-test-cache:
+  client-node-modules:

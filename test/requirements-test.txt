@@ -1,2 +1,17 @@
+# Test-only dependencies — deliberately NOT in any service's
+# requirements.txt, which is what the Dockerfiles install into the
+# production images.
+#
+#   pip install -r backend/requirements.txt -r test/requirements-test.txt
 pytest>=8.0.0
 pytest-mock>=3.0.0
+pytest-asyncio>=0.24.0
+
+# Redis ustida ishlaydigan kesh kodini mock qilmasdan sinash uchun.
+# utils/cache.py ni haqiqiy JSON serializatsiya va TTL bilan tekshiradi.
+fakeredis>=2.20.0
+
+# admin/app.py import vaqtida SocketIO yaratadi. gevent kerak emas —
+# conftest SocketIO ni mock qiladi — lekin flask_socketio importable
+# bo'lishi shart.
+Flask-SocketIO>=5.3.0
