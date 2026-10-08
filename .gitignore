@@ -133,3 +133,5 @@ dmypy.json
 .pyre/
 .idea/*
 .env
+# Local security audit notes — never commit to a public repo
+hacking_map.md
