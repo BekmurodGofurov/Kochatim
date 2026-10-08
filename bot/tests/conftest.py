@@ -63,15 +63,19 @@ def api_client():
 class FakeResponse:
     """`async with session.request(...)` dan qaytadigan obyekt."""
 
-    def __init__(self, status=200, payload=None, json_error=None):
+    def __init__(self, status=200, payload=None, json_error=None, text=""):
         self.status = status
         self._payload = payload
         self._json_error = json_error
+        self._text = text
 
     async def json(self, content_type=None):
         if self._json_error is not None:
             raise self._json_error
         return self._payload
+
+    async def text(self):
+        return self._text
 
     async def __aenter__(self):
         return self
@@ -89,13 +93,14 @@ class FakeSession:
         self.calls = []
         self._queue = []
 
-    def respond(self, status=200, payload=None, json_error=None):
-        self._queue.append(FakeResponse(status, payload, json_error))
+    def respond(self, status=200, payload=None, json_error=None, text=""):
+        self._queue.append(FakeResponse(status, payload, json_error, text))
         return self
 
-    def request(self, method, url, headers=None, json=None):
+    def request(self, method, url, headers=None, json=None, params=None):
         self.calls.append({
-            "method": method, "url": url, "headers": headers or {}, "json": json,
+            "method": method, "url": url, "headers": headers or {},
+            "json": json, "params": params,
         })
         if not self._queue:
             raise AssertionError(f"Kutilmagan so'rov: {method} {url}")
@@ -112,4 +117,29 @@ def backend(api_client):
     """api_client ning aiohttp sessiyasini FakeSession bilan almashtiradi."""
     session = FakeSession()
     with patch.object(api_client, "get_session", return_value=session):
+        yield session
+
+
+@pytest.fixture
+def database():
+    """
+    bot/data/database.py moduli — ikkinchi HTTP clienti.
+
+    `api_client` dan mustaqil: o'z API_URL/API_KEY global'lari bor,
+    ular ham import vaqtida o'qiladi.
+    """
+    import data.database as mod
+
+    original = (mod.API_URL, mod.API_KEY, mod._session)
+    mod.API_URL = TEST_API_URL
+    mod.API_KEY = TEST_API_KEY
+    yield mod
+    mod.API_URL, mod.API_KEY, mod._session = original
+
+
+@pytest.fixture
+def db_backend(database):
+    """data.database ning aiohttp sessiyasini FakeSession bilan almashtiradi."""
+    session = FakeSession()
+    with patch.object(database, "get_session", return_value=session):
         yield session
