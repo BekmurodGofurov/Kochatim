@@ -15,6 +15,7 @@ aiogram 2.x Python 3.13 ga o'rnatilmaydi, shuning uchun lokal mashinada
 bu fayl o'tkazib yuboriladi. Docker ichida (python:3.11-slim) ishlaydi:
 `docker compose -f docker-compose.test.yml run --rm test-bot`.
 """
+from contextlib import contextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -97,11 +98,15 @@ class TestRateLimit:
 
 # ─── ThrottlingMiddleware ─────────────────────────────────────────────────────
 
+from aiogram.dispatcher.storage import (  # noqa: E402
+    EXCEEDED_COUNT, KEY, RATE_LIMIT,
+)
 from aiogram.utils.exceptions import Throttled  # noqa: E402
 
-from middlewares.throttling import ThrottlingMiddleware  # noqa: E402
+from middlewares.throttling import ThrottlingMiddleware, current_handler  # noqa: E402
 
-pytestmark = pytest.mark.asyncio
+# pytestmark kerak emas: bot/pytest.ini da `asyncio_mode = auto`.
+# Modul darajasidagi marker sinxron testlarga ham tushib ogohlantirish beradi.
 
 
 @pytest.fixture
@@ -113,9 +118,35 @@ def dispatcher():
         yield dp
 
 
+@contextmanager
 def set_current_handler(handler):
-    """current_handler ContextVar ini o'rnatadi."""
-    return patch("middlewares.throttling.current_handler.get", return_value=handler)
+    """
+    `current_handler` ContextVar ini haqiqatan o'rnatadi.
+
+    `patch("...current_handler.get")` ISHLAMAYDI: ContextVar.get
+    faqat-o'qish uchun C-darajadagi atribut va mock
+    "attribute 'get' is read-only" bilan yiqiladi. To'g'ri yo'l —
+    set()/reset() juftligi.
+    """
+    token = current_handler.set(handler)
+    try:
+        yield
+    finally:
+        current_handler.reset(token)
+
+
+def throttled(exceeded_count=1, rate=1, key="k"):
+    """
+    `Throttled` ni aiogram'ning O'Z kalit nomlari bilan quradi.
+
+    Konstruktor `**kwargs` qabul qiladi va qiymatlarni
+    `aiogram.dispatcher.storage` dagi konstantalar orqali o'qiydi:
+    `RATE_LIMIT == "rate_limit"`, `EXCEEDED_COUNT == "exceeded"`.
+    Ya'ni `Throttled(rate=1, exceeded_count=3)` deb yozilsa, ikkisi ham
+    JIMGINA 0 bo'lib qoladi va test tekshirmoqchi bo'lgan shart
+    (`exceeded_count <= 2`) hech qachon sinalmaydi.
+    """
+    return Throttled(**{KEY: key, RATE_LIMIT: rate, EXCEEDED_COUNT: exceeded_count})
 
 
 class TestThrottlingMiddlewareInit:
@@ -194,7 +225,7 @@ class TestOnProcessMessage:
         def my_handler():
             pass
 
-        dispatcher.throttle.side_effect = Throttled(key="k", rate=1, exceeded_count=1)
+        dispatcher.throttle.side_effect = throttled(exceeded_count=1)
         mw = ThrottlingMiddleware()
         message = MagicMock()
         message.reply = AsyncMock()
@@ -208,7 +239,7 @@ class TestOnProcessMessage:
         def my_handler():
             pass
 
-        dispatcher.throttle.side_effect = Throttled(key="k", rate=1, exceeded_count=1)
+        dispatcher.throttle.side_effect = throttled(exceeded_count=1)
         mw = ThrottlingMiddleware()
         message = MagicMock()
         message.reply = AsyncMock()
@@ -223,14 +254,14 @@ class TestMessageThrottled:
         mw = ThrottlingMiddleware()
         message = MagicMock()
         message.reply = AsyncMock()
-        await mw.message_throttled(message, Throttled(key="k", rate=1, exceeded_count=1))
+        await mw.message_throttled(message, throttled(exceeded_count=1))
         message.reply.assert_awaited_once()
 
     async def test_replies_on_second_exceed(self):
         mw = ThrottlingMiddleware()
         message = MagicMock()
         message.reply = AsyncMock()
-        await mw.message_throttled(message, Throttled(key="k", rate=1, exceeded_count=2))
+        await mw.message_throttled(message, throttled(exceeded_count=2))
         message.reply.assert_awaited_once()
 
     async def test_stays_silent_after_two_exceeds(self):
@@ -241,12 +272,12 @@ class TestMessageThrottled:
         mw = ThrottlingMiddleware()
         message = MagicMock()
         message.reply = AsyncMock()
-        await mw.message_throttled(message, Throttled(key="k", rate=1, exceeded_count=3))
+        await mw.message_throttled(message, throttled(exceeded_count=3))
         message.reply.assert_not_awaited()
 
     async def test_reply_text_is_in_uzbek(self):
         mw = ThrottlingMiddleware()
         message = MagicMock()
         message.reply = AsyncMock()
-        await mw.message_throttled(message, Throttled(key="k", rate=1, exceeded_count=1))
+        await mw.message_throttled(message, throttled(exceeded_count=1))
         assert "so'rov" in message.reply.call_args[0][0]
