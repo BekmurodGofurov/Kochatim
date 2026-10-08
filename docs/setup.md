@@ -87,24 +87,45 @@ password is also read by the `redis` container itself, which is why
 docker compose up --build
 ```
 
+`docker compose up` starts the production shape: no `client`
+container, and nothing published to the network — on a server, ports
+80/443 belong to the host's nginx. To run the frontend in Docker too,
+add the `local` profile:
+
+```bash
+docker compose --profile local up --build
+```
+
 | Service | URL |
 |---|---|
-| client | http://localhost |
+| client | http://localhost:8080 (profile `local` only) |
 | backend | http://localhost:8000/health |
 | admin | http://localhost:9000 |
-| postgres | `127.0.0.1:5432` (bound to localhost only) |
+| postgres | `127.0.0.1:5432` |
+
+`backend` and `admin` are bound to `127.0.0.1`, so they are reachable
+from the host but not from the network. Locally that is all you need;
+no reverse proxy is involved.
 
 The backend creates its own schema on first start — there is no
 migration step to run. See `database.md`.
 
-> The admin panel has **no authentication**. Port 9000 must not be
-> reachable from the internet. See `security.md`.
+> The admin panel has **no authentication**. It is bound to
+> `127.0.0.1` in `docker-compose.yml` for that reason — do not widen
+> it. On a server, reach it with
+> `ssh -L 9000:127.0.0.1:9000 admin@<host>`. See `security.md`.
 
 ## 3. Verify
 
 ```bash
 curl http://localhost:8000/health
 # {"ok":true,"data":{"status":"up","server":"server"}}
+```
+
+On a server, go through nginx instead:
+
+```bash
+curl -I https://api.kochatim.uz/health
 ```
 
 Then open the bot in Telegram and send `/start`. If the bot answers and
