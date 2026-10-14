@@ -142,30 +142,32 @@ so a test using it silently asserts nothing about CORS.
 The `app` fixture returns `_app_module.app` — the same object gunicorn
 serves. Use `factory_app` only to test the factory itself.
 
-## 4. A star-import shadows a module name
+## 4. A star-import copies names into the package
 
-`auth/__init__.py` does `from auth.user_id_login import *`, binding the
-**function** `user_id_login` as an attribute of the `auth` package. So
-`import auth.user_id_login as m` gives you the function, and
-`patch.object(m, "executor")` fails with
-`does not have the attribute 'executor'`.
+`auth/__init__.py` does `from auth.otp import *` and
+`from auth.telegram_webapp import *`, so the route functions also appear
+as attributes of the `auth` package. Patch a name where it is *looked up*
+(`auth.otp.fetch_one`, `auth.otp.create_session`), not on `auth`.
 
-```python
-_uidl = sys.modules["auth.user_id_login"]   # the module
-```
+## 5. Every request needs a key — and sessions need a proof
 
-## 5. A thread pool outlives the patch context
+The client gate answers 401 to any request without `X-API-KEY` or
+`X-Client-Key`. Use the fixtures: `api_key_headers` (bot), `web_headers`
+(public routes), `session_headers` (signed-in browser). At module level
+import `SESSION_HEADERS` / `WEB_HEADERS` from `conftest`.
 
-`/auth/user-id-login` submits the session insert to a
-`ThreadPoolExecutor` and returns immediately, so the `with patch(...)`
-block closes before the background job runs — and it then connects to
-the **real** Postgres. That is what produced
-`Background session insertion failed: role "test" does not exist` in
-test output.
+For route tests, `mock_session` / `mock_session_miss` / `mock_no_session`
+stub the cryptographic check, so the test is about the route. To test the
+real device-bound behaviour, sign requests yourself with
+`make_device_key()` and `sign_proof()` (see `test_session_binding.py`).
 
-An autouse fixture (`inline_background_executor`) swaps in an executor
-that runs inline. Leave it alone; if you add another background
-dispatch, add it there too.
+Two more autouse guards: `forbid_real_network` fails any un-mocked
+`requests` call, and `clear_redis` flushes the fake Redis. A test that
+needs an HTTP answer patches `requests.get` / `post` itself.
+
+New route? `test_client_gate.py` will fail until it carries
+`@require_api_key` or `@require_session`, or is listed (with a reason) in
+its `PUBLIC_ENDPOINTS`.
 
 ## 6. `importlib.reload` defeats module-attribute patches
 

@@ -58,7 +58,8 @@ Barcha qismlar bitta umumiy `backend` bilan ishlaydi. Foydalanuvchi:
 - **CORS** (Cross-Origin Resource Sharing) sozlaydi:
   - Faqat ruxsat etilgan domenlardan so'rovlar qabul qilinadi: `kochatim.uz`, `app.kochatim.uz`, `localhost:5173`
   - `OPTIONS` preflight so'rovlarini ham boshqaradi
-  - `Credentials: true` — cookie/Authorization header bilan ishlash uchun
+  - `Credentials` yuborilmaydi (cookie ishlatilmaydi). Ruxsat etilgan sarlavhalar: `Authorization`, `X-API-KEY`, `X-Client-Key`, `X-Session-Proof`
+- **Kalit darvozasi** (`middleware/client_gate.py`): har bir so'rov bot kaliti (`X-API-KEY`) yoki veb-klient kaliti (`X-Client-Key`) bilan kelishi shart, aks holda bir xil `401`. Faqat `/health` va CORS `OPTIONS` istisno
 
 ---
 
@@ -142,7 +143,7 @@ Har bir so'rovda yangi ulanish ochish sekin (150-300ms). Pool esa 1-20 ta ulanis
 ### `backend/auth/` — Autentifikatsiya
 
 #### `auth/__init__.py`
-`/auth/*` prefix bilan Blueprint yaratadi. Uch moduli import qiladi.
+`/auth/*` prefix bilan Blueprint yaratadi. Ikki moduli import qiladi (`otp`, `telegram_webapp`). Sessiya yaratish `session_service.py` da.
 
 #### `auth/otp.py` — OTP orqali kirish
 
@@ -152,34 +153,39 @@ Har bir so'rovda yangi ulanish ochish sekin (150-300ms). Pool esa 1-20 ta ulanis
    - 6 raqamli tasodifiy kod generatsiya qilinadi (`secrets.randbelow`)
    - Kodning SHA-256 hashi DB ga saqlanadi (kod emas, hash!)
    - Kod botga qaytariladi → bot foydalanuvchiga yuboradi
-2. **Web sayt** → `POST /auth/verify-code` chaqiradi
-   - Kiri kodning hashi hisoblanadi, DB da qidiriladi
-   - Eskirganmi? Ishlatilganmi? — tekshiriladi
-   - Hammasi to'g'ri → 32 baytli `session_token` generatsiya qilinadi
-   - Token hashi DB ga saqlanadi → token foydalanuvchiga yuboriladi
+2. **Web sayt** → `POST /auth/verify-code` chaqiradi (`code` va brauzerning **ochiq kaliti** `device_key` bilan)
+   - Avval `device_key` tekshiriladi (kod hali sarflanmaydi)
+   - Xato urinishlar IP bo'yicha sanaladi (10 daqiqada 5 ta), undan keyin `429`
+   - Kiritilgan kodning hashi hisoblanadi, DB da qidiriladi; eskirganmi, ishlatilganmi — tekshiriladi
+   - Kod **bitta atomik `UPDATE`** bilan sarflanadi (parallel so'rovlar ikkinchi marta ishlata olmaydi)
+   - Hammasi to'g'ri → `session_token` yaratiladi va brauzer kalitiga **bog'lanadi**
 
-**`_insert_session()`:** Sessiya yaratganda qurilma nomi va shahar ham saqlanadi. Agar foydalanuvchida 3 tadan ortiq sessiya bo'lsa — eskisi o'chiriladi.
+**`session_service.create_session(u_id, device_key)`:** sessiya yaratiladigan yagona joy. IP va brauzer so'rovdan **serverning o'zi** aniqlanadi (funksiyaga ularni berish uchun parametr yo'q). Foydalanuvchida 3 tadan ortiq sessiya bo'lsa — eskisi o'chiriladi.
 
 #### `auth/telegram_webapp.py` — Telegram Mini App orqali kirish
 
 **Qanday ishlaydi:**
 1. Mini App `window.Telegram.WebApp.initData` ni serverga yuboradi
 2. Server `telegram_webapp_verify()` orqali bu ma'lumotni Telegram bot token yordamida tekshiradi (HMAC-SHA256 imzo)
-3. Haqiqiy bo'lsa → session yaratiladi, `is_registered` (telefon raqami bormi?) qaytariladi
+3. `auth_date` eskirmaganligi ham tekshiriladi (standart: 1 soat), aks holda eski `initData` bilan qayta kirib bo'lardi
+4. Haqiqiy bo'lsa → brauzer kalitiga bog'langan session yaratiladi, `is_registered` (telefon raqami bormi?) qaytariladi
 
-#### `auth/user_id_login.py` — Telegram ID orqali to'g'ridan-to'g'ri kirish
+#### ~~`auth/user_id_login.py`~~ — o'chirilgan
 
-**Qanday ishlaydi:** u_id bilan to'g'ridan-to'g'ri session yaratadi. Faqat ma'lum holatlarda ishlatiladi (test yoki admin).
+Bu endpoint faqat `u_id` bilan session berardi. Telegram ID sir emas, shuning uchun bu har bir akkauntni egallashga imkon berardi. **Endpoint o'chirildi**; `u_id` ni bilishning o'zi endi session bermaydi. Batafsil: `docs/security.md`.
 
 ---
 
 ### `backend/middleware/` — Himoya qatlamlari
 
 #### `middleware/require_session.py`
-`Authorization: Bearer <token>` header ni tekshiradi. Token hashi DB da topilsa va muddati o'tmagan bo'lsa — `g.u_id` va `g.token_hash` o'rnatadi. Keyin endpoint o'z ishini qiladi.
+`Authorization: Bearer <token>` **va** `X-Session-Proof` ni tekshiradi. Token hashi DB da topilsa va muddati o'tmagan bo'lsa, so'rov brauzerning maxfiy kaliti bilan **imzolanganligi** tekshiriladi (yangi vaqt, bir martalik nonce, to'g'ri imzo). Token boshqa brauzerga ko'chirilsa — imzo bo'lmaydi va `401` qaytadi. Brauzer/OS turi sessiya yaratilgandagidan farq qilsa, sessiya o'chiriladi. Hammasi o'tsa — `g.u_id` va `g.token_hash` o'rnatiladi.
 
 #### `middleware/require_api_key.py`
-`X-API-KEY` header ni Config.API_KEY bilan solishtiradi. Faqat bot va server-server aloqa uchun.
+`X-API-KEY` header ni Config.API_KEY bilan (doimiy vaqtda) solishtiradi. Faqat bot va server-server aloqa uchun. Veb-klient kaliti bu yerda **ishlamaydi**.
+
+#### `middleware/client_gate.py`
+Har bir so'rovdan oldin ishlaydi: bot kaliti yoki veb-klient kalitisiz hamma narsa (mavjud bo'lmagan yo'llar ham) bir xil `401` qaytaradi. Veb-klient kaliti brauzer ichida turadi, ya'ni **sir emas** — u faqat skaner va `curl` ni to'xtatadi.
 
 **Nima uchun ikki xil himoya?**
 - Session → web foydalanuvchilar (browser orqali kiradi)
@@ -314,7 +320,8 @@ Joriy sessiya `is_current: true` bilan belgilanadi va o'chirib bo'lmaydi.
 #### `utils/device.py`
 - `parse_device(user_agent)` — User-Agent'dan qurilma nomi chiqaradi: `"Chrome macOS"`, `"Safari iPhone"`
 - `get_city(ip)` — `ip-api.com` dan bepul geolokatsiya (shahar nomi)
-- `get_client_ip(request)` — `X-Forwarded-For` headerdan haqiqiy IP oladi (proxy orqasida bo'lsa ham)
+- `get_client_ip(request)` — mijoz IP manzilini **server o'zi** aniqlaydi: TCP manzil, va faqat ishonchli proksidan (`TRUSTED_PROXIES`) kelgan `X-Real-IP`. `X-Forwarded-For` o'qilmaydi (mijoz uni o'zi yozishi mumkin). Natija IP sifatida tekshiriladi
+- `client_fingerprint(user_agent)` — brauzer + OS turi (versiyasiz); sessiyani qurilmaga bog'lash uchun
 
 #### `utils/telegram_notify.py`
 `send_message(chat_id, text)` — Telegram Bot API orqali xabar yuboradi. Xato bo'lsa jimgina o'tadi (ilovani to'xtatmaydi).
@@ -376,10 +383,14 @@ React ilovasini `<div id="root">` ga render qiladi.
 - `API_BASE` — `VITE_API_BASE_URL` muhit o'zgaruvchisidan olinadi
 - `getSessionToken()` — `localStorage`'dan token oqadi
 - `apiFetch(path, options)` — markaziy HTTP funksiya:
-  - Avtomatik `Authorization: Bearer <token>` qo'shadi
+  - Har so'rovga `X-Client-Key` qo'shadi
+  - Token bo'lsa: `Authorization: Bearer <token>` va qurilma kaliti bilan imzolangan `X-Session-Proof`
   - JSON va FormData ikkisini ham qo'llab-quvvatlaydi
-  - `401` kelsa — token o'chiriladi (avtomatik logout)
+  - `401` kelsa — token va qurilma kaliti o'chiriladi (avtomatik logout)
   - `data.ok !== true` bo'lsa — xato tashlaydi
+
+### `client/src/api/deviceKey.js` — qurilma kaliti
+Kirish paytida brauzer `extractable: false` ECDSA P-256 kalit juftligini yaratadi. Maxfiy kalitni JavaScript ham, `localStorage` nusxasi ham o'qiy olmaydi (u IndexedDB da `CryptoKey` sifatida turadi). Serverga faqat ochiq kalit ketadi. Har so'rov shu kalit bilan imzolanadi — shuning uchun `localStorage` dagi tokenni boshqa brauzerga ko'chirish foyda bermaydi.
 
 ### `client/src/api/endpoints.js`
 Barcha API chaqiruvlarini bir joyda saqlaydi (URL'lar tarqoq bo'lmasin).

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../../api/https";
+import { generateDeviceKey } from "../../api/deviceKey";
 
 /**
  * Bu komponent Telegram Mini App ichida ochilganini aniqlaydi
@@ -24,12 +25,15 @@ export default function TelegramHandler() {
 
         const timer = setTimeout(async () => {
             try {
+                // Bind the new session to a key that never leaves this browser.
+                const deviceKey = await generateDeviceKey();
                 const data = await apiFetch("/auth/telegram-webapp", {
                     method: "POST",
-                    body: { initData: tg.initData },
+                    body: { initData: tg.initData, device_key: deviceKey.publicJwk },
                 });
                 const { session_token, u_id } = data || {};
                 if (session_token) {
+                    await deviceKey.save();
                     localStorage.setItem("session_token", session_token);
                     localStorage.setItem("u_id", String(u_id));
 

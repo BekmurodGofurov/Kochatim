@@ -1,0 +1,13 @@
+{
+  "_comment": "Produced by client/src/api/deviceKey.js on real WebCrypto (Node). Verified in test/unit/test_device_proof.py. Regenerate only if the proof format intentionally changes.",
+  "publicJwk": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "l823xxOxDPkRm4vPRvMJYQr22c50FRh4pMnIN_c1PlI",
+    "y": "6rLtrZa3sm5lSD3uVniHFoGuaKx5cJEIFWohSssoX08"
+  },
+  "token": "vector-token-123",
+  "method": "POST",
+  "target": "/api/partners/remove?x=1&y=%D1%88",
+  "proof": "v1.1791737105583.jMhfnPq_Hlqj_Gc4OMWqDw.TvNK1svy2FOCwp7YpvUdEzFe3bo8FvVtGJaFlMbbNxVnMAbuPrVXe2FSc_sLGniu8MLtAzYPx-QjysC5GyOdKQ"
+}

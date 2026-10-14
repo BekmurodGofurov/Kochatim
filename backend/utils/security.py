@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import secrets
 import json
+import time
 from urllib.parse import parse_qsl
 
 def random_token(nbytes: int = 64) -> str:
@@ -36,10 +37,14 @@ def safe_equal(a: str, b: str) -> bool:
     return hmac.compare_digest(a.encode("utf-8"), b.encode("utf-8"))
 
 
-def telegram_webapp_verify(init_data: str, bot_token: str) -> dict:
+def telegram_webapp_verify(init_data: str, bot_token: str, max_age_seconds: int = None) -> dict:
     """
     Telegram Mini App initData verification.
     Return: parsed key-values dict (hash removed) if valid, else raise ValueError.
+
+    The HMAC only proves Telegram signed the string at some point. Without a
+    freshness check a captured initData would log in forever, so callers on
+    the login path pass `max_age_seconds` and auth_date must be that recent.
     """
     if not init_data:
         raise ValueError("initData missing")
@@ -58,6 +63,17 @@ def telegram_webapp_verify(init_data: str, bot_token: str) -> dict:
 
     if not safe_equal(computed_hash, received_hash):
         raise ValueError("invalid hash")
+
+    if max_age_seconds is not None:
+        try:
+            auth_date = int(pairs.get("auth_date", ""))
+        except (TypeError, ValueError):
+            raise ValueError("auth_date missing")
+        age = time.time() - auth_date
+        if age > max_age_seconds:
+            raise ValueError("initData expired")
+        if age < -60:  # a minute of clock skew is fine; the future is not
+            raise ValueError("auth_date in the future")
 
     return pairs
 

@@ -88,6 +88,12 @@ def create_type():
     if not t_name:
         return fail("t_name required", 400)
 
+    # The category must belong to this user. Without the check a caller could
+    # attach a variety to someone else's group, and the key that makes this
+    # call is a shared secret, so a leak would let anyone do it.
+    if not fetch_one("SELECT c_id FROM categories WHERE c_id=%s AND u_id=%s", (c_id, u_id)):
+        return fail("Category not found for this user", 404, code="NOT_FOUND")
+
     row = execute_returning(
         """
         INSERT INTO types (u_id, c_id, t_name, deff)

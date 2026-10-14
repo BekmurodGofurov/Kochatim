@@ -4,9 +4,19 @@ A small Flask + Socket.IO app on port 9000 that shows live CPU/RAM, a
 live request feed, and daily/weekly request counts. It reads **Redis
 only** — it never connects to Postgres.
 
-> **It has no authentication.** Anything that can reach port 9000 reads
-> the traffic profile. Bind it to loopback and put auth on it — see
+> **It is protected by HTTP Basic auth** (`ADMIN_USER` / `ADMIN_PASSWORD`
+> in `admin/.env`). With either one unset, every route answers `503` — it
+> fails closed. The same check guards the Socket.IO live feed (`connect`
+> is refused), WebSocket origins are same-origin only by default
+> (`ADMIN_ALLOWED_ORIGINS` to add more), and debug mode is off unless
+> `FLASK_DEBUG=1`. It is still bound to loopback; do not widen that. See
 > `security.md`.
+
+The page shows request paths that came from outside. The backend sends the
+*matched route pattern* (or `unmatched`), and `static/script.js` puts
+every server-supplied value on the page with `textContent` — never
+`innerHTML`. Keep it that way: `tests/test_admin_app.py` fails if
+`innerHTML` or another HTML sink reappears.
 
 ## Files
 

@@ -55,6 +55,39 @@ class TestGetSession:
             await second.close()
 
 
+class TestSessionTimeout:
+    """A backend that stops answering must not hang a Telegram handler forever."""
+
+    async def test_session_has_a_total_timeout(self, api_client):
+        session = api_client.get_session()
+        try:
+            assert session.timeout.total == 15
+        finally:
+            await session.close()
+
+    async def test_a_new_session_after_closing_keeps_the_timeout(self, api_client):
+        first = api_client.get_session()
+        await first.close()
+        second = api_client.get_session()
+        try:
+            assert second.timeout.total == 15
+        finally:
+            await second.close()
+
+    async def test_a_timed_out_request_surfaces_as_an_error_not_a_hang(self, api_client):
+        import asyncio
+        from unittest.mock import AsyncMock, MagicMock, patch
+        ctx = MagicMock()
+        ctx.__aenter__ = AsyncMock(side_effect=asyncio.TimeoutError())
+        session = MagicMock()
+        session.request.return_value = ctx
+        with patch.object(api_client, "API_URL", "http://backend"), \
+             patch.object(api_client, "API_KEY", "k"), \
+             patch.object(api_client, "get_session", return_value=session):
+            with pytest.raises(asyncio.TimeoutError):
+                await api_client._request("GET", "/api/users/1")
+
+
 # ─── _request — sozlama tekshiruvi ───────────────────────────────────────────
 
 class TestRequestConfiguration:

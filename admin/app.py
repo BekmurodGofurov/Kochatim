@@ -1,7 +1,8 @@
 import os
+import hmac
 import json
 import threading
-from flask import Flask, jsonify, render_template
+from flask import Flask, Response, jsonify, render_template, request
 from flask_socketio import SocketIO
 import redis
 from dotenv import load_dotenv
@@ -11,7 +12,17 @@ from datetime import datetime, timedelta
 load_dotenv()
 
 app = Flask(__name__)
-socketio = SocketIO(app, async_mode='gevent', cors_allowed_origins="*")
+
+# The panel is not for the public: it is reached over an SSH tunnel or behind
+# the host's nginx, and is protected by HTTP Basic auth either way.
+ADMIN_USER = os.getenv('ADMIN_USER', '')
+ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', '')
+
+# Browsers send cached Basic credentials on a cross-site WebSocket handshake,
+# so an open origin list would let any web page the operator visits read the
+# live feed. Same-origin only, unless origins are listed explicitly.
+ALLOWED_ORIGINS = [o.strip() for o in os.getenv('ADMIN_ALLOWED_ORIGINS', '').split(',') if o.strip()]
+socketio = SocketIO(app, async_mode='gevent', cors_allowed_origins=ALLOWED_ORIGINS or None)
 
 # .env orqali Redis ulanishi (izolyatsiya qilingan)
 redis_client = redis.Redis(
@@ -20,6 +31,57 @@ redis_client = redis.Redis(
     password=os.getenv('REDIS_PASSWORD', ''),
     decode_responses=True
 )
+
+def _authorized(req) -> bool:
+    """Constant-time check of the Basic credentials; false if none are configured."""
+    if not ADMIN_USER or not ADMIN_PASSWORD:
+        return False
+    auth = req.authorization
+    if auth is None or auth.type != 'basic':
+        return False
+    # Both comparisons always run, so timing does not reveal which half was right.
+    user_ok = hmac.compare_digest((auth.username or '').encode(), ADMIN_USER.encode())
+    pass_ok = hmac.compare_digest((auth.password or '').encode(), ADMIN_PASSWORD.encode())
+    return user_ok and pass_ok
+
+
+@app.before_request
+def require_admin_auth():
+    if not ADMIN_USER or not ADMIN_PASSWORD:
+        # Fail closed: a panel nobody configured a password for stays shut.
+        return Response('Admin panel is not configured', status=503)
+    if not _authorized(request):
+        return Response('Authentication required', status=401,
+                        headers={'WWW-Authenticate': 'Basic realm="Kochatim admin", charset="UTF-8"'})
+
+
+@app.after_request
+def security_headers(resp):
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    resp.headers['X-Frame-Options'] = 'DENY'
+    resp.headers['Referrer-Policy'] = 'no-referrer'
+    resp.headers['Cache-Control'] = 'no-store'
+    # Exactly what templates/index.html loads: its own files, Chart.js from
+    # jsDelivr and socket.io from cdnjs. No inline scripts.
+    resp.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+        "style-src 'self' 'unsafe-inline'; "
+        "connect-src 'self' ws: wss:; "
+        "img-src 'self' data:; "
+        "frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+    )
+    return resp
+
+
+def handle_connect(auth=None):
+    """Socket.IO traffic never passes through before_request, so check here."""
+    if not _authorized(request):
+        return False  # refuse the connection
+
+
+socketio.on('connect')(handle_connect)
+
 
 def redis_listener():
     pubsub = redis_client.pubsub()
@@ -78,4 +140,5 @@ def get_stats():
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 9000))
     host = os.getenv('HOST', '0.0.0.0')
-    socketio.run(app, host=host, port=port, debug=True)
+    # Debug mode only on request: the Werkzeug debugger executes code for anyone who can reach it.
+    socketio.run(app, host=host, port=port, debug=os.getenv('FLASK_DEBUG') == '1')

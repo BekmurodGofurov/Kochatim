@@ -3,6 +3,7 @@ import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../context/ThemeContext";
 import { apiFetch } from "../../api/https";
+import { generateDeviceKey } from "../../api/deviceKey";
 import Header from "../../components/header/Header";
 import "./Login.scss";
 
@@ -12,6 +13,10 @@ const ERROR_MESSAGES = {
   CODE_NOT_FOUND: "Kod topilmadi. Botdan yangi kod oling.",
   CODE_EXPIRED: "Kodning muddati o'tgan. Botdan yangi kod oling.",
   CODE_USED: "Bu kod allaqachon ishlatilgan. Botdan yangi kod oling.",
+  RATE_LIMITED: "Juda ko'p noto'g'ri urinish. Birozdan keyin qayta urinib ko'ring.",
+  UNAVAILABLE: "Kirish vaqtincha ishlamayapti. Birozdan keyin qayta urinib ko'ring.",
+  DEVICE_KEY_UNSUPPORTED: "Brauzeringiz xavfsiz kirishni qo'llab-quvvatlamaydi. Yangiroq brauzerdan foydalaning.",
+  DEVICE_KEY_REQUIRED: "Brauzer kaliti yaratilmadi. Sahifani yangilab qayta urinib ko'ring.",
 };
 
 export default function Login() {
@@ -29,10 +34,15 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
+      // The session is bound to a key that never leaves this browser. It is
+      // made first, sent as a public key, and only stored once login worked,
+      // so a wrong code cannot cost a signed-in browser its existing key.
+      const deviceKey = await generateDeviceKey();
       const data = await apiFetch("/auth/verify-code", {
         method: "POST",
-        body: { code },
+        body: { code, device_key: deviceKey.publicJwk },
       });
+      await deviceKey.save();
       localStorage.setItem("session_token", data.session_token);
       localStorage.setItem("u_id", String(data.u_id));
       navigate("/dashboard", { replace: true });

@@ -110,45 +110,86 @@ because `create_app()` can be called more than once.
 real connection ceiling = gunicorn workers × DB_POOL_MAX
 ```
 
-With the default `DB_POOL_MAX=100` and 4 workers that is 400, against
-Postgres's default `max_connections` of 100. Set it to 20 or lower.
-See `security.md`.
+`DB_POOL_MAX` now defaults to 20: 4 workers × 20 = 80, under Postgres's
+default `max_connections` of 100. Raise it only together with
+`max_connections`. (A `backend/.env` that still sets a larger value wins
+over the default — check yours.)
 
 ## Middleware
 
-### `require_api_key`
-Compares the `X-API-KEY` header against `Config.API_KEY`. Returns
-`500 SERVER_MISCONFIG` if the server has no key configured, and
-`401 UNAUTHORIZED` otherwise.
+### `client_gate` (a `before_request` hook, registered in `create_app()`)
+Runs before every route, including unknown ones. Accepts `X-API-KEY`
+(`Config.API_KEY`, sets `g.client = "bot"`) or `X-Client-Key`
+(`Config.WEB_CLIENT_KEY`, sets `g.client = "web"`) and otherwise returns
+the same bare `401 UNAUTHORIZED`. Exempt: `OPTIONS` and `GET /health`.
+`?k=` is accepted as the web key on `GET /api/img/<file_id>` only,
+because `<img src>` cannot send headers. Keys are compared with
+`safe_equal`, and a blank header never matches an unset key.
 
-The comparison is `!=`, not `compare_digest`. A theoretical timing
-side-channel; low practical risk over a network, but
-`hmac.compare_digest` would cost nothing.
+The web key is public (it is in the browser bundle); the gate's job is
+to keep scanners out and to tell the two callers apart.
+
+### `require_api_key`
+Bot-only. Compares `X-API-KEY` against `Config.API_KEY` in constant
+time (`safe_equal`) and ignores `X-Client-Key` entirely. Returns
+`500 SERVER_MISCONFIG` if the server has no key configured, and
+`401 UNAUTHORIZED` otherwise. It re-checks the key itself instead of
+trusting `g.client`, so the route stays safe even if the gate were ever
+removed.
 
 ### `require_session`
-Reads `Authorization: Bearer <token>`, hashes it with `sha256_hex`,
-and resolves it to a `u_id`:
+Web-only (`g.client == "web"`). In order:
 
-1. Redis `session_<token_hash>` — 120s TTL.
-2. On a miss, Postgres, filtered by `expires_at > NOW() AT TIME ZONE
-   'utc'`, then cached.
+1. `Authorization: Bearer <token>` → `sha256_hex` → the session, from
+   Redis `session_<token_hash>` (120s) or Postgres (filtered by
+   `expires_at > NOW() AT TIME ZONE 'utc'`). The cached value is a dict
+   `{u_id, device_key, ua_fp}`; an old bare-`u_id` entry counts as a miss.
+   A session with no `device_key` is never honoured.
+2. `X-Session-Proof` verified against the session's public key
+   (`utils/device_proof.verify_proof`): fresh within
+   `PROOF_MAX_SKEW_SECONDS`, correct signature over method +
+   **raw request target** (`RAW_URI` from gunicorn, so percent-encoding
+   matches what the browser signed) + nonce + token hash.
+3. The nonce is claimed once in Redis (`claim_once`, `SET NX EX`). If
+   Redis is down the check is skipped and logged — the timestamp window
+   still bounds a replay.
+4. Only after the signature has proved the caller holds the key: the
+   browser/OS family must match the one at login, else the session is
+   deleted (`revoke_session`) and the request is refused. Done last so a
+   thief with a stolen token cannot log the victim out by sending an odd
+   `User-Agent`.
 
+Every failure is the same `401 UNAUTHORIZED`; the reason goes to the log.
 Sets `g.u_id` and `g.token_hash`. **`g.u_id` is the only trustworthy
 identity on a session route** — never take `u_id` from the request body
 there.
 
-`invalidate_session_cache(token_hash)` makes logout immediate instead
-of waiting out the TTL; `DELETE /api/sessions/<id>` calls it.
+`get_viewer()` runs the same checks but returns `None` instead of
+rejecting, for public routes that show more to a signed-in viewer.
+
+`revoke_session(token_hash, u_id)` deletes the row and every cache entry
+that could still vouch for it; `invalidate_session_cache(token_hash)` is
+the lighter form `DELETE /api/sessions/<id>` uses.
+
+### Creating a session — `auth/session_service.py`
+`create_session(u_id, device_key)` is the only place a session is
+inserted (both `verify-code` and `telegram-webapp` call it).
+`parse_device_key` validates the browser's public JWK first (EC P-256,
+on the curve, no private part) and is called *before* a one-time code is
+spent. IP and browser come from the Flask request inside the function —
+there is deliberately no parameter to pass them in.
 
 ## `utils/`
 
 | Module | Contents |
 |---|---|
 | `errors.py` | `ok(data, status)` / `fail(message, status, code, extra)` — the only two response shapes. |
-| `security.py` | Token generation (`secrets`), `sha256_hex`, `safe_equal` (constant-time), Telegram `initData` HMAC verification, `parse_telegram_user`. |
+| `security.py` | Token generation (`secrets`), `sha256_hex`, `safe_equal` (constant-time), Telegram `initData` HMAC verification (with an `auth_date` freshness check), `parse_telegram_user`. |
+| `device_proof.py` | Pure crypto for device-bound sessions: `normalize_public_jwk`, `jwk_thumbprint`, `verify_proof`. No Flask, no Redis. |
+| `ratelimit.py` | Fixed-window counters in Redis: `count`, `record`, `retry_after`. Return `None` when Redis is down so the caller chooses open or closed. |
 | `time.py` | `utcnow()`, `utc_in_seconds()`, `naive_utc()`. |
-| `cache.py` | Redis-backed cache. Every function swallows its own exceptions and degrades to a miss. |
-| `device.py` | User-Agent parsing, `get_client_ip` (X-Forwarded-For aware), `get_city` via ip-api.com. |
+| `cache.py` | Redis-backed cache. Every function swallows its own exceptions and degrades to a miss. `claim_once(key, ttl)` is the atomic single-use claim behind replay protection (`True` / `False` / `None` if Redis is down). |
+| `device.py` | User-Agent parsing (`parse_device`, `client_fingerprint`), `get_client_ip` and `get_city`. `get_client_ip` trusts the TCP peer, and `X-Real-IP` only from a `TRUSTED_PROXIES` peer; it never reads `X-Forwarded-For`, and returns `""` for anything that is not a valid IP. `get_city` only looks up public addresses. |
 | `images_v2.py` | ImgBB upload, Telegram `file_id` → URL, `process_image_input`. |
 | `telegram_images.py` | A second `file_id` resolver with a module-level cache. Overlaps `images_v2` — kept because the proxy route uses a different code path. |
 | `telegram_notify.py` | `send_message` — fire and forget, swallows everything. |
@@ -165,11 +206,6 @@ expires_at = naive_utc(utc_in_seconds(Config.SESSION_TTL_SECONDS))
 SQL comparisons use `NOW() AT TIME ZONE 'utc'` to match. Writing a
 tz-aware datetime, or comparing against bare `NOW()`, produces an
 offset bug that only shows up away from UTC.
-
-One inconsistency: `auth/user_id_login.py` writes
-`utcnow_plus_seconds(...)` — a **tz-aware** value — where the OTP and
-Mini App paths write `naive_utc(...)`. psycopg2 adapts it, but the two
-paths are not writing the same thing.
 
 ### Caching and invalidation
 Cache keys and TTLs are listed in `architecture.md`. The rule when
@@ -191,10 +227,9 @@ data for up to 60 seconds, which reads as "my change didn't save".
 below the pool size, since more workers than connections would just
 queue.
 
-`auth/user_id_login.py` has a 100-worker executor that writes the
-session row after the response is sent, so login does not wait on the
-ip-api.com lookup. Failures are logged and dropped, which means that
-route can return a token whose session row was never written.
+`db.transaction()` is the way to write several rows as one unit (the
+sale and its stock change). It does not retry on a dropped connection,
+unlike `execute`/`fetch_*`: replaying half a transaction is not safe.
 
 ## House style
 

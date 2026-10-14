@@ -1,223 +1,230 @@
-# Security — Known Issues and Fixes
+# Security — Status of Known Issues
 
-This is a remediation checklist, not a threat report. It deliberately
-describes **what to change** rather than how to exploit anything,
+This is a remediation record, not a threat report. It deliberately
+describes **what changed and why** rather than how to exploit anything,
 because this repository is public and the application is live.
 
 The working audit notes that go into attack detail live in
-`hacking_map.md`, which is gitignored and must stay that way.
+`hacking_map.md` and `hacking_map_advanced.md`, which are gitignored and
+must stay that way.
 
-Priority order. The first two should be fixed before the next deploy.
-
----
-
-## 1. `POST /auth/user-id-login` issues sessions without authentication
-
-**Severity: critical — full account takeover.**
-`backend/auth/user_id_login.py`
-
-The endpoint accepts a `u_id`, confirms the user exists, and returns a
-valid 30-day session token. There is no password, no OTP, no signature,
-no proof of any kind. A Telegram user ID is not a secret — it is
-visible to anyone the gardener has messaged, and `GET /api/gardeners`
-hands them out publicly (issue 4).
-
-Anyone who learns a `u_id` gets that gardener's full account:
-inventory, sales history, partners, phone number.
-
-**Fix — delete the route.** Two authenticated login paths already
-exist and the client does not need a third:
-
-- `POST /auth/telegram-webapp` verifies the Mini App `initData` HMAC
-  against `BOT_TOKEN`. Cryptographically sound; use this.
-- `POST /auth/request-code` / `verify-code` is the OTP flow. The bot
-  delivers the code over Telegram, which proves control of the account.
-
-If something still calls it, make it require the OTP flow instead.
-Rate-limiting or logging it is not a fix — the endpoint is unauthenticated
-by design and the design is the problem.
-
-Afterwards, invalidate existing sessions: `DELETE FROM sessions;`
-forces everyone to log in again, which is the only way to be sure no
-token was minted this way.
+Each item below says **Fixed** (with the file that now enforces it and the
+test that guards it) or **Open**.
 
 ---
 
-## 2. The admin panel has no authentication
+## How access is controlled now
 
-**Severity: high — information disclosure.**
-`admin/app.py`
-
-Neither `GET /` nor `GET /api/stats` checks anything. Whatever can
-reach port 9000 reads the traffic profile: request volumes and the
-ten most-used endpoints.
-
-**Fix — two parts, do both.**
-
-1. **Stop publishing the port.** In `docker-compose.yml`, bind it to
-   loopback the way Postgres already is:
-
-   ```yaml
-   ports:
-     - "127.0.0.1:9000:9000"
-   ```
-
-   Then reach it over an SSH tunnel:
-   `ssh -L 9000:127.0.0.1:9000 user@host`.
-
-2. **Add authentication anyway**, so the panel is not one Compose edit
-   away from being public. HTTP basic auth against an
-   `ADMIN_USER` / `ADMIN_PASSWORD` pair from `admin/.env` is enough,
-   compared with `hmac.compare_digest`. The Socket.IO connection needs
-   the same check — `socketio.on('connect')` should reject an
-   unauthenticated session, or the live feed stays open.
-
-`admin/tests/test_admin_app.py::test_needs_no_auth` records the current
-behaviour. When you fix this, that test should be inverted.
-
----
-
-## 3. Unhandled exceptions return internal detail
-
-**Severity: medium — information disclosure.**
-`backend/app.py`
-
-```python
-@app.errorhandler(Exception)
-def server_error(e):
-    return fail("Server error", 500, extra=str(e))
+```
+request ─► client gate ─► route decorator ─► handler
+           key present?    bot key / session +
+           (else bare 401) device proof
 ```
 
-`str(e)` on a `psycopg2` error contains the failing SQL, and on a
-connection error the DSN — host, database name, sometimes the user.
-That reaches the client.
+1. **Client gate** (`middleware/client_gate.py`). Every request needs the
+   bot key (`X-API-KEY`) or the web client key (`X-Client-Key`); otherwise
+   it gets the same bare 401 whatever the path, so the API cannot be
+   mapped from outside. Only `/health` and CORS preflights are exempt.
+2. **Privilege separation.** Bot routes accept the bot key only, session
+   routes accept the web client only. The web key is **public** (it is in
+   the browser bundle), so it must never open a route that takes `u_id`
+   from the caller.
+3. **Device-bound sessions** (`middleware/require_session.py`,
+   `utils/device_proof.py`). A session token works only together with a
+   per-request signature from a key the browser generated at login and
+   cannot export.
 
-**Fix** — log it, do not return it:
-
-```python
-@app.errorhandler(Exception)
-def server_error(e):
-    app.logger.exception("Unhandled error")
-    return fail("Server error", 500)
-```
-
-Note that `api/public.py` already does the right thing in its own
-`except` block by returning a fixed message.
-
----
-
-## 4. Two public endpoints return phone numbers
-
-**Severity: medium — PII exposure.**
-`backend/api/users.py:search_gardeners`,
-`backend/api/dashboard.py:dashboard_user`
-
-| Route | Returns |
-|---|---|
-| `GET /api/gardeners` | `u_id`, `u_name`, `u_username`, **`u_phone`**, `u_photo` |
-| `GET /api/users/<u_id>/dashboard` | the same profile plus the full catalogue |
-
-Neither has an auth decorator. Together they allow enumerating every
-registered gardener's `u_id` and phone number — and the `u_id` is what
-makes issue 1 exploitable at scale.
-
-**Fix** — drop `u_phone` from both `SELECT` lists. A directory of
-gardeners is a reasonable feature; a directory of phone numbers is not.
-If the phone number is needed after a connection is made, serve it from
-a `@require_session` route that checks the two users are partners.
-
-`GET /api/v1/public/categories` is the model to follow: it selects only
-`c_id AS id, c_name AS name`, with no `u_id`, specifically so the
-public list cannot be scraped for identifiers.
+What the web key is and is not: it stops scanners, bots and `curl`. It
+does not stop someone who opens DevTools. The protection of user data
+comes from layers 2 and 3 and from not returning private data on open
+routes.
 
 ---
 
-## 5. `POST /api/sales` has no transaction
+## Fixed
 
-**Severity: low — data integrity.**
-`backend/api/sales.py`
+### 1. `POST /auth/user-id-login` issued sessions without authentication — **was critical**
+The endpoint accepted a `u_id`, confirmed the user existed, and returned a
+30-day session. A Telegram user ID is not a secret, so this was full
+account takeover.
 
-The `INSERT` into `sales` and the `UPDATE` of `seedlings` are two
-separate commits. A crash or connection drop between them records a
-sale without reducing stock.
+**Fix.** The route and `auth/user_id_login.py` are deleted. A session can
+now only come from `POST /auth/verify-code` (an OTP the bot delivered over
+Telegram) or `POST /auth/telegram-webapp` (HMAC-verified `initData`), both
+through `auth/session_service.create_session`, and both require the
+browser's device key. Existing sessions were revoked: `db_init.py` deletes
+every session without a device key, which includes any token ever minted
+by the old route.
+*Tests:* `test_auth.py::TestUserIdLoginIsGone`.
 
-**Fix** — one statement each way is not enough; they need to share a
-transaction. That means a helper in `db.py` that yields a cursor for
-several statements and commits once, since every current function
-commits on its own.
+### 2. A copied session token worked anywhere — **was high**
+The token sat in `localStorage` and was a complete credential on its own.
+
+**Fix.** Sessions are bound to an ECDSA P-256 key pair the browser creates
+at login with `extractable=false`. Every request carries `X-Session-Proof`:
+a signature over method, path+query, a nonce and the token's hash. Proofs
+expire after `PROOF_MAX_SKEW_SECONDS` and are single-use. A different
+browser or OS family than the one the session was created from also ends
+the session.
+Limits: script running *inside* the page can still ask the browser to
+sign, so XSS is not neutralised — it only cannot take the key away. See
+the CSP note under *Open*.
+*Tests:* `test_session_binding.py`, `test_device_proof.py`
+(including a proof produced by the real JavaScript signer).
+
+### 3. The API answered anyone — **was high**
+No global access control; routes were public unless decorated.
+
+**Fix.** The client gate above. `test_client_gate.py` iterates every
+registered route and fails if one answers without a key, or if a route is
+undecorated and not on the explicit public list.
+
+### 4. The client's IP and browser could be forged — **was medium**
+`get_client_ip` took the first `X-Forwarded-For` value, and nginx appended
+to whatever the client sent, so session rows (and the "active sessions"
+list a victim looks at) could show an attacker-chosen IP and city. The
+value was also interpolated into a geolocation URL.
+
+**Fix.** `utils/device.get_client_ip` believes only the TCP peer and, when
+that peer is a configured trusted proxy (`TRUSTED_PROXIES`), the
+`X-Real-IP` nginx sets. `X-Forwarded-For` is never read. The result must
+parse as an IP, and only public addresses are geolocated. nginx now
+**overwrites** `X-Forwarded-For`/`X-Real-IP` with `$remote_addr`. The
+browser name comes from the `User-Agent` parsed on the server; no body or
+query field can set an IP, browser, device name or city
+(`create_session` has no parameter for them).
+*Tests:* `test_device.py::TestGetClientIp`, `test_session_service.py`.
+
+### 5. Unhandled exceptions returned internal detail — **was medium**
+`str(e)` reached the client: SQL, DSN, and — through `requests` errors on
+the image proxy — a URL containing the bot token.
+
+**Fix.** The global handler logs and returns a fixed message; HTTP errors
+keep their status. `public.py`, `telegram_webapp.py` and the image proxy
+no longer return exception text. The proxy logs only the exception *type*.
+*Tests:* `test_app.py::TestErrorHandlers`, and a "generic 500" test on
+most routes.
+
+### 6. Public endpoints returned phone numbers — **was medium**
+`GET /api/gardeners` and `GET /api/users/<id>/dashboard`.
+
+**Fix.** The directory returns `u_id` and `u_name` only. The profile returns
+the name only, unless the viewer is signed in *and* is that gardener or one
+of their partners, who see the full profile as before (`get_viewer`).
+*Tests:* `test_users.py::TestGardeners`,
+`test_dashboard.py::TestPublicDashboard`.
+
+### 7. The admin panel had no authentication, and a stored XSS — **was high**
+Anything that reached port 9000 read traffic data; request paths from
+attackers were written into `innerHTML`.
+
+**Fix.** HTTP Basic auth on every route (`ADMIN_USER` / `ADMIN_PASSWORD`,
+constant-time, fail closed when unset), the same check on the Socket.IO
+connect, same-origin WebSocket by default, no debug mode, a CSP and
+security headers. The browser code builds the DOM with `textContent`. The
+backend now records the *matched route pattern* (`/api/users/<int:u_id>/…`)
+instead of the raw URL.
+*Tests:* `admin/tests/test_admin_app.py`.
+
+### 8. OTP guessing and reuse — **was high**
+Six digits, two minutes, no attempt limit; a code could be redeemed twice
+by parallel requests; two live users could hold the same code.
+
+**Fix.** Wrong codes are counted per IP (5 / 10 min) and globally
+(500 / 10 min) in Redis, with `429` and `Retry-After`; the check fails
+closed when Redis is down. A code is spent by a single
+`UPDATE … WHERE used_at IS NULL RETURNING`. New codes never collide with a
+live one and retire the user's older ones. `login_codes.code_hash` is
+indexed. nginx adds a request budget on `/auth/`.
+*Tests:* `test_auth.py::TestVerifyCode`.
+
+### 9. Telegram `initData` never expired — **was medium**
+The HMAC was checked but `auth_date` was not, so a captured string logged in
+forever.
+
+**Fix.** `telegram_webapp_verify(..., max_age_seconds=INITDATA_MAX_AGE_SECONDS)`
+refuses stale, future-dated and `auth_date`-less data.
+*Tests:* `test_security.py::TestInitDataFreshness`.
+
+### 10. Stock could go negative under parallel requests — **was medium**
+`seedlings/update` read the level, checked it, then wrote.
+
+**Fix.** One `UPDATE … WHERE level + change BETWEEN 0 AND cap RETURNING`
+decides under the row lock. Quantities are validated (non-numbers are `400`,
+not `500`). The same guard protects the bot's `seedlings/set`.
+*Tests:* `test_seedlings.py` — including the real SQL run on SQLite to show
+two parallel `-50`s against a stock of 60 cannot both succeed.
+
+### 11. `POST /api/sales` had no transaction — **was low**
+**Fix.** `db.transaction()` (one commit, rollback on any error); the stock
+guard lives in the `UPDATE`, the sale row is inserted in the same
+transaction. *Tests:* `test_sales.py`, `test_db.py::TestTransaction`.
+
+### 12. `POST /api/types` did not check category ownership — **was low**
+**Fix.** The category must belong to `u_id` (`404` otherwise).
+
+### 13. `POST /api/partners/decline` left the invite usable — **was low**
+**Fix.** Decline sets `used_at`, so a declined invite cannot be accepted.
+
+### 14. Image proxy could be used to tie up workers — **was medium**
+Unauthenticated, two slow Telegram calls per request.
+
+**Fix.** It still has to be reachable by `<img>` (so it takes the web key as
+`?k=`), but now: the id must already be stored as a user photo or variety
+image (indexed lookup) before Telegram is contacted; each IP has a request
+budget; Telegram errors become `502` without the URL; non-image and SVG
+content and bodies over 10 MB are refused.
+
+### 15. Housekeeping done
+`DB_POOL_MAX` defaults to 20 per worker (was 100 × 4 workers against
+Postgres' default limit of 100). Partner-invite links are signed with
+`INVITE_SECRET` (falls back to `API_KEY`) so the bot key can be rotated
+without invalidating them. The bot's HTTP client has a 15 s timeout.
+A production backend refuses to boot with missing, equal or placeholder
+keys. "Log out" now ends the session on the server too.
 
 ---
 
-## 6. `POST /api/types` does not check category ownership
+## Open
 
-**Severity: low — only reachable with the API key.**
-`backend/api/types.py:create_type`
-
-The session equivalent (`POST /api/types/me`) verifies that `c_id`
-belongs to the caller. The API-key version does not, so a caller can
-attach a variety to another gardener's group.
-
-**Fix** — add the same `fetch_one("SELECT c_id FROM categories WHERE
-c_id=%s AND u_id=%s")` check. Low severity only because the API key is
-a trusted service credential; it becomes serious the moment that key
-leaks.
-
----
-
-## 7. `POST /api/partners/decline` leaves the invite usable
-
-**Severity: low.**
-`backend/api/partners.py:decline_partner_invite`
-
-It looks the token up and reports success without setting `used_at`, so
-a declined invite can still be accepted later.
-
-**Fix** — set `used_at` on decline, the way `accept` does.
-
----
-
-## 8. Housekeeping
-
-- **`login_codes` and `sessions` are never pruned.** Both grow
-  forever, and `login_codes` has no index on `code_hash`, so OTP
-  verification does a sequential scan over a table that only gets
-  bigger. Add the index and a cleanup job for expired rows.
-- **`DB_POOL_MAX` defaults to 100 per worker**, and gunicorn runs 4 —
-  400 connections against Postgres's default limit of 100. Set it to
-  20 or lower. Not a vulnerability, but it is a self-inflicted outage
-  under load.
-- **`price` is `REAL`**, a float. Fine for display, wrong for money.
+- **Expired rows are never pruned** from `sessions` and `login_codes`.
+  Add a periodic cleanup.
+- **`price` is `REAL`**, a float. Fine for display, wrong for money;
   `NUMERIC(12,2)` if sales figures ever need to reconcile.
+- **Secrets in logs.** A few `print` calls in `utils/images_v2.py` log
+  exception text that can contain the Telegram/ImgBB URL. Not returned to
+  clients, but present in container logs.
+- **Content-Security-Policy is report-only** (`client/public/_headers`).
+  Watch the console, then enforce it. Until then an XSS bug in the client
+  could drive requests from the victim's own browser, even though it could
+  not exfiltrate the device key.
+- **The OTP is delivered by the bot and sent in a response body** to the
+  bot (`/auth/request-code`). That is by design, but it makes the bot key
+  powerful: anyone holding it can request a code for any user. Keep it
+  server-side only and rotate it if it may have leaked.
+- **A global OTP lockout is also a lever.** After 500 wrong codes in ten
+  minutes nobody can log in with a code until the window rolls over
+  (existing sessions and the Mini App are unaffected). That trade is
+  deliberate; tune `_FAIL_LIMIT_GLOBAL` in `auth/otp.py`.
 
----
+## What is done well (do not undo)
 
-## What is already done well
-
-Worth stating, so none of it gets undone in the course of fixing the
-above:
-
-- **Every query is parameterised.** `%s` placeholders with a params
-  tuple throughout — no string interpolation of user input anywhere.
-  The two places that build SQL dynamically only vary the *number* of
-  placeholders, never a value.
-- **Secrets are hashed at rest.** Session tokens and OTP codes are
-  stored as SHA-256; the plaintext exists only in the response.
+- **Every query is parameterised.** `%s` placeholders with a params tuple;
+  the two dynamically assembled queries vary only the *number* of
+  placeholders.
+- **Secrets are hashed at rest.** Session tokens and OTP codes are stored as
+  SHA-256; the plaintext exists only in the response.
 - **`secrets` is used for every token**, not `random`.
-- **Comparisons are constant-time** where it matters —
-  `hmac.compare_digest` in `safe_equal` and in the invite-token
-  verifier.
-- **Invite verification fails closed.** With no `API_KEY` configured,
-  `parse_partner_invite_token` rejects everything rather than
-  accepting anything.
-- **CORS has no wildcard.** An unlisted origin gets the literal
-  `"null"`, never `*`, which would be unusable with credentials
-  anyway. An empty `ALLOWED_ORIGINS` rejects everything rather than
-  allowing everything.
-- **The Telegram image proxy does not leak the bot token.** It is used
-  server-side to resolve the file and never appears in a response.
+- **Comparisons are constant-time** (`hmac.compare_digest`) for keys, the
+  Telegram HMAC, invite tokens and admin credentials.
+- **Invite verification fails closed** with no secret configured.
+- **CORS has no wildcard, and no credentials.** An unlisted origin gets the
+  literal `"null"`; an empty `ALLOWED_ORIGINS` rejects everything.
+- **The Telegram image proxy does not leak the bot token**, in responses or
+  logs.
 
 ## Reporting
 
-Found something not listed here? Open a private channel with the
-owner rather than a public issue, and do not commit proof-of-concept
-code to this repository.
+Found something not listed here? Open a private channel with the owner
+rather than a public issue, and do not commit proof-of-concept code to this
+repository.

@@ -12,7 +12,9 @@ function getDeviceType(deviceName) {
 import Loader from "../../components/loader/Loader.jsx";
 import { useDashboard } from "../../context/DashboardContext";
 import { useTheme } from "../../context/ThemeContext";
-import { apiFetch, getSessionToken, API_BASE } from "../../api/https";
+import { apiFetch, getSessionToken } from "../../api/https";
+import { clearDeviceKey } from "../../api/deviceKey";
+import { apiImgUrl } from "../../utils/imageUtils";
 import { useNavigate } from "react-router-dom";
 import "./Settings.scss";
 
@@ -64,7 +66,16 @@ export default function Settings() {
   if (pageLoading || (!dashboardData && getSessionToken())) return <Loader text="Yuklanmoqda..." />;
   if (pageError) return <Loader text={pageError} />;
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // End the session on the server too; clearing the browser alone would
+    // leave the token valid there for 30 days. Whatever the server says, this
+    // browser forgets the session and its key.
+    try {
+      await apiFetch("/api/logout", { method: "POST" });
+    } catch {
+      // already invalid, or unreachable: nothing more to revoke from here
+    }
+    await clearDeviceKey();
     localStorage.removeItem("session_token");
     window.location.href = "/login";
   };
@@ -83,7 +94,7 @@ export default function Settings() {
             <div className="avatarCircle">
               {me?.u_photo ? (
                 <img
-                  src={`${API_BASE}/api/img/${me.u_photo}`}
+                  src={apiImgUrl(me.u_photo)}
                   alt={name}
                   style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
                 />

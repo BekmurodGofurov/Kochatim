@@ -23,6 +23,7 @@ from db import (
     execute_returning,
     fetch_all,
     fetch_one,
+    transaction,
 )
 
 
@@ -409,3 +410,139 @@ class TestRetrySemantics:
         discard.assert_called_once_with(dead)
         # O'lik ulanish oddiy put_conn orqali qaytmagan bo'lishi kerak
         assert call(dead) not in put_conn.call_args_list
+
+
+# ─── transaction ──────────────────────────────────────────────────────────────
+
+class TestTransaction:
+    def test_several_statements_share_one_commit(self, pool):
+        get_conn, put_conn = pool
+        conn, cur = make_conn()
+        get_conn.return_value = conn
+
+        with transaction() as tx:
+            tx.execute("UPDATE a SET x=%s", (1,))
+            tx.execute("INSERT INTO b VALUES (%s)", (2,))
+
+        assert [c[0][0] for c in cur.execute.call_args_list] == ["UPDATE a SET x=%s", "INSERT INTO b VALUES (%s)"]
+        conn.commit.assert_called_once()
+        conn.rollback.assert_not_called()
+
+    def test_nothing_is_committed_until_the_block_ends(self, pool):
+        get_conn, _ = pool
+        conn, cur = make_conn()
+        get_conn.return_value = conn
+
+        with transaction() as tx:
+            tx.execute("UPDATE a SET x=1")
+            conn.commit.assert_not_called()
+
+    def test_an_exception_rolls_everything_back_and_is_reraised(self, pool):
+        get_conn, put_conn = pool
+        conn, cur = make_conn()
+        get_conn.return_value = conn
+
+        with pytest.raises(ValueError, match="boom"):
+            with transaction() as tx:
+                tx.execute("UPDATE a SET x=1")
+                raise ValueError("boom")
+
+        conn.rollback.assert_called_once()
+        conn.commit.assert_not_called()
+
+    def test_a_failing_statement_rolls_back_the_earlier_ones_too(self, pool):
+        get_conn, _ = pool
+        conn, cur = make_conn()
+        cur.execute.side_effect = [None, psycopg2.errors.UniqueViolation("dup")]
+        get_conn.return_value = conn
+
+        with pytest.raises(psycopg2.errors.UniqueViolation):
+            with transaction() as tx:
+                tx.execute("UPDATE a SET x=1")
+                tx.execute("INSERT INTO b VALUES (1)")
+
+        conn.rollback.assert_called_once()
+        conn.commit.assert_not_called()
+
+    def test_connection_goes_back_to_the_pool_on_success_and_on_failure(self, pool):
+        get_conn, put_conn = pool
+        for fail in (False, True):
+            put_conn.reset_mock()
+            conn, _ = make_conn()
+            get_conn.return_value = conn
+            try:
+                with transaction():
+                    if fail:
+                        raise RuntimeError("x")
+            except RuntimeError:
+                pass
+            put_conn.assert_called_once_with(conn)
+
+    def test_cursor_is_closed(self, pool):
+        get_conn, _ = pool
+        conn, cur = make_conn()
+        get_conn.return_value = conn
+        with transaction():
+            pass
+        cur.close.assert_called_once()
+
+    def test_a_connection_that_cannot_roll_back_is_discarded_not_reused(self, pool):
+        get_conn, put_conn = pool
+        conn, _ = make_conn()
+        conn.rollback.side_effect = psycopg2.InterfaceError("connection already closed")
+        get_conn.return_value = conn
+
+        with pytest.raises(RuntimeError, match="original"):
+            with transaction():
+                raise RuntimeError("original")  # the caller sees THIS, not the rollback failure
+
+        put_conn.assert_called_once_with(conn, close=True)
+
+    def test_it_does_not_retry_a_half_done_transaction(self, pool):
+        """execute()/fetch_*() retry once; replaying part of a transaction would not be safe."""
+        get_conn, _ = pool
+        conn, cur = make_conn()
+        cur.execute.side_effect = psycopg2.OperationalError("server closed the connection unexpectedly")
+        get_conn.return_value = conn
+
+        with pytest.raises(psycopg2.OperationalError):
+            with transaction() as tx:
+                tx.execute("UPDATE a SET x=1")
+
+        assert get_conn.call_count == 1
+        assert cur.execute.call_count == 1
+
+    def test_execute_reports_rows_affected(self, pool):
+        get_conn, _ = pool
+        conn, cur = make_conn()
+        cur.rowcount = 3
+        get_conn.return_value = conn
+        with transaction() as tx:
+            assert tx.execute("UPDATE a SET x=1") == 3
+
+    def test_fetch_one_returns_a_dict_or_none(self, pool):
+        get_conn, _ = pool
+        conn, cur = make_conn(one_row=(1, "z"))
+        get_conn.return_value = conn
+        with transaction() as tx:
+            assert tx.fetch_one("SELECT a, b FROM t") == {"a": 1, "b": "z"}
+            cur.fetchone.return_value = None
+            assert tx.fetch_one("SELECT a, b FROM t WHERE false") is None
+
+    def test_parameters_are_passed_through_not_formatted(self, pool):
+        get_conn, _ = pool
+        conn, cur = make_conn()
+        get_conn.return_value = conn
+        with transaction() as tx:
+            tx.execute("UPDATE a SET x=%s WHERE y=%s", ("1; DROP TABLE a", 2))
+        cur.execute.assert_called_once_with("UPDATE a SET x=%s WHERE y=%s", ("1; DROP TABLE a", 2))
+
+    def test_failure_to_open_a_cursor_still_returns_the_connection(self, pool):
+        get_conn, put_conn = pool
+        conn, _ = make_conn()
+        conn.cursor.side_effect = psycopg2.OperationalError("cannot allocate")
+        get_conn.return_value = conn
+        with pytest.raises(psycopg2.OperationalError):
+            with transaction():
+                pass
+        put_conn.assert_called_once()

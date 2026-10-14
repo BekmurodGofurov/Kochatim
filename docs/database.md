@@ -108,7 +108,9 @@ Rows are never deleted. The table grows forever — worth a cleanup job.
 | `u_id` | `BIGINT NOT NULL` | |
 | `expires_at` | `TIMESTAMP NOT NULL` | 30 days by default. |
 | `session_id` | `SERIAL` | Added by migration. Used in the delete-session URL so the token hash never appears in one. |
-| `device_name` / `ip_address` / `city` | `TEXT DEFAULT ''` | Added by migration. Backfilled lazily on first `GET /api/sessions`. |
+| `device_name` / `ip_address` / `city` | `TEXT DEFAULT ''` | Added by migration. Written once, at login, from the request itself (browser from `User-Agent`, IP from `get_client_ip`) — never from a body or query field. |
+| `device_key` | `TEXT` | The browser's public key, canonical JWK JSON (EC P-256). Every request's `X-Session-Proof` is verified against it. **NULL means a pre-binding session, which is never honoured**; `init_db()` deletes such rows on start. |
+| `ua_fp` | `TEXT` | Hash of the browser + OS family at login. A different family ends the session. |
 | `created_at` | `TIMESTAMP` | |
 
 Capped at 3 per user in application code, not by constraint. Expired
@@ -181,12 +183,15 @@ types (u_id)               seedlings (t_id)        sales (c_id)
 types (c_id)               img (t_id)              sales (t_id)
 types (u_id, t_id DESC)    img (t_id, i_id DESC)
 sessions (u_id)            partners (u_id)         partners (p_id)
+login_codes (code_hash)    users (u_photo)         img (i_url)
 ```
 
 The two composite indexes exist for the `LEFT JOIN LATERAL` lookups in
-the dashboard queries. There is no index on
-`login_codes (code_hash)` — OTP verification does a sequential scan on
-a table that is never pruned.
+the dashboard queries. `login_codes (code_hash)` serves OTP
+verification; `users (u_photo)` and `img (i_url)` serve the image
+proxy's "is this file id one of ours?" check before it contacts
+Telegram. Expired `sessions` and `login_codes` rows are still never
+pruned.
 
 ## The db layer
 

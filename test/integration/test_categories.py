@@ -7,9 +7,10 @@ from unittest.mock import patch
 import pytest
 
 from conftest import TEST_API_KEY, TEST_TOKEN, TEST_U_ID, FAKE_CATEGORY, NOW
+from conftest import SESSION_HEADERS, WEB_HEADERS
 
 API_H = {"X-API-KEY": TEST_API_KEY, "Content-Type": "application/json"}
-SESSION_H = {"Authorization": f"Bearer {TEST_TOKEN}", "Content-Type": "application/json"}
+SESSION_H = dict(SESSION_HEADERS)
 
 
 # ─── GET /api/categories (session) ───────────────────────────────────────────

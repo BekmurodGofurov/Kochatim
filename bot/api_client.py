@@ -12,10 +12,14 @@ class BackendAPIError(Exception):
 _session: Optional[aiohttp.ClientSession] = None
 
 
+# A backend that stops answering must not hang a Telegram handler forever.
+REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=15)
+
+
 def get_session() -> aiohttp.ClientSession:
     global _session
     if _session is None or _session.closed:
-        _session = aiohttp.ClientSession()
+        _session = aiohttp.ClientSession(timeout=REQUEST_TIMEOUT)
     return _session
 
 

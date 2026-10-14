@@ -40,7 +40,11 @@ cp client/.env.example client/.env
 | Variable | Required | Notes |
 |---|---|---|
 | `DATABASE_URL` | yes | Inside Compose the host is `db`. Credentials must match the root `.env`. |
-| `API_KEY` | yes | Shared secret for the bot. Must match `bot/.env`. |
+| `API_KEY` | yes | Shared secret for the bot. Must match `bot/.env`. Never goes in the client. |
+| `WEB_CLIENT_KEY` | yes | Identifies the web client (`X-Client-Key`). Must equal `VITE_CLIENT_KEY` in the client build, and differ from `API_KEY`. **Public** — the browser ships it. A production backend will not start without it. |
+| `INVITE_SECRET` | no | Signs invite links; defaults to `API_KEY`. Set it before rotating `API_KEY`. |
+| `TRUSTED_PROXIES` | no | Peers whose `X-Real-IP` is believed. Default `127.0.0.1,::1,172.16.0.0/12` (host nginx over loopback / the Docker bridge). |
+| `INITDATA_MAX_AGE_SECONDS` / `PROOF_MAX_SKEW_SECONDS` | no | defaults 3600 / 60 |
 | `BOT_TOKEN` | yes | Used to verify Mini App `initData` and to proxy Telegram images. |
 | `TG_BOT_USERNAME` | yes | Used to build partner invite deep links. |
 | `IMGBB_API_KEY` | no | Photo uploads fail without it. |
@@ -49,14 +53,14 @@ cp client/.env.example client/.env
 | `ADMINS` | no | Comma-separated Telegram IDs that get CPU/RAM alerts. |
 | `OTP_TTL_SECONDS` | no | default 120 |
 | `SESSION_TTL_SECONDS` | no | default 2592000 (30 days) |
-| `DB_POOL_MIN` / `DB_POOL_MAX` | no | defaults 5 / 100. See the warning below. |
+| `DB_POOL_MIN` / `DB_POOL_MAX` | no | defaults 5 / 20. See the warning below. |
 | `FLASK_ENV` | no | default `production`. Anything else enables debug. |
-| `SERVER_NAME` | no | Label shown in `/health` and the monitoring feed. |
+| `SERVER_NAME` | no | Label shown in the monitoring feed. (`/health` no longer reveals it.) |
 
 > **`DB_POOL_MAX` is per worker.** Gunicorn runs 4 workers, so the real
 > ceiling is `4 × DB_POOL_MAX` connections. The default 100 means 400,
-> which exceeds Postgres's default `max_connections` of 100. Set it to
-> 20 or lower for a single-host deployment.
+> which exceeds Postgres's default `max_connections` of 100. The default is
+> now 20, but a value in your own `backend/.env` overrides it — check it.
 
 ### `bot/.env`
 
@@ -73,13 +77,18 @@ That is deliberate — a bot running without a token would look healthy
 while doing nothing.
 
 ### `admin/.env`
-`REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, `PORT`. The Redis
-password is also read by the `redis` container itself, which is why
-`docker-compose.yml` loads this file for that service.
+`REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, `PORT`, and **`ADMIN_USER` /
+`ADMIN_PASSWORD`** — the panel answers 503 to everything until both are
+set. The Redis password is also read by the `redis` container itself,
+which is why `docker-compose.yml` loads this file for that service.
 
 ### `client/.env`
-`VITE_API_BASE_URL` and `VITE_TG_BOT_USERNAME`. Vite inlines these at
-**build** time, so changing them needs a rebuild, not a restart.
+`VITE_API_BASE_URL`, `VITE_CLIENT_KEY` and `VITE_TG_BOT_USERNAME`. Vite
+inlines these at **build** time, so changing them needs a rebuild, not a
+restart. `VITE_CLIENT_KEY` must equal the backend's `WEB_CLIENT_KEY`; it is
+public (it lands in the bundle), so it is an identifier, not a secret.
+For `docker compose --profile local`, put the same value in the root
+`.env` as `VITE_CLIENT_KEY`.
 
 ## 2. Start the stack
 
@@ -110,8 +119,9 @@ no reverse proxy is involved.
 The backend creates its own schema on first start — there is no
 migration step to run. See `database.md`.
 
-> The admin panel has **no authentication**. It is bound to
-> `127.0.0.1` in `docker-compose.yml` for that reason — do not widen
+> The admin panel asks for HTTP Basic credentials (`ADMIN_USER` /
+> `ADMIN_PASSWORD` in `admin/.env`) and answers 503 until both are set.
+> It is also bound to `127.0.0.1` in `docker-compose.yml` — do not widen
 > it. On a server, reach it with
 > `ssh -L 9000:127.0.0.1:9000 admin@<host>`. See `security.md`.
 

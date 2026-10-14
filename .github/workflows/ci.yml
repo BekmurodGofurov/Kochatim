@@ -110,6 +110,7 @@ jobs:
         # docker-compose.yml passes it as a build arg.
         env:
           VITE_API_BASE_URL: http://localhost:8000
+          VITE_CLIENT_KEY: ci_test_client_key
           VITE_TG_BOT_USERNAME: ci_test_bot
         run: npm run build
 

@@ -6,13 +6,14 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
+from conftest import SESSION_HEADERS, WEB_HEADERS
 from conftest import (
     TEST_API_KEY, TEST_TOKEN, TEST_U_ID,
     FAKE_USER, FAKE_CATEGORY, FAKE_TYPE, FAKE_SEEDLING_ROW, NOW,
 )
 
 API_H = {"X-API-KEY": TEST_API_KEY, "Content-Type": "application/json"}
-SESSION_H = {"Authorization": f"Bearer {TEST_TOKEN}", "Content-Type": "application/json"}
+SESSION_H = dict(SESSION_HEADERS)
 
 SALES_SUMMARY = {
     "q1_sold": 10, "q2_sold": 5, "q3_sold": 2, "total_price": 300000,
@@ -145,48 +146,87 @@ class TestPartnerDashboards:
 # ─── GET /api/users/<u_id>/dashboard (public) ────────────────────────────────
 
 class TestPublicDashboard:
-    def test_success(self, client):
+    """
+    GET /api/users/<u_id>/dashboard -- name only for the public and for
+    signed-in strangers; the full profile for the owner and their partners.
+    """
+    def _url(self):
+        return f"/api/users/{TEST_U_ID}/dashboard"
+
+    def test_requires_client_key(self, client):
+        with patch("api.dashboard.fetch_one", return_value=FAKE_USER):
+            resp = client.get(self._url())
+        assert resp.status_code == 401
+
+    def test_anonymous_gets_name_only(self, client):
         with patch("api.dashboard.fetch_one", return_value=FAKE_USER), \
+             patch("api.dashboard.get_viewer", return_value=None), \
+             patch("api.dashboard.fetch_all") as mock_fa:
+            resp = client.get(self._url(), headers=WEB_HEADERS)
+        assert resp.status_code == 200
+        data = resp.get_json()["data"]
+        assert data["user"] == {"u_id": TEST_U_ID, "u_name": FAKE_USER["u_name"]}
+        assert data["restricted"] is True
+        assert data["categories"] == data["types"] == data["seedlings"] == []
+        mock_fa.assert_not_called()  # the catalogue is never even queried
+        body = resp.get_data(as_text=True)
+        assert FAKE_USER["u_phone"] not in body
+
+    def test_signed_in_stranger_gets_name_only(self, client):
+        # viewer 42 is not the owner, and the partners lookup finds nothing
+        with patch("api.dashboard.fetch_one", side_effect=[FAKE_USER, None]), \
+             patch("api.dashboard.get_viewer", return_value=42), \
+             patch("api.dashboard.fetch_all") as mock_fa:
+            resp = client.get(self._url(), headers=WEB_HEADERS)
+        data = resp.get_json()["data"]
+        assert data["restricted"] is True
+        assert "u_phone" not in data["user"]
+        mock_fa.assert_not_called()
+
+    def test_owner_gets_full_profile(self, client):
+        with patch("api.dashboard.fetch_one", return_value=FAKE_USER), \
+             patch("api.dashboard.get_viewer", return_value=TEST_U_ID), \
              patch("api.dashboard.fetch_all", side_effect=[
                  [FAKE_CATEGORY], [FAKE_TYPE], [FAKE_SEEDLING_ROW]
              ]):
-            resp = client.get(f"/api/users/{TEST_U_ID}/dashboard")
-        assert resp.status_code == 200
+            resp = client.get(self._url(), headers=WEB_HEADERS)
         data = resp.get_json()["data"]
-        assert data["user"]["u_id"] == TEST_U_ID
-        assert "categories" in data
-        assert "types" in data
-        assert "seedlings" in data
+        assert "restricted" not in data
+        assert data["user"]["u_phone"] == FAKE_USER["u_phone"]
+        assert len(data["categories"]) == 1
+
+    def test_partner_gets_full_profile(self, client):
+        with patch("api.dashboard.fetch_one", side_effect=[FAKE_USER, {"ok": 1}]), \
+             patch("api.dashboard.get_viewer", return_value=42), \
+             patch("api.dashboard.fetch_all", side_effect=[
+                 [FAKE_CATEGORY], [FAKE_TYPE], [FAKE_SEEDLING_ROW]
+             ]):
+            resp = client.get(self._url(), headers=WEB_HEADERS)
+        data = resp.get_json()["data"]
+        assert "restricted" not in data
+        assert data["user"]["u_phone"] == FAKE_USER["u_phone"]
+
+    def test_partner_lookup_is_parameterised_on_viewer_and_target(self, client):
+        with patch("api.dashboard.fetch_one", side_effect=[FAKE_USER, None]) as mock_fo, \
+             patch("api.dashboard.get_viewer", return_value=42):
+            client.get(self._url(), headers=WEB_HEADERS)
+        sql, params = mock_fo.call_args_list[1][0]
+        assert "partners" in sql and params == (42, TEST_U_ID)
 
     def test_user_not_found_returns_404(self, client):
         with patch("api.dashboard.fetch_one", return_value=None):
-            resp = client.get("/api/users/9999999/dashboard")
+            resp = client.get("/api/users/9999999/dashboard", headers=WEB_HEADERS)
         assert resp.status_code == 404
         assert resp.get_json()["error"]["code"] == "NOT_FOUND"
 
-    def test_no_auth_required(self, client):
-        """Public endpoint — auth talab qilinmaydi."""
-        with patch("api.dashboard.fetch_one", return_value=FAKE_USER), \
-             patch("api.dashboard.fetch_all", side_effect=[[], [], []]):
-            resp = client.get(f"/api/users/{TEST_U_ID}/dashboard")
-        assert resp.status_code == 200
+    def test_non_integer_id_is_not_routed(self, client):
+        resp = client.get("/api/users/abc/dashboard", headers=WEB_HEADERS)
+        assert resp.status_code == 404
 
-    def test_empty_collections(self, client):
-        with patch("api.dashboard.fetch_one", return_value=FAKE_USER), \
-             patch("api.dashboard.fetch_all", side_effect=[[], [], []]):
-            resp = client.get(f"/api/users/{TEST_U_ID}/dashboard")
-        data = resp.get_json()["data"]
-        assert data["categories"] == []
-        assert data["types"] == []
-        assert data["seedlings"] == []
+    def test_db_failure_returns_generic_500(self, client):
+        with patch("api.dashboard.fetch_one", side_effect=RuntimeError("dsn=postgres://u:pw@h")):
+            resp = client.get(self._url(), headers=WEB_HEADERS)
+        assert resp.status_code == 500
+        assert "postgres://" not in resp.get_data(as_text=True)
 
-    def test_types_have_image_url_field(self, client):
-        type_with_img = dict(FAKE_TYPE)
-        type_with_img["i_url"] = "http://img.com/a.jpg"
-        with patch("api.dashboard.fetch_one", return_value=FAKE_USER), \
-             patch("api.dashboard.fetch_all", side_effect=[
-                 [FAKE_CATEGORY], [type_with_img], []
-             ]):
-            resp = client.get(f"/api/users/{TEST_U_ID}/dashboard")
-        t = resp.get_json()["data"]["types"][0]
-        assert "i_url" in t
+

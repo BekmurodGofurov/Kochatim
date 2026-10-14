@@ -38,7 +38,8 @@ gardener ──► client (nginx) ──Bearer token──► backend ──► 
                                                   └──► Redis (session + dashboard cache)
 ```
 
-Three ways to get a session token:
+Two ways to get a session token (both need the browser's public
+`device_key`, and both end in `auth/session_service.create_session`):
 
 1. **OTP** — the bot calls `POST /auth/request-code` (API key), gets a
    6-digit code, shows it to the gardener, who types it into the web
@@ -47,12 +48,18 @@ Three ways to get a session token:
 2. **Telegram Mini App** — `POST /auth/telegram-webapp` verifies the
    `initData` HMAC against `BOT_TOKEN` and issues a token. This is the
    cryptographically sound path.
-3. **`POST /auth/user-id-login`** — issues a token for any existing
-   `u_id` with no proof whatsoever. This is an authentication bypass;
-   see `security.md`.
+A third route that minted a token from a bare `u_id` used to exist; it
+was an authentication bypass and has been removed (`security.md`).
 
-A gardener keeps at most 3 concurrent sessions; inserting a fourth
-deletes the oldest (`_MAX_SESSIONS` in each auth module).
+A session is **bound to a device key**: at login the browser makes an
+ECDSA key pair it cannot export, sends the public half, and signs every
+request with the private half (`X-Session-Proof`). Copying the token to
+another browser gets a 401. Every request also needs the bot key or the
+web client key first (`middleware/client_gate.py`).
+
+A gardener keeps at most 3 concurrent sessions; creating a fourth
+deletes the oldest (`MAX_SESSIONS` in `auth/session_service.py`, the one
+place sessions are created).
 
 ### Monitoring
 
@@ -140,11 +147,11 @@ happens when they fail.
   (`max(2, DB_POOL_MAX // 2)` workers) runs the dashboard's five
   queries concurrently. Sized against the DB pool deliberately: more
   workers than connections would just queue on the pool.
-- **`backend/auth/user_id_login.py`** — a 100-worker
-  `ThreadPoolExecutor` writes the session row *after* the response is
-  sent, so the login call does not wait for the ip-api.com city
-  lookup. Failures are logged and swallowed, which means a login can
-  return a token whose session row was never written.
+- **`backend/auth/session_service.py`** — `create_session(u_id,
+  device_key)`. The IP and browser are read from the Flask request
+  inside it; it has no parameter for them. The city lookup (ip-api.com,
+  2 s timeout) runs inline on the login path and swallows its own
+  failures, so a dead geolocation service cannot block sign-in.
 
 ## Client structure
 

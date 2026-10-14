@@ -7,9 +7,10 @@ from unittest.mock import patch
 import pytest
 
 from conftest import TEST_API_KEY, TEST_TOKEN, TEST_U_ID, FAKE_TYPE, FAKE_CATEGORY, NOW
+from conftest import SESSION_HEADERS, WEB_HEADERS
 
 API_H = {"X-API-KEY": TEST_API_KEY, "Content-Type": "application/json"}
-SESSION_H = {"Authorization": f"Bearer {TEST_TOKEN}", "Content-Type": "application/json"}
+SESSION_H = dict(SESSION_HEADERS)
 
 
 # ─── POST /api/types/me (session) ────────────────────────────────────────────
@@ -81,33 +82,60 @@ class TestCreateTypeMe:
 
 # ─── POST /api/types (API key) ───────────────────────────────────────────────
 
+
 class TestCreateType:
     URL = "/api/types"
+    BODY = {"u_id": TEST_U_ID, "c_id": 1, "t_name": "Nok"}
+
+    def _post(self, client, body=None, owns_category=True):
+        with patch("api.types.fetch_one", return_value={"c_id": 1} if owns_category else None) as own, \
+             patch("api.types.execute_returning", return_value=FAKE_TYPE) as ins, \
+             patch("api.types.invalidate_dashboard_cache") as inv:
+            resp = client.post(self.URL, json=self.BODY if body is None else body, headers=API_H)
+        return resp, own, ins, inv
 
     def test_success(self, client):
-        with patch("api.types.execute_returning", return_value=FAKE_TYPE), \
-             patch("api.types.invalidate_dashboard_cache"):
-            resp = client.post(self.URL, json={
-                "u_id": TEST_U_ID, "c_id": 1, "t_name": "Nok",
-            }, headers=API_H)
+        resp, _, _, inv = self._post(client)
         assert resp.status_code == 200
         assert resp.get_json()["data"]["t_id"] is not None
+        inv.assert_called_once_with(TEST_U_ID)
+
+    def test_the_category_must_belong_to_the_user(self, client):
+        """Attaching a variety to someone else's group must fail."""
+        resp, own, ins, inv = self._post(client, owns_category=False)
+        assert resp.status_code == 404
+        assert resp.get_json()["error"]["code"] == "NOT_FOUND"
+        ins.assert_not_called()
+        inv.assert_not_called()
+
+    def test_ownership_is_checked_with_both_ids_as_parameters(self, client):
+        _, own, *_ = self._post(client)
+        sql, params = own.call_args[0]
+        assert "categories" in sql and "u_id" in sql and "c_id" in sql
+        assert params == (1, TEST_U_ID)
 
     def test_missing_u_id_returns_400(self, client):
-        resp = client.post(self.URL, json={"c_id": 1, "t_name": "X"}, headers=API_H)
+        resp, _, ins, _ = self._post(client, {"c_id": 1, "t_name": "X"})
         assert resp.status_code == 400
+        ins.assert_not_called()
 
     def test_missing_c_id_returns_400(self, client):
-        resp = client.post(self.URL, json={"u_id": TEST_U_ID, "t_name": "X"}, headers=API_H)
-        assert resp.status_code == 400
+        assert self._post(client, {"u_id": TEST_U_ID, "t_name": "X"})[0].status_code == 400
 
     def test_missing_t_name_returns_400(self, client):
-        resp = client.post(self.URL, json={"u_id": TEST_U_ID, "c_id": 1}, headers=API_H)
-        assert resp.status_code == 400
+        assert self._post(client, {"u_id": TEST_U_ID, "c_id": 1})[0].status_code == 400
 
     def test_no_api_key_returns_401(self, client):
-        resp = client.post(self.URL, json={"u_id": TEST_U_ID, "c_id": 1, "t_name": "X"})
-        assert resp.status_code == 401
+        assert client.post(self.URL, json=self.BODY).status_code == 401
+
+    def test_web_client_key_is_not_enough(self, client):
+        assert client.post(self.URL, json=self.BODY, headers=WEB_HEADERS).status_code == 401
+
+    def test_database_failure_returns_generic_500(self, client):
+        with patch("api.types.fetch_one", side_effect=RuntimeError("dsn=postgres://u:hunter2@db")):
+            resp = client.post(self.URL, json=self.BODY, headers=API_H)
+        assert resp.status_code == 500
+        assert "hunter2" not in resp.get_data(as_text=True)
 
 
 # ─── GET /api/types (API key) ────────────────────────────────────────────────

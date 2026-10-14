@@ -10,6 +10,8 @@ from unittest.mock import patch
 import psycopg2
 import pytest
 
+from conftest import WEB_HEADERS
+
 
 class TestPublicCategories:
     URL = "/api/v1/public/categories"
@@ -17,7 +19,7 @@ class TestPublicCategories:
     def test_returns_categories(self, client):
         rows = [{"id": 1, "name": "Mevali"}, {"id": 2, "name": "Manzarali"}]
         with patch("api.public.fetch_all", return_value=rows):
-            resp = client.get(self.URL)
+            resp = client.get(self.URL, headers=WEB_HEADERS)
         assert resp.status_code == 200
         data = resp.get_json()
         assert data["ok"] is True
@@ -25,26 +27,26 @@ class TestPublicCategories:
 
     def test_empty_result_returns_empty_list(self, client):
         with patch("api.public.fetch_all", return_value=[]):
-            resp = client.get(self.URL)
+            resp = client.get(self.URL, headers=WEB_HEADERS)
         assert resp.status_code == 200
         assert resp.get_json()["data"] == []
 
     def test_needs_no_auth(self, client):
         """Ochiq endpoint — landing sahifa uchun."""
         with patch("api.public.fetch_all", return_value=[]):
-            resp = client.get(self.URL)
+            resp = client.get(self.URL, headers=WEB_HEADERS)
         assert resp.status_code == 200
 
     def test_aliases_columns_to_id_and_name(self, client):
         with patch("api.public.fetch_all", return_value=[]) as mock_fetch:
-            client.get(self.URL)
+            client.get(self.URL, headers=WEB_HEADERS)
         query = mock_fetch.call_args[0][0]
         assert "c_id AS id" in query
         assert "c_name AS name" in query
 
     def test_sorted_by_name(self, client):
         with patch("api.public.fetch_all", return_value=[]) as mock_fetch:
-            client.get(self.URL)
+            client.get(self.URL, headers=WEB_HEADERS)
         assert "ORDER BY c_name ASC" in mock_fetch.call_args[0][0]
 
     def test_exposes_no_owner_ids(self, client):
@@ -53,19 +55,32 @@ class TestPublicCategories:
         bog'bonning Telegram ID'si anonim tarzda yig'ilib ketadi.
         """
         with patch("api.public.fetch_all", return_value=[]) as mock_fetch:
-            client.get(self.URL)
+            client.get(self.URL, headers=WEB_HEADERS)
         assert "u_id" not in mock_fetch.call_args[0][0]
 
     def test_db_failure_returns_500_with_handled_message(self, client):
         """Bu endpoint xatoni o'zi ushlaydi va 500 bilan javob beradi."""
         with patch("api.public.fetch_all",
                    side_effect=psycopg2.OperationalError("db down")):
-            resp = client.get(self.URL)
+            resp = client.get(self.URL, headers=WEB_HEADERS)
         assert resp.status_code == 500
         data = resp.get_json()
         assert data["ok"] is False
         assert data["error"]["message"] == "Failed to fetch categories"
 
+    def test_db_failure_does_not_leak_the_exception_text(self, client):
+        with patch("api.public.fetch_all",
+                   side_effect=psycopg2.OperationalError("dsn=postgres://u:hunter2@db")):
+            resp = client.get(self.URL, headers=WEB_HEADERS)
+        assert "hunter2" not in resp.get_data(as_text=True)
+        assert "extra" not in resp.get_json()["error"]
+
+    def test_without_client_key_is_rejected(self, client):
+        with patch("api.public.fetch_all", return_value=[]) as mock_fetch:
+            resp = client.get(self.URL)
+        assert resp.status_code == 401
+        mock_fetch.assert_not_called()
+
     def test_post_is_not_allowed(self, client):
-        resp = client.post(self.URL, json={})
+        resp = client.post(self.URL, json={}, headers=WEB_HEADERS)
         assert resp.status_code in (405, 500)

@@ -1,11 +1,30 @@
 # backend/api/sales.py
 from flask import request, g
 from api import api_bp
+from api.seedlings import _MAX_CHANGE, _quantity
 from middleware.require_api_key import require_api_key
 from middleware.require_session import require_session
 from utils.errors import ok, fail
-from db import execute, fetch_all, fetch_one
+from db import fetch_all, fetch_one, transaction
 from utils.cache import invalidate_dashboard_cache
+
+
+class _InsufficientStock(Exception):
+    """Raised inside the transaction so everything done so far is rolled back."""
+
+    def __init__(self, stock):
+        self.stock = stock
+
+
+@api_bp.errorhandler(_InsufficientStock)
+def _insufficient_stock(e):
+    s = e.stock
+    return fail(
+        f"Yetarli ko'chat yo'q. Mavjud: q1={int(s.get('quality_1') or 0)}, "
+        f"q2={int(s.get('quality_2') or 0)}, q3={int(s.get('quality_3') or 0)}",
+        400,
+        code="INSUFFICIENT_STOCK",
+    )
 
 
 @api_bp.post("/sales")
@@ -25,15 +44,24 @@ def add_sale():
     if not isinstance(u_id, int) or not isinstance(c_id, int) or not isinstance(t_id, int):
         return fail("u_id(int), c_id(int), t_id(int) required", 400)
 
-    q1 = int(data.get("q1_sold", 0) or 0)
-    q2 = int(data.get("q2_sold", 0) or 0)
-    q3 = int(data.get("q3_sold", 0) or 0)
+    try:
+        q1 = _quantity(data.get("q1_sold"), "q1_sold")
+        q2 = _quantity(data.get("q2_sold"), "q2_sold")
+        q3 = _quantity(data.get("q3_sold"), "q3_sold")
+    except ValueError as e:
+        return fail(str(e), 400, code="INVALID_QUANTITY")
+    if min(q1, q2, q3) < 0:
+        return fail("Sold quantities cannot be negative", 400, code="INVALID_QUANTITY")
 
     price = data.get("price")
+    if isinstance(price, bool):
+        return fail("price(int) required", 400)
     try:
         price = int(price)
     except Exception:
         return fail("price(int) required", 400)
+    if price < 0 or price > 10**12:
+        return fail("price out of range", 400, code="INVALID_PRICE")
 
     # Ownership: t_id va c_id bu u_id ga tegishli ekanligini tekshirish
     owner_row = fetch_one(
@@ -43,37 +71,38 @@ def add_sale():
     if not owner_row:
         return fail("Type not found for this user/category", 404, code="NOT_FOUND")
 
-    # Manfiy inventar: yetarli miqdor borligini tekshirish
-    stock = fetch_one(
-        "SELECT quality_1, quality_2, quality_3 FROM seedlings WHERE u_id=%s AND t_id=%s",
-        (u_id, t_id),
-    )
-    if stock:
-        cur1 = int(stock.get("quality_1") or 0)
-        cur2 = int(stock.get("quality_2") or 0)
-        cur3 = int(stock.get("quality_3") or 0)
-        if cur1 - q1 < 0 or cur2 - q2 < 0 or cur3 - q3 < 0:
-            return fail(
-                f"Yetarli ko'chat yo'q. Mavjud: q1={cur1}, q2={cur2}, q3={cur3}",
-                400,
-                code="INSUFFICIENT_STOCK",
+    # The stock check, the stock write and the sale record are one unit: if
+    # the connection drops between them, nothing is half-recorded (a sale
+    # without the stock leaving, or stock gone with no sale).
+    with transaction() as tx:
+        updated = tx.execute(
+            """
+            UPDATE seedlings
+            SET quality_1 = quality_1 - %s,
+                quality_2 = quality_2 - %s,
+                quality_3 = quality_3 - %s
+            WHERE u_id=%s AND t_id=%s
+              AND COALESCE(quality_1, 0) - %s >= 0
+              AND COALESCE(quality_2, 0) - %s >= 0
+              AND COALESCE(quality_3, 0) - %s >= 0
+            """,
+            (q1, q2, q3, u_id, t_id, q1, q2, q3),
+        )
+        if updated == 0:
+            # Either there is no stock row at all (the sale is still recorded,
+            # as before) or there is not enough. The guard above decided it
+            # under the row lock; this only picks the message.
+            stock = tx.fetch_one(
+                "SELECT quality_1, quality_2, quality_3 FROM seedlings WHERE u_id=%s AND t_id=%s",
+                (u_id, t_id),
             )
+            if stock:
+                raise _InsufficientStock(stock)
 
-    execute(
-        "INSERT INTO sales (u_id,c_id,t_id,q1_sold,q2_sold,q3_sold,price) VALUES (%s,%s,%s,%s,%s,%s,%s)",
-        (u_id, c_id, t_id, q1, q2, q3, price),
-    )
-
-    execute(
-        """
-        UPDATE seedlings
-        SET quality_1 = quality_1 - %s,
-            quality_2 = quality_2 - %s,
-            quality_3 = quality_3 - %s
-        WHERE u_id=%s AND t_id=%s
-        """,
-        (q1, q2, q3, u_id, t_id),
-    )
+        tx.execute(
+            "INSERT INTO sales (u_id,c_id,t_id,q1_sold,q2_sold,q3_sold,price) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+            (u_id, c_id, t_id, q1, q2, q3, price),
+        )
 
     invalidate_dashboard_cache(u_id)
     return ok({"saved": True})

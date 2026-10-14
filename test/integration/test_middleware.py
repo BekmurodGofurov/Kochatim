@@ -148,8 +148,8 @@ class TestHealthEndpoint:
         assert data["ok"] is True
         assert data["data"]["status"] == "up"
 
-    def test_404_returns_json(self, client):
-        resp = client.get("/nonexistent-path-xyz")
+    def test_404_returns_json(self, client, web_headers):
+        resp = client.get("/nonexistent-path-xyz", headers=web_headers)
         assert resp.status_code == 404
         data = resp.get_json()
         assert data["ok"] is False
