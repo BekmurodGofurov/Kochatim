@@ -35,28 +35,62 @@ export const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 ```
 
 Vite inlines `import.meta.env` at **build** time. Changing
-`VITE_API_BASE_URL` needs a rebuild, not a restart — and in Docker it
-arrives as a build arg (`PUBLIC_URL` in the root `.env`), not an
-environment variable on the running container.
+`VITE_API_BASE_URL` or `VITE_CLIENT_KEY` needs a rebuild, not a restart —
+and in Docker they arrive as build args (`PUBLIC_URL` and
+`VITE_CLIENT_KEY` in the root `.env`), not environment variables on the
+running container. On Cloudflare Pages set both as project environment
+variables.
 
-Four behaviours worth knowing:
+`VITE_CLIENT_KEY` must equal the backend's `WEB_CLIENT_KEY`. It is sent as
+`X-Client-Key` on every request. **It is public** — anyone can read it in
+the bundle — so never put anything secret in a `VITE_*` variable.
+
+Six behaviours worth knowing:
 
 1. **The session token comes from `localStorage`** under
    `session_token` and is sent as `Authorization: Bearer <token>`. If
    there is no token the header is omitted entirely rather than sent
-   empty.
+   empty. The token is only half of the credential: when one is present
+   `apiFetch` also signs the request with the device key
+   (`X-Session-Proof`, see below). The signed target is
+   `new URL(API_BASE + path)`'s `pathname + search`, i.e. exactly what the
+   browser puts on the wire.
 2. **`ok: false` throws even on HTTP 200.** The backend can return 200
    with `{"ok": false}`, so the status code alone is not the result.
    On success only `data.data` is returned — callers never see the
    envelope.
-3. **A 401 or an `UNAUTHORIZED` code clears the stored token.** That is
-   what makes an expired session fall back to the login page instead
-   of retrying forever. Other errors leave the token alone, so a 500
-   does not log the user out.
+3. **A 401 or an `UNAUTHORIZED` code clears the stored token and the
+   device key** (except `INVALID_INITDATA`, a failed *login*, which says
+   nothing about an existing session). That is what makes an expired
+   session fall back to the login page instead of retrying forever. Other
+   errors leave both alone, so a 500 does not log the user out.
 4. **`FormData` skips the `Content-Type` header** so the browser can
    set `multipart/form-data` with its own boundary, and the body is
    passed through rather than `JSON.stringify`-ed. Setting the header
    manually here produces a request the backend cannot parse.
+5. **`X-Client-Key` is on every request**, signed in or not.
+6. **Images use `?k=`.** `<img src>` cannot send headers, so image URLs
+   come from `apiImgUrl()` / `toWebImgUrl()` in `utils/imageUtils.js`,
+   which append the client key as a query parameter. Build image URLs
+   there, never by string concatenation. The session token must never
+   appear in a URL.
+
+## Device key — `api/deviceKey.js`
+
+At login the browser generates an ECDSA P-256 key pair with
+`extractable: false` and keeps the private key in IndexedDB as a
+`CryptoKey`. JavaScript can ask it to sign but cannot read it out, and
+copying `localStorage` does not copy it. Only the public JWK goes to the
+server.
+
+| Function | Purpose |
+|---|---|
+| `generateDeviceKey()` | Returns `{publicJwk, save()}`. **Nothing is stored until `save()`**, which the login code calls only after the server accepted the login — a wrong OTP must not cost a signed-in browser its existing key. Throws `DeviceKeyUnsupportedError` (code `DEVICE_KEY_UNSUPPORTED`) when WebCrypto or IndexedDB is missing: login is refused rather than silently weakened. |
+| `signProof({method, pathWithQuery, token})` | `v1.<ts>.<nonce>.<sig>` for one request, or `null` if this browser holds no key (the request goes out unsigned and the server answers 401). |
+| `clearDeviceKey()` / `hasDeviceKey()` | Logout / 401 cleanup, and a check. Never throw. |
+
+`Settings.jsx` logout calls `POST /api/logout` first (so the session ends
+on the server, not just in the browser), then `clearDeviceKey()`.
 
 The thrown error carries `status`, `code` and `payload`, so a caller
 can branch on `err.code === "INSUFFICIENT_STOCK"` rather than matching
@@ -78,8 +112,14 @@ security** — every protected route's data comes from a
 Deleting the guard would expose no data.
 
 `TelegramHandler` runs outside the router guard and handles the Mini
-App path: it reads `window.Telegram.WebApp.initData` and posts it to
-`/auth/telegram-webapp` to exchange it for a session token.
+App path: it reads `window.Telegram.WebApp.initData`, makes a device key,
+and posts both to `/auth/telegram-webapp` to exchange them for a session
+token. `Login.jsx` does the same with the OTP on `/auth/verify-code`.
+
+Public pages (`Home`, `Gardener`) work without a session but only receive
+names; a gardener's full profile appears when the signed-in viewer is that
+gardener or a partner (`data.restricted` is `true` otherwise, and the page
+says so).
 
 Public routes: `/`, `/login`, `/gardeners/:uId`. Everything else is
 behind `RequireAuth` and `AppLayout` (sidebar + content).

@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from conftest import TEST_API_KEY
+from conftest import TEST_API_KEY, TEST_WEB_KEY, WEB_HEADERS
 
 ALLOWED = "http://localhost:5173"
 NOT_ALLOWED = "http://evil.example.com"
@@ -55,23 +55,15 @@ class TestHealth:
         assert data["ok"] is True
         assert data["data"]["status"] == "up"
 
-    def test_includes_server_name(self, client):
-        data = client.get("/health").get_json()
-        assert "server" in data["data"]
+    def test_reveals_nothing_about_the_host(self, client):
+        """An open endpoint must not name the server or the deployment."""
+        with patch.dict("os.environ", {"SERVER_NAME": "kochatim-prod-1"}):
+            resp = client.get("/health")
+        assert resp.get_json()["data"] == {"status": "up"}
+        assert "kochatim-prod-1" not in resp.get_data(as_text=True)
 
-    def test_server_name_comes_from_env(self, client):
-        with patch.dict("os.environ", {"SERVER_NAME": "kochatim-1"}):
-            data = client.get("/health").get_json()
-        assert data["data"]["server"] == "kochatim-1"
-
-    def test_defaults_server_name_when_unset(self, client):
-        env = {"SERVER_NAME": ""}
-        with patch.dict("os.environ", env):
-            data = client.get("/health").get_json()
-        # getenv bo'sh satr qaytaradi — standart qiymat faqat kalit yo'q bo'lsa
-        assert "server" in data["data"]
-
-    def test_needs_no_auth(self, client):
+    def test_needs_no_key(self, client):
+        """The one route the gate leaves open: Docker/uptime probes cannot send a key."""
         assert client.get("/health").status_code == 200
 
     def test_not_counted_in_endpoint_stats(self, client, redis_conn):
@@ -122,16 +114,18 @@ class TestCorsPreflight:
                            headers={"Origin": NOT_ALLOWED})
         assert resp.headers["Access-Control-Allow-Origin"] == "null"
 
-    def test_preflight_allows_credentials(self, client):
+    def test_preflight_does_not_allow_credentials(self, client):
+        """No cookies are used; credentialed CORS would only widen the surface."""
         resp = client.open("/api/categories", method="OPTIONS",
                            headers={"Origin": ALLOWED})
-        assert resp.headers["Access-Control-Allow-Credentials"] == "true"
+        assert "Access-Control-Allow-Credentials" not in resp.headers
 
     def test_preflight_advertises_auth_headers(self, client):
         resp = client.open("/api/categories", method="OPTIONS",
                            headers={"Origin": ALLOWED})
         allowed = resp.headers["Access-Control-Allow-Headers"]
-        assert "Authorization" in allowed and "X-API-KEY" in allowed
+        for header in ("Authorization", "X-API-KEY", "X-Client-Key", "X-Session-Proof"):
+            assert header in allowed
 
     def test_preflight_advertises_methods(self, client):
         resp = client.open("/api/categories", method="OPTIONS",
@@ -146,8 +140,8 @@ class TestCorsPreflight:
                            headers={"Origin": ALLOWED})
         assert "Origin" in resp.headers["Vary"]
 
-    def test_preflight_skips_auth(self, client):
-        """OPTIONS before_request da to'xtaydi — 401 bo'lmasligi kerak."""
+    def test_preflight_skips_the_key_gate(self, client):
+        """A preflight cannot carry custom headers, so the gate must let it through."""
         resp = client.open("/api/categories", method="OPTIONS",
                            headers={"Origin": ALLOWED})
         assert resp.status_code == 204
@@ -182,27 +176,50 @@ class TestCorsResponseHeaders:
 # ─── Xato ishlovchilar ────────────────────────────────────────────────────────
 
 class TestErrorHandlers:
-    def test_unknown_route_returns_404_json(self, client):
-        resp = client.get("/no-such-route")
+    def test_unknown_route_with_key_returns_404_json(self, client):
+        resp = client.get("/no-such-route", headers=WEB_HEADERS)
         assert resp.status_code == 404
         data = resp.get_json()
         assert data["ok"] is False
         assert data["error"]["message"] == "Not found"
 
+    def test_unknown_route_without_key_is_indistinguishable_from_a_real_one(self, client):
+        """401 for a made-up path and a real one alike: the API cannot be mapped."""
+        made_up = client.get("/no-such-route")
+        real = client.get("/api/categories")
+        assert made_up.status_code == real.status_code == 401
+        assert made_up.get_json() == real.get_json()
+
     def test_404_is_json_not_html(self, client):
-        resp = client.get("/no-such-route")
+        resp = client.get("/no-such-route", headers=WEB_HEADERS)
         assert resp.content_type.startswith("application/json")
 
     def test_unhandled_exception_returns_500_json(self, client):
-        with patch("api.public.fetch_all", side_effect=RuntimeError("boom")):
-            resp = client.get("/api/v1/public/categories")
+        with patch("api.users.fetch_all", side_effect=RuntimeError("boom")):
+            resp = client.get("/api/gardeners", headers=WEB_HEADERS)
         assert resp.status_code == 500
         assert resp.get_json()["ok"] is False
 
-    def test_method_not_allowed_is_handled(self, client):
+    def test_unhandled_exception_does_not_leak_its_message(self, client):
+        """str(e) can hold SQL, a DSN, or a Telegram URL with the bot token in it."""
+        secret = "postgresql://kochatim:hunter2@db:5432/kochatim"
+        with patch("api.users.fetch_all", side_effect=RuntimeError(secret)):
+            resp = client.get("/api/gardeners", headers=WEB_HEADERS)
+        body = resp.get_data(as_text=True)
+        assert "hunter2" not in body and "postgresql://" not in body
+        assert "extra" not in resp.get_json()["error"]
+
+    def test_unhandled_exception_is_logged(self, client, caplog):
+        import logging
+        with caplog.at_level(logging.ERROR), \
+             patch("api.users.fetch_all", side_effect=RuntimeError("boom-for-the-log")):
+            client.get("/api/gardeners", headers=WEB_HEADERS)
+        assert "boom-for-the-log" in caplog.text
+
+    def test_method_not_allowed_keeps_its_status(self, client):
         resp = client.delete("/health")
-        assert resp.status_code in (404, 405, 500)
-        assert resp.get_json() is not None
+        assert resp.status_code == 405
+        assert resp.get_json()["ok"] is False
 
 
 # ─── _record_endpoint_stats ───────────────────────────────────────────────────
@@ -250,6 +267,28 @@ class TestEndpointStats:
         assert payload["path"] == "/api/categories"
         assert payload["method"] == "GET"
         assert payload["status"] == 401
+
+    def test_unmatched_path_is_recorded_as_a_fixed_label(self, client, redis_conn):
+        """
+        The raw path is attacker-controlled and ends up in the admin panel's
+        innerHTML. Unknown routes are recorded under one fixed label.
+        """
+        payload = "/api/x<img src=q onerror=alert(1)>"
+        client.get(payload)
+        assert redis_conn.zscore("endpoint_stats", "unmatched") == 1
+        assert redis_conn.zscore("endpoint_stats", payload) is None
+        assert all("<" not in m for m in redis_conn.zrange("endpoint_stats", 0, -1))
+
+    def test_unmatched_path_is_not_published_raw(self, client, redis_conn):
+        pubsub = subscribe_to(redis_conn, "live_requests")
+        client.get("/api/x<img src=q onerror=alert(1)>")
+        messages = drain(pubsub)
+        pubsub.close()
+        assert json.loads(messages[0]["data"])["path"] == "unmatched"
+
+    def test_route_pattern_is_recorded_not_the_concrete_url(self, client, redis_conn):
+        client.get("/api/users/123456789/dashboard", headers=WEB_HEADERS)
+        assert redis_conn.zscore("endpoint_stats", "/api/users/<int:u_id>/dashboard") == 1
 
     def test_redis_failure_does_not_break_the_request(self, client):
         """

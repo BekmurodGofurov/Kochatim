@@ -16,6 +16,7 @@ than in fixtures, because fixtures run too late:
 
 See `skills/testing/SKILL.md` for the reasoning behind each.
 """
+import base64
 import hashlib
 import hmac
 import json
@@ -35,6 +36,7 @@ if BACKEND_DIR not in sys.path:
 # Config klass tanasi import vaqtida os.getenv o'qiydi — fixture juda kech.
 os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost/test_kochatim")
 os.environ.setdefault("API_KEY", "test-api-key-12345")
+os.environ.setdefault("WEB_CLIENT_KEY", "test-web-client-key-67890")
 os.environ.setdefault("BOT_TOKEN", "123456789:TEST_BOT_TOKEN_ABCDEF1234")
 os.environ.setdefault("TG_BOT_USERNAME", "test_kochatim_bot")
 os.environ.setdefault("IMGBB_API_KEY", "test-imgbb-api-key")
@@ -86,11 +88,22 @@ _app_module = _import_app_module()
 
 # ─── Test konstantalari ───────────────────────────────────────────────────────
 TEST_API_KEY = "test-api-key-12345"
+TEST_WEB_KEY = "test-web-client-key-67890"
 TEST_BOT_TOKEN = "123456789:TEST_BOT_TOKEN_ABCDEF1234"
 TEST_U_ID = 123456789
 TEST_PARTNER_U_ID = 987654321
 TEST_TOKEN = "valid-session-token-for-tests-xyz"
 TEST_OTP_CODE = "123456"
+
+# Shared by the integration tests: a signed-in web client / a web client with
+# no session. The session proof is a placeholder -- see mock_session below.
+SESSION_HEADERS = {
+    "Authorization": f"Bearer {TEST_TOKEN}",
+    "X-Client-Key": TEST_WEB_KEY,
+    "X-Session-Proof": "v1.0.placeholdernonce0000.placeholder",
+    "Content-Type": "application/json",
+}
+WEB_HEADERS = {"X-Client-Key": TEST_WEB_KEY, "Content-Type": "application/json"}
 
 NOW = datetime(2026, 6, 13, 12, 0, 0)
 FAR_FUTURE = datetime(2099, 1, 1)
@@ -117,6 +130,43 @@ def build_valid_init_data(bot_token: str, u_id: int = TEST_U_ID, **extra) -> str
     h = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
     pairs["hash"] = h
     return "&".join(f"{k}={v}" for k, v in pairs.items())
+
+
+# ─── Device keys (what the browser's WebCrypto does at login) ────────────────
+# This is the reference signer for tests: it must stay byte-for-byte what
+# client/src/api/deviceKey.js does, and utils/device_proof.py must accept it.
+# test_device_proof.py also pins a vector produced by the real JS signer.
+
+def _b64u(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+
+def make_device_key():
+    """A fresh P-256 key pair -> (private_key, public_jwk dict), like generateKey()."""
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    private = ec.generate_private_key(ec.SECP256R1())
+    nums = private.public_key().public_numbers()
+    jwk = {
+        "kty": "EC", "crv": "P-256",
+        "x": _b64u(nums.x.to_bytes(32, "big")),
+        "y": _b64u(nums.y.to_bytes(32, "big")),
+    }
+    return private, jwk
+
+
+def sign_proof(private, token, method, target, ts_ms=None, nonce=None):
+    """Build an X-Session-Proof header value the way the browser does."""
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
+
+    ts = str(int(ts_ms if ts_ms is not None else time.time() * 1000))
+    nonce = nonce or _b64u(os.urandom(16))
+    message = f"{ts}.{nonce}.{method.upper()}.{target}.{hashlib.sha256(token.encode()).hexdigest()}"
+    r, s = decode_dss_signature(private.sign(message.encode(), ec.ECDSA(hashes.SHA256())))
+    raw = r.to_bytes(32, "big") + s.to_bytes(32, "big")  # WebCrypto's r||s, not DER
+    return f"v1.{ts}.{nonce}.{_b64u(raw)}"
 
 
 # ─── Fake DB rows ─────────────────────────────────────────────────────────────
@@ -278,45 +328,18 @@ def redis_conn():
 
 # ─── Autouse: fon thread'larini test ichida ushlab turish ────────────────────
 
-class _InlineExecutor:
-    """
-    submit() ni darhol, shu thread'da bajaradi.
-
-    `auth/user_id_login.py` sessiya yozishni ThreadPoolExecutor ga topshiradi
-    va javobni kutmasdan qaytaradi. Natijada `with patch(...)` bloki fon
-    vazifasi ishga tushishidan oldin yopiladi — mock yo'qoladi va thread
-    HAQIQIY Postgres ga ulanishga harakat qiladi. Test to'plami shuning uchun
-    "Background session insertion failed: ... role 'test' does not exist"
-    deb log yozardi.
-
-    Inline executor patch amal qilib turganda ishlaydi, shuning uchun fon
-    vazifasi ham mock'langan DB ni ko'radi va testlar deterministik bo'ladi.
-    """
-
-    def submit(self, fn, *args, **kwargs):
-        future = MagicMock()
-        try:
-            future.result.return_value = fn(*args, **kwargs)
-        except Exception as exc:  # fon vazifasi o'zi ushlab qoladigan xato
-            future.result.side_effect = exc
-        return future
-
-
 @pytest.fixture(autouse=True)
-def inline_background_executor():
+def forbid_real_network():
     """
-    Fon vazifalari test ichida, mock'lar amal qilganda bajariladi.
-
-    Modul `sys.modules` dan olinadi, `import auth.user_id_login` orqali emas:
-    `auth/__init__.py` da `from auth.user_id_login import *` bor, u esa
-    paket nomssohasida `user_id_login` nomini FUNKSIYA bilan almashtiradi.
-    Shuning uchun `auth.user_id_login` atributi modulga emas, funksiyaga
-    ishora qiladi va `patch.object` "does not have the attribute 'executor'"
-    deb yiqiladi.
+    No test may reach the internet (Telegram, ImgBB, ip-api). A test that
+    needs an HTTP answer patches `requests.get`/`post` itself; anything that
+    slips past gets this error instead of a live request carrying test
+    credentials.
     """
-    _uidl = sys.modules["auth.user_id_login"]
+    def _blocked(*args, **kwargs):
+        raise AssertionError("test attempted a real HTTP request")
 
-    with patch.object(_uidl, "executor", _InlineExecutor()):
+    with patch("requests.sessions.Session.request", _blocked):
         yield
 
 
@@ -328,9 +351,22 @@ def api_key_headers():
 
 
 @pytest.fixture
+def web_headers():
+    """The web client key alone -- enough for the public (unauthenticated) routes."""
+    return {"X-Client-Key": TEST_WEB_KEY, "Content-Type": "application/json"}
+
+
+@pytest.fixture
 def session_headers():
+    """
+    A signed-in web client. X-Session-Proof is a placeholder: the mock_session*
+    fixtures stub proof verification so route tests exercise route logic.
+    The real proof path is covered in test_session_binding.py.
+    """
     return {
         "Authorization": f"Bearer {TEST_TOKEN}",
+        "X-Client-Key": TEST_WEB_KEY,
+        "X-Session-Proof": "v1.0.placeholdernonce0000.placeholder",
         "Content-Type": "application/json",
     }
 
@@ -341,25 +377,43 @@ def no_auth_headers():
 
 
 # ─── Session middleware fixtures ──────────────────────────────────────────────
+# Route tests are about the route, not about proof-of-possession, so these
+# stub the cryptographic check (verify_proof) and the replay store. The
+# middleware's own behaviour is tested for real in test_session_binding.py.
+
+TEST_DEVICE_KEY = '{"crv":"P-256","kty":"EC","x":"stub","y":"stub"}'
+
+
+def _stub_proof():
+    return (
+        patch("middleware.require_session.verify_proof", return_value="n" * 16),
+        patch("middleware.require_session.claim_once", return_value=True),
+    )
+
 
 @pytest.fixture
 def mock_session():
     """
     require_session ni o'tkazadi — kesh hit yo'li.
 
-    get_cache to'g'ridan-to'g'ri u_id qaytaradi, shuning uchun DB ga
-    so'rov ketmaydi.
+    get_cache sessiya dict'ini qaytaradi, shuning uchun DB ga so'rov ketmaydi.
     """
-    with patch("middleware.require_session.get_cache", return_value=TEST_U_ID):
+    proof, nonce = _stub_proof()
+    with patch("middleware.require_session.get_cache",
+               return_value={"u_id": TEST_U_ID, "device_key": TEST_DEVICE_KEY, "ua_fp": ""}), \
+         proof, nonce:
         yield
 
 
 @pytest.fixture
 def mock_session_miss():
     """require_session ni o'tkazadi — kesh miss, DB dan sessiya topiladi."""
+    proof, nonce = _stub_proof()
     with patch("middleware.require_session.get_cache", return_value=None), \
-         patch("middleware.require_session.fetch_one", return_value={"u_id": TEST_U_ID}), \
-         patch("middleware.require_session.set_cache"):
+         patch("middleware.require_session.fetch_one",
+               return_value={"u_id": TEST_U_ID, "device_key": TEST_DEVICE_KEY, "ua_fp": ""}), \
+         patch("middleware.require_session.set_cache"), \
+         proof, nonce:
         yield
 
 

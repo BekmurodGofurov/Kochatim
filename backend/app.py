@@ -4,8 +4,10 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 from flask import Flask, request, make_response
+from werkzeug.exceptions import HTTPException
 from config import Config
 from utils.errors import ok, fail
+from middleware.client_gate import enforce_client_key
 from extensions import init_pool
 from db_init import init_db
 
@@ -56,8 +58,16 @@ monitor_thread.start()
 
 
 def create_app() -> Flask:
+    if Config.FLASK_ENV == "production":
+        Config.validate()
+
     app = Flask(__name__)
     app.config["ENV"] = Config.FLASK_ENV
+
+    # Every request needs the bot key or the web client key (OPTIONS and
+    # /health excepted). Registered here, inside the factory, so an app built
+    # by create_app() is never reachable without it.
+    app.before_request(enforce_client_key)
 
     # init pool + schema
     init_pool()
@@ -70,11 +80,8 @@ def create_app() -> Flask:
 
     @app.get("/health")
     def health():
-        server_identity = os.getenv('SERVER_NAME', 'unknown_server')
-        return ok({
-                "status": "up",
-                "server": server_identity
-            })
+        # Deliberately says nothing about the host or the deployment.
+        return ok({"status": "up"})
 
     @app.errorhandler(404)
     def not_found(_):
@@ -82,7 +89,13 @@ def create_app() -> Flask:
 
     @app.errorhandler(Exception)
     def server_error(e):
-        return fail("Server error", 500, extra=str(e))
+        # 405, 413 and friends keep their own status instead of becoming 500.
+        if isinstance(e, HTTPException):
+            return fail(e.name, e.code or 500)
+        # The exception text can hold SQL, a DSN, or a URL with the bot token
+        # in it. It goes to the log; the client gets a fixed message.
+        app.logger.exception("Unhandled error on %s %s", request.method, request.path)
+        return fail("Server error", 500)
 
     return app
 
@@ -102,8 +115,7 @@ def _cors_preflight():
         origin = _cors_origin(request.headers.get("Origin", ""))
         resp.headers["Access-Control-Allow-Origin"] = origin
         resp.headers["Vary"] = "Origin"
-        resp.headers["Access-Control-Allow-Credentials"] = "true"
-        resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-API-KEY"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-API-KEY, X-Client-Key, X-Session-Proof"
         resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
         return resp
 
@@ -113,8 +125,7 @@ def _add_cors_headers(resp):
     origin = _cors_origin(request.headers.get("Origin", ""))
     resp.headers["Access-Control-Allow-Origin"] = origin
     resp.headers["Vary"] = "Origin"
-    resp.headers["Access-Control-Allow-Credentials"] = "true"
-    resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-API-KEY"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-API-KEY, X-Client-Key, X-Session-Proof"
     resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
     return resp
 
@@ -123,14 +134,18 @@ def _record_endpoint_stats(resp):
     try:
         from utils.cache import redis_client
         if request.path.startswith("/api/") or request.path.startswith("/auth/"):
-            redis_client.zincrby("endpoint_stats", 1, request.path)
+            # The matched route pattern, never the raw URL: the path is
+            # attacker-controlled, ends up in the admin panel, and an endless
+            # variety of it would grow this sorted set without bound.
+            path = request.url_rule.rule if request.url_rule else "unmatched"
+            redis_client.zincrby("endpoint_stats", 1, path)
             day_key = f"req_count:{datetime.utcnow():%Y-%m-%d}"
             redis_client.incr(day_key)
             redis_client.expire(day_key, 8 * 86400)
             server_identity = os.getenv('SERVER_NAME', 'unknown_server')
             req_data = {
                 "server": server_identity,
-                "path": request.path,
+                "path": path,
                 "method": request.method,
                 "status": resp.status_code,
                 "time": datetime.utcnow().strftime('%H:%M:%S')

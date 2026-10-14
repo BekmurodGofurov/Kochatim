@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from flask import g
 from api import api_bp
-from middleware.require_session import require_session
+from middleware.require_session import require_session, get_viewer
 from utils.errors import ok, fail
 from db import fetch_one, fetch_all
 from utils.cache import get_cache, set_cache, get_cached_dashboard, set_cached_dashboard
@@ -219,15 +219,36 @@ def partner_dashboards():
 @api_bp.get("/users/<int:u_id>/dashboard")
 def dashboard_user(u_id: int):
     """
-    Public read-only dashboard for a user (bog'bon profili uchun).
+    A gardener's profile page.
+
+    Anyone with the web client key sees the name and nothing else. The full
+    profile (phone, username, catalogue, stock) goes only to a signed-in
+    viewer who is that gardener or one of their partners -- the same people
+    who already get it from /partners/dashboards.
     """
-    # no caching here (partners view can be larger & less frequent)
     user = fetch_one(
         "SELECT u_id, u_name, u_phone, u_username, u_age, u_photo, added_at FROM users WHERE u_id=%s",
         (u_id,),
     )
     if not user:
         return fail("User not found", 404, code="NOT_FOUND")
+
+    viewer = get_viewer()
+    allowed = viewer is not None and (
+        viewer == u_id
+        or fetch_one("SELECT 1 AS ok FROM partners WHERE u_id=%s AND p_id=%s", (viewer, u_id)) is not None
+    )
+    if not allowed:
+        return ok(
+            {
+                "user": {"u_id": user["u_id"], "u_name": user["u_name"]},
+                "categories": [],
+                "types": [],
+                "seedlings": [],
+                "restricted": True,
+            }
+        )
+
     categories = fetch_all(
         "SELECT c_id, c_name FROM categories WHERE u_id=%s ORDER BY c_id DESC",
         (u_id,),

@@ -105,19 +105,29 @@ serves — so the CORS policy is actually tested. `factory_app` exists
 for testing the factory itself.
 
 ### 4. A star-import shadows a module name
-`auth/__init__.py` does `from auth.user_id_login import *`, which binds
-the **function** `user_id_login` as an attribute of the `auth` package.
-`import auth.user_id_login` then gives you the function, and
-`patch.object(..., "executor")` fails with
-`does not have the attribute 'executor'`. Use
-`sys.modules["auth.user_id_login"]`.
+`auth/__init__.py` does `from auth.otp import *` (and likewise for
+`telegram_webapp`), which copies the modules' public names — functions
+such as `verify_code` — into the `auth` package namespace. Patch names
+where they are *looked up*, e.g. `auth.otp.fetch_one`, not on the package.
 
-### 5. A thread pool outlives the patch context
-`/auth/user-id-login` submits the session insert to a
-`ThreadPoolExecutor` and returns immediately. The `with patch(...)`
-block closes before the background job runs, so it used to connect to
-the **real** Postgres during the test run. An autouse fixture replaces
-that executor with one that runs inline.
+### 5. Every request needs a key, and sessions need a proof
+The client gate rejects any request without `X-API-KEY` or `X-Client-Key`.
+The shared fixtures carry them: `api_key_headers` (bot), `web_headers`
+(public routes), `session_headers` / `SESSION_HEADERS` (a signed-in
+browser), and `WEB_HEADERS` for use at module level.
+
+Route tests are about the route, so `mock_session`, `mock_session_miss`
+and `mock_no_session` stub the cryptographic check (`verify_proof`) and
+the replay store. The real thing — including a thief with a copied
+token — is exercised in `test_session_binding.py`, which uses
+`make_device_key()` and `sign_proof()` from `conftest.py` (the reference
+implementation of what `client/src/api/deviceKey.js` does).
+`test/fixtures/device_proof_vector.json` is a proof made by the real
+JavaScript signer; `test_device_proof.py` verifies it, so the two
+languages cannot drift apart.
+
+`forbid_real_network` (autouse) makes any un-mocked `requests` call fail
+the test instead of reaching Telegram, ImgBB or ip-api.
 
 ### 6. `importlib.reload` defeats module-attribute patches
 Reloading re-executes `from dotenv import load_dotenv`, rebinding the
@@ -155,11 +165,13 @@ The Docker runners mount the repo `:ro`, so the runners pass
 
 ## What is covered
 
-### backend (655)
+### backend (about 1150)
 Every module has tests. `test/unit/` covers the pure functions —
 `security`, `time`, `errors`, `cache`, `device`, `invite_tokens`,
 `images_v2`, `telegram`, `db`, `extensions`, `config`.
-`test/integration/` drives every route through Flask's test client,
+`test/integration/` drives every route through Flask's test client —
+`test_client_gate.py` walks *all* registered routes to prove none answers
+without a key —
 plus `app.py` itself: `/health`, the CORS policy, the error handlers,
 the Redis counters, and one iteration of the monitor loop.
 

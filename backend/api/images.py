@@ -1,5 +1,5 @@
 # backend/api/images.py
-from flask import Response, request
+from flask import Response, current_app, request
 import requests
 
 from api import api_bp
@@ -8,9 +8,21 @@ from middleware.require_api_key import require_api_key
 from utils.errors import ok, fail
 from db import fetch_one, execute
 from middleware.require_session import require_session
+from utils.cache import get_cache, set_cache
+from utils.device import get_client_ip
+from utils import ratelimit
 from utils.images_v2 import process_image_input
 
 TELEGRAM_API = "https://api.telegram.org"
+
+# The proxy turns one cheap request into two slow ones against Telegram, so
+# it is the easiest route to tie workers up with. Bound it three ways: only
+# ids we handed out are fetched, each IP gets a request budget, and the size
+# and type of what comes back is capped.
+_IMG_RATE_LIMIT = 120          # requests per IP per window
+_IMG_RATE_WINDOW = 60          # seconds
+_IMG_KNOWN_TTL = 3600          # how long "this id is ours" is remembered
+_MAX_IMAGE_BYTES = 10 * 1024 * 1024
 
 
 @api_bp.post("/img")
@@ -90,21 +102,62 @@ def get_img_by_type():
     return ok(row.get("i_url"))
 
 
+def _is_known_file_id(file_id: str) -> bool:
+    """True only for a file_id stored as a user photo or a variety image."""
+    key = f"img_known_{file_id}"
+    if get_cache(key):
+        return True
+    row = fetch_one(
+        """
+        SELECT 1 AS known FROM users WHERE u_photo = %s
+        UNION ALL
+        SELECT 1 FROM img WHERE i_url = %s
+        LIMIT 1
+        """,
+        (file_id, file_id),
+    )
+    if row:
+        set_cache(key, True, ttl=_IMG_KNOWN_TTL)
+        return True
+    return False
+
+
+def _telegram_failed(stage: str, exc: Exception):
+    # Log the exception *type* only: a requests error message contains the
+    # full URL, and the URL contains the bot token.
+    current_app.logger.warning("telegram image %s failed: %s", stage, type(exc).__name__)
+    return Response("Image unavailable", status=502)
+
+
 @api_bp.get("/img/<file_id>")
 def proxy_telegram_image(file_id: str):
     """
     Telegram file_id -> real image (binary)
-    Frontend <img src="/api/img/<file_id>" /> ishlaydi
+    Frontend <img src="/api/img/<file_id>?k=<client key>" /> ishlaydi
     """
 
-    BOT_TOKEN = Config.BOT_TOKEN  # ✅ TO‘G‘RI O‘QISH
+    bot_token = Config.BOT_TOKEN
 
-    if not BOT_TOKEN:
-        return Response("BOT_TOKEN not configured", status=500)
+    if not bot_token:
+        return Response("Image service not configured", status=500)
+
+    ip = get_client_ip(request) or "unknown"
+    used = ratelimit.record("img", ip, _IMG_RATE_WINDOW)
+    if used is not None and used > _IMG_RATE_LIMIT:
+        resp = Response("Too many requests", status=429)
+        resp.headers["Retry-After"] = str(ratelimit.retry_after(_IMG_RATE_WINDOW))
+        return resp
+
+    # Never spend a Telegram round-trip on an id nobody stored.
+    if not _is_known_file_id(file_id):
+        return Response("Not found", status=404)
 
     # 1) file_id -> file_path
-    tg_get_file_url = f"{TELEGRAM_API}/bot{BOT_TOKEN}/getFile"
-    r = requests.get(tg_get_file_url, params={"file_id": file_id}, timeout=10)
+    try:
+        r = requests.get(f"{TELEGRAM_API}/bot{bot_token}/getFile",
+                         params={"file_id": file_id}, timeout=10)
+    except requests.RequestException as e:
+        return _telegram_failed("getFile", e)
 
     if r.status_code != 200:
         return Response("Telegram getFile failed", status=502)
@@ -118,19 +171,40 @@ def proxy_telegram_image(file_id: str):
         return Response("File path not found", status=404)
 
     # 2) file_path -> real binary
-    tg_file_url = f"{TELEGRAM_API}/file/bot{BOT_TOKEN}/{file_path}"
-    img_resp = requests.get(tg_file_url, stream=True, timeout=15)
+    try:
+        img_resp = requests.get(f"{TELEGRAM_API}/file/bot{bot_token}/{file_path}",
+                                stream=True, timeout=15)
+    except requests.RequestException as e:
+        return _telegram_failed("download", e)
 
     if img_resp.status_code != 200:
         return Response("Image fetch failed", status=502)
 
     content_type = img_resp.headers.get("Content-Type", "image/jpeg")
+    kind = content_type.split(";")[0].strip().lower()
+    # This is served from the API's own origin, so only real images pass:
+    # not HTML, and not SVG (which can carry script). octet-stream is allowed
+    # because Telegram's file server uses it for some photos and an <img>
+    # decodes the bytes whatever the header says.
+    if kind == "image/svg+xml" or not (kind.startswith("image/") or kind == "application/octet-stream"):
+        return Response("Not an image", status=502)
+
+    declared = img_resp.headers.get("Content-Length", "")
+    if declared.isdigit() and int(declared) > _MAX_IMAGE_BYTES:
+        return Response("Image too large", status=502)
+
+    body = img_resp.content
+    if len(body) > _MAX_IMAGE_BYTES:
+        return Response("Image too large", status=502)
 
     return Response(
-        img_resp.content,
+        body,
         status=200,
         content_type=content_type,
         headers={
-            "Cache-Control": "public, max-age=86400"
+            "Cache-Control": "public, max-age=86400",
+            "X-Content-Type-Options": "nosniff",
+            # Belt and braces if someone opens the URL directly.
+            "Content-Security-Policy": "default-src 'none'; sandbox",
         },
     )

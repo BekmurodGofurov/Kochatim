@@ -243,3 +243,60 @@ class TestParseTelegramUser:
         parsed = {"user": json.dumps({"id": 12345, "first_name": "Test"})}
         result = parse_telegram_user(parsed)
         assert isinstance(result["u_id"], int)
+
+
+# ─── telegram_webapp_verify: freshness (replay window) ────────────────────────
+
+def _signed_init_data(token, **fields):
+    pairs = {"user": json.dumps({"id": 1, "first_name": "A"}), "query_id": "q", **fields}
+    check = "\n".join(f"{k}={pairs[k]}" for k in sorted(pairs))
+    secret = hmac.new(b"WebAppData", token.encode(), hashlib.sha256).digest()
+    pairs["hash"] = hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()
+    from urllib.parse import urlencode
+    return urlencode(pairs)
+
+
+class TestInitDataFreshness:
+    TOKEN = "123:ABC"
+
+    def _verify(self, auth_date, max_age=3600):
+        fields = {} if auth_date is None else {"auth_date": str(auth_date)}
+        return telegram_webapp_verify(_signed_init_data(self.TOKEN, **fields), self.TOKEN,
+                                      max_age_seconds=max_age)
+
+    def test_recent_initdata_is_accepted(self):
+        assert self._verify(int(time.time()) - 30)["query_id"] == "q"
+
+    def test_initdata_older_than_the_window_is_refused(self):
+        with pytest.raises(ValueError, match="expired"):
+            self._verify(int(time.time()) - 3601)
+
+    def test_just_inside_the_window_is_accepted(self):
+        assert self._verify(int(time.time()) - 3590)
+
+    def test_initdata_dated_in_the_future_is_refused(self):
+        with pytest.raises(ValueError, match="future"):
+            self._verify(int(time.time()) + 600)
+
+    def test_a_minute_of_clock_skew_is_tolerated(self):
+        assert self._verify(int(time.time()) + 30)
+
+    def test_missing_auth_date_is_refused_when_freshness_is_required(self):
+        with pytest.raises(ValueError, match="auth_date"):
+            self._verify(None)
+
+    @pytest.mark.parametrize("junk", ["", "abc", "1.5", "-", "1e9"])
+    def test_non_numeric_auth_date_is_refused(self, junk):
+        with pytest.raises(ValueError):
+            telegram_webapp_verify(_signed_init_data(self.TOKEN, auth_date=junk), self.TOKEN,
+                                   max_age_seconds=3600)
+
+    def test_signature_is_still_checked_first(self):
+        bad = _signed_init_data(self.TOKEN, auth_date=str(int(time.time())))
+        with pytest.raises(ValueError, match="invalid hash"):
+            telegram_webapp_verify(bad, "999:OTHER", max_age_seconds=3600)
+
+    def test_without_a_window_old_data_is_still_accepted(self):
+        """Back-compat for callers that do their own check; the login path always passes a window."""
+        old = _signed_init_data(self.TOKEN, auth_date=str(int(time.time()) - 10**7))
+        assert telegram_webapp_verify(old, self.TOKEN)

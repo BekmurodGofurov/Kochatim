@@ -45,6 +45,22 @@ def invalidate_cache(key: str):
         print(f"Redis DELETE error: {e}")
 
 
+def claim_once(key: str, ttl: int):
+    """
+    Atomically claim `key` for `ttl` seconds (SET NX EX).
+
+    True  -> first use, go ahead.
+    False -> already claimed: a replay.
+    None  -> Redis is unreachable, so we cannot tell. The caller decides
+             whether to degrade or refuse.
+    """
+    try:
+        return bool(redis_client.set(key, 1, nx=True, ex=ttl))
+    except Exception as e:
+        print(f"Redis CLAIM error: {e}")
+        return None
+
+
 def invalidate_prefix(prefix: str):
     """Prefix bilan boshlanadigan barcha kesh kalitlarini o'chiradi."""
     try:

@@ -16,12 +16,12 @@ these whenever touching `docker-compose.yml`, a Dockerfile, or
 | `db` | `127.0.0.1:5432` | **Keep it on loopback.** Never `5432:5432`. |
 | `redis` | not published | **Keep it unpublished.** It holds session cache entries. |
 | `backend` | `8000` | Behind TLS in production. |
-| `admin` | `9000` | **Should be loopback** — no authentication. |
+| `admin` | `9000` | **Loopback only.** HTTP Basic auth (`ADMIN_USER` / `ADMIN_PASSWORD`; 503 until set). |
 | `client` | `80` | Behind TLS in production. |
 
-Note the asymmetry: `db` is correctly bound to `127.0.0.1` but `admin`
-is not, and `admin` has no authentication at all. Anything that can
-reach port 9000 reads the traffic profile.
+`db`, `backend` and `admin` are all bound to `127.0.0.1`. The admin panel
+also has Basic auth now, but that is a second lock, not a reason to open
+the first.
 
 ```yaml
 admin:
@@ -33,18 +33,25 @@ admin:
 
 **Never add a published port without asking what authenticates it.**
 
-## Three things before this faces the internet
+## Before this faces the internet
 
-Full detail in `docs/security.md`; this is the deployment view.
+Full detail in `docs/security.md` and `docs/deployment.md`.
 
-1. **`POST /auth/user-id-login` must go.** It issues a valid 30-day
-   session for any known Telegram ID with no authentication. A firewall
-   cannot mitigate it — the endpoint is meant to be public.
-2. **Port 9000 must not be published** (above).
-3. **TLS must terminate in front.** Session tokens travel in an
+1. **Set both keys**: `API_KEY` (bot, secret) and `WEB_CLIENT_KEY`
+   (web, public) in `backend/.env`, distinct and not `change_me`; and
+   `VITE_CLIENT_KEY` — the same value as `WEB_CLIENT_KEY` — wherever the
+   client is built (Cloudflare Pages env, root `.env` for the `local`
+   profile). The backend refuses to start in production otherwise.
+2. **Deploy backend and client together** — the new backend rejects a
+   client that does not send `X-Client-Key`. Everyone logs in once more.
+3. **Port 9000 must not be published** (above), and `ADMIN_USER` /
+   `ADMIN_PASSWORD` must be set.
+4. **TLS must terminate in front.** Session tokens travel in an
    `Authorization` header and are readable in transit over plain HTTP.
+5. **The proxy must overwrite, not append, the client address** (below).
 
-Also set `DB_POOL_MAX` to 20 or lower — see below.
+`DB_POOL_MAX` defaults to 20 — check your own `.env` does not override it
+with something larger.
 
 ## The client's API URL is a build arg
 
@@ -159,9 +166,13 @@ disappears, and `VITE_API_BASE_URL` must become relative — which needs
 a change in `https.js`, since `apiFetch` currently throws on an empty
 `API_BASE`.
 
-Any proxy you add must forward `X-Forwarded-For`.
-`utils/device.py:get_client_ip` reads it first and falls back to
-`remote_addr`; without it every session row records the proxy's IP.
+Any proxy you add must set `X-Real-IP $remote_addr` (and
+`X-Forwarded-For $remote_addr` — *not* `$proxy_add_x_forwarded_for`,
+which keeps what the client sent). `utils/device.py:get_client_ip`
+believes `X-Real-IP` only from a peer listed in `TRUSTED_PROXIES`, and
+never reads `X-Forwarded-For`; without the header every session row
+records the proxy's IP. If the proxy is not on loopback or the Docker
+bridge, add its address to `TRUSTED_PROXIES`.
 
 ## Schema changes need no deploy step
 

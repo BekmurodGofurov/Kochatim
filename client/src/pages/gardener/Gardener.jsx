@@ -5,8 +5,8 @@ import { ArrowLeft, User, X } from "lucide-react";
 import Loader from "../../components/loader/Loader";
 import GroupsGrid from "../../components/groupsGrid/GroupsGrid";
 import SortsGrid from "../../components/sortsGrid/SortsGrid";
-import { apiFetch, API_BASE } from "../../api/https";
-import { toWebImgUrl } from "../../utils/imageUtils";
+import { apiFetch } from "../../api/https";
+import { apiImgUrl, toWebImgUrl } from "../../utils/imageUtils";
 import { buildGroupsFromDashboard } from "../../utils/buildGroups";
 import Header from "../../components/header/Header";
 import "./Gardener.scss";
@@ -47,6 +47,8 @@ export default function Gardener() {
   const groups = useMemo(() => buildGroupsFromDashboard(data), [data]);
 
   const me = data?.user;
+  // The server sends only the name to anyone who is not this gardener's partner.
+  const restricted = !!data?.restricted;
 
   const selectedGroup = useMemo(() => {
     if (!cId) return null;
@@ -76,22 +78,30 @@ export default function Gardener() {
         <div className="gardenerHeader">
           <div className="gardenerAvatar">
             {me?.u_photo ? (
-              <img src={`${API_BASE}/api/img/${me.u_photo}`} alt={me?.u_name || "Bog'bon"} />
+              <img src={apiImgUrl(me.u_photo)} alt={me?.u_name || "Bog'bon"} />
             ) : (
               <User size={28} />
             )}
           </div>
           <div className="gardenerMeta">
             <div className="gardenerName">{me?.u_name || me?.u_id}</div>
-            <div className="gardenerSub">
-              {me?.u_username ? `@${me.u_username}` : "—"} • {me?.u_phone ? `+${me.u_phone}` : "—"} • {me?.u_id}
-            </div>
+            {!restricted && (
+              <div className="gardenerSub">
+                {me?.u_username ? `@${me.u_username}` : "—"} • {me?.u_phone ? `+${me.u_phone}` : "—"} • {me?.u_id}
+              </div>
+            )}
           </div>
         </div>
         )}
       </div>
 
-      {loading || error ? null : (
+      {!loading && !error && restricted && (
+        <div className="gardenerHint">
+          Batafsil ma'lumotni ko'rish uchun tizimga kiring va bog'bon bilan hamkor bo'ling.
+        </div>
+      )}
+
+      {loading || error || restricted ? null : (
         <>
       <div className="gardenerSection">
         <div className="gardenerSectionTitle">Omborxona (faqat ko'rish)</div>

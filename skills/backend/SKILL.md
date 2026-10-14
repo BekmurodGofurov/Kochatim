@@ -13,18 +13,28 @@ you touch `backend/`, not only when asked about architecture.
 Every protected route gets exactly one decorator, and which one is a
 design decision.
 
+### First, the gate (you do not write this)
+`middleware/client_gate.py` runs before every route: no `X-API-KEY` (bot)
+and no `X-Client-Key` (web) means a bare 401 whatever the path. The web
+key is **public** — it is in the browser bundle — so holding it proves
+nothing about *who* the caller is. It only means "this is our web app (or
+someone who read its bundle)".
+
 ### `@require_api_key` — the bot
-`X-API-KEY`, compared against `Config.API_KEY`. This is a **service**
-credential: it identifies the bot process, not a person. Routes behind
-it take `u_id` as a parameter, so the caller chooses whose data it
-touches.
+`X-API-KEY`, compared in constant time against `Config.API_KEY`. This is
+a **service** credential: it identifies the bot process, not a person.
+Routes behind it take `u_id` as a parameter, so the caller chooses whose
+data it touches. The web client key does **not** work here, and must
+never be made to.
 
 Never expose such a route to the browser, and never add one that the
 web client needs — that would mean shipping the shared secret to the
 front end.
 
 ### `@require_session` — the web client
-`Authorization: Bearer <token>`. Sets `g.u_id` and `g.token_hash`.
+`Authorization: Bearer <token>` **plus** `X-Session-Proof`, a signature
+from the device key the session is bound to. The token alone is refused.
+Sets `g.u_id` and `g.token_hash`. Only `g.client == "web"` may use it.
 
 **`g.u_id` is the only trustworthy identity here.** Reading `u_id` from
 the request body on a session route is an IDOR — the caller would pick
@@ -48,14 +58,22 @@ There are no foreign keys in this schema, so that `WHERE u_id = %s` is
 the *only* thing keeping users' data apart. A query that forgets it
 reads across accounts.
 
-### No decorator = public
-Eight routes have no auth decorator. Three are the login endpoints and
-have to be public; of the other five, three are deliberate (`/health`,
-the Telegram image proxy, the public category list) and two already
-leak phone numbers (`docs/security.md`, issue 4).
+### No decorator = public (to holders of a key)
+Seven routes have no auth decorator: `/health` (the only one needing no
+key), the two login endpoints, the gardener directory and profile (names
+only unless the viewer is a partner — see `get_viewer()`), the image
+proxy, and the public category list.
 
-**Do not add another without a reason you can write down**, and if you
-do, check its `SELECT` list for PII — `u_phone` especially.
+**Do not add another without a reason you can write down.**
+`test/integration/test_client_gate.py` fails on an undecorated route that
+is not in its `PUBLIC_ENDPOINTS` — add it there *with the reason*. Check
+the route's `SELECT` list for PII, `u_phone` especially. A public route
+that should show more to a signed-in viewer calls `get_viewer()` and
+falls back to the public answer; it never takes a `u_id` from the caller.
+
+**Never accept an IP, browser, device name or city from a request.** Read
+them with `utils/device.get_client_ip` / the `User-Agent` header on the
+server, as `auth/session_service.create_session` does.
 
 `GET /api/v1/public/categories` is the model: it selects only
 `c_id AS id, c_name AS name`, with no `u_id`, so the open list cannot
@@ -227,8 +245,7 @@ expires_at = naive_utc(utc_in_seconds(Config.SESSION_TTL_SECONDS))
 
 Compare with `NOW() AT TIME ZONE 'utc'` in SQL, never bare `NOW()`.
 Writing a tz-aware datetime produces an offset bug that only shows up
-away from UTC. (`auth/user_id_login.py` currently writes a tz-aware
-value where the other two auth paths write naive — don't copy it.)
+away from UTC.
 
 ## Never commit secrets
 

@@ -25,6 +25,10 @@ os.environ.setdefault("REDIS_HOST", "127.0.0.1")
 os.environ.setdefault("REDIS_PORT", "6379")
 os.environ.setdefault("REDIS_PASSWORD", "")
 os.environ.setdefault("PORT", "9000")
+# Read once at import (like the app itself does), so set before importing it.
+os.environ["ADMIN_USER"] = "test-admin"
+os.environ["ADMIN_PASSWORD"] = "test-password-123"
+os.environ.pop("ADMIN_ALLOWED_ORIGINS", None)
 
 import fakeredis
 import pytest
@@ -61,8 +65,23 @@ def app():
     return admin_app.app
 
 
+def basic_auth(user="test-admin", password="test-password-123"):
+    import base64
+    token = base64.b64encode(f"{user}:{password}".encode()).decode()
+    return {"Authorization": f"Basic {token}"}
+
+
 @pytest.fixture
 def client(app):
+    """A signed-in operator: most tests are about the panel, not about the login."""
+    c = app.test_client()
+    c.environ_base["HTTP_AUTHORIZATION"] = basic_auth()["Authorization"]
+    return c
+
+
+@pytest.fixture
+def anon_client(app):
+    """No credentials at all."""
     return app.test_client()
 
 

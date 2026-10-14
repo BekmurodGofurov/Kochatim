@@ -14,7 +14,7 @@ Docker publishes nothing to the internet.
 | `db` | `postgres:16-alpine` | `127.0.0.1:5432` | Loopback only |
 | `redis` | `redis:7-alpine` | none | Docker network only |
 | `backend` | built from `backend/` | `127.0.0.1:8000` | gunicorn, 4 workers. Not public — the host's nginx fronts it. |
-| `admin` | built from `admin/` | `127.0.0.1:9000` | **No authentication.** Loopback only; reach it over SSH. |
+| `admin` | built from `admin/` | `127.0.0.1:9000` | HTTP Basic auth (`ADMIN_USER` / `ADMIN_PASSWORD`; answers 503 until both are set). Loopback only; reach it over SSH. |
 | `bot` | built from `bot/` | none | Outbound long polling only |
 | `client` | built from `client/` | `8080` (profile `local`) | Not started in production — the frontend is on Cloudflare Pages |
 
@@ -187,21 +187,41 @@ deployment mistake here.
 
 ## Before exposing this to the internet
 
-Two of the four items here are now handled by `docker-compose.yml`:
-`admin` and `backend` are bound to `127.0.0.1`, and nginx terminates
-TLS. The other two are still open. Detail and fixes in `security.md`.
+The items that used to be listed here — the `u_id`-only login, the
+public phone numbers, the unauthenticated admin panel, forgeable client
+IPs — are fixed (`security.md`). What a deployment has to do for those
+fixes to take effect:
 
-1. **`POST /auth/user-id-login` still issues sessions without
-   authentication.** It returns a valid 30-day token for any `u_id`
-   that exists — no password, no OTP, no signature. A firewall cannot
-   mitigate it: the endpoint is public by design, and that design is
-   the problem. The fix is to delete the route; the OTP and Telegram
-   Mini App login paths already cover every real case.
-
-2. **`GET /api/gardeners` and `GET /api/users/<u_id>/dashboard` are
-   public and return `u_phone`.** Together they let anyone enumerate
-   every gardener's Telegram ID and phone number — and that Telegram
-   ID is exactly what makes item 1 exploitable at scale.
+1. **Set the keys.** A production backend refuses to start unless
+   `API_KEY` and `WEB_CLIENT_KEY` are both set, different, and not
+   `change_me`. Generate each with
+   `python3 -c "import secrets; print(secrets.token_urlsafe(32))"`.
+   - `backend/.env`: `WEB_CLIENT_KEY=…`
+   - Cloudflare Pages (and the root `.env` for the local `client`
+     profile): `VITE_CLIENT_KEY=…`, **the same value**. It is public
+     (it ends up in the browser bundle), so it is an app identifier, not
+     a secret.
+   - `bot/.env` keeps `API_KEY` unchanged.
+2. **Deploy backend and frontend together.** The new backend answers 401
+   to a frontend that does not send `X-Client-Key`, and an old backend
+   ignores the new headers.
+3. **Everyone logs in once more.** On first start the backend deletes
+   every session that has no device key — i.e. all existing ones,
+   including any minted by the removed `user-id-login`. The Mini App signs
+   in again automatically; the website asks for a new OTP.
+4. **Set the admin credentials** (`ADMIN_USER`, `ADMIN_PASSWORD` in
+   `admin/.env`) or the panel will answer 503 to everything.
+5. **Install the new nginx config** (below) and run `nginx -t` before
+   reloading: it adds `limit_req_zone` directives, which belong at the
+   `http{}` level — fine when the file is included from `sites-enabled`,
+   an error if pasted inside a `server{}`.
+6. Consider rotating `API_KEY` afterwards. Set `INVITE_SECRET` first so
+   invite links already sent keep working.
+7. If the API is ever put behind Cloudflare's proxy, `$remote_addr` will
+   be Cloudflare's address. Add `set_real_ip_from` ranges and
+   `real_ip_header CF-Connecting-IP` to nginx, or every user will look
+   like one IP (and share one rate-limit bucket). Today `api.kochatim.uz`
+   resolves straight to the server.
 
 Already dealt with:
 
@@ -209,21 +229,29 @@ Already dealt with:
   it with `ssh -L 9000:127.0.0.1:9000 admin@<server>`.
 - ~~Put TLS in front~~ — host nginx + certbot, renewed by a systemd
   timer.
-- `DB_POOL_MAX` is 20 in `backend/.env.example`, not the old 100.
-  Check the value in your actual `backend/.env`: 4 workers × 100 asks
-  for 400 connections against Postgres's default limit of 100.
+- `DB_POOL_MAX` now defaults to 20. Check the value in your actual
+  `backend/.env`: a larger one overrides it, and 4 workers × 100 asks for
+  400 connections against Postgres's default limit of 100.
 
 ## The reverse proxy
 
 `deploy/nginx/api.kochatim.uz.conf`, installed to
-`/etc/nginx/sites-available/` on the host. Four things in it matter:
+`/etc/nginx/sites-available/` on the host. The things in it that matter:
 
 - **`client_max_body_size 10m`.** nginx defaults to 1m, which rejects
   most phone photos with a 413 before the request reaches Flask —
   `POST /api/img/upload` would fail for no visible reason.
-- **`X-Forwarded-For`.** `utils/device.py:get_client_ip` reads it first
-  and falls back to `remote_addr`. Without it every session row records
-  the proxy's address and the city lookup is meaningless.
+- **`X-Real-IP` and `X-Forwarded-For` are overwritten with
+  `$remote_addr`**, never appended to. `utils/device.py:get_client_ip`
+  believes `X-Real-IP` only when the TCP peer is in `TRUSTED_PROXIES`
+  (loopback and the Docker bridge by default) and ignores
+  `X-Forwarded-For` entirely. `$proxy_add_x_forwarded_for` must not come
+  back: it keeps whatever the client sent, which is how session rows once
+  showed a forged IP and city.
+- **`limit_req`.** 20 req/s per address in general (burst 40), 5 req/s on
+  `/auth/` (burst 10), over 429. This sits in front of the backend's own
+  limits (OTP guessing, image proxy). `server_tokens off` hides the nginx
+  version.
 - **No `add_header Access-Control-*`.** Flask already sends the CORS
   headers from `ALLOWED_ORIGINS`. A second set makes the browser see
   two values and reject the response outright — which looks exactly

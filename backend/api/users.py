@@ -6,7 +6,7 @@ from utils.errors import ok, fail
 from utils.cache import get_cache, set_cache
 from utils.security import generate_invite_token
 from utils.time import utc_in_seconds, naive_utc, utcnow
-from utils.device import parse_device, get_city, get_client_ip
+from api.sessions import session_rows, present_sessions
 from db import execute, fetch_one, fetch_all
 from config import Config
 
@@ -93,7 +93,7 @@ def settings_me():
 
     cached = get_cache(key)
     if cached is not None:
-        return ok(cached)
+        return ok({**cached, "sessions": present_sessions(cached["sessions"], g.token_hash)})
 
     # 1. Hamkorlar
     partners = fetch_all(
@@ -107,41 +107,8 @@ def settings_me():
         (u_id,),
     )
 
-    # 2. Sessiyalar (device nomini bir marta to'ldirish)
-    cur = fetch_one(
-        "SELECT device_name FROM sessions WHERE token_hash = %s",
-        (g.token_hash,),
-    )
-    if cur and not (cur.get("device_name") or "").strip():
-        ua = request.headers.get("User-Agent", "")
-        ip = get_client_ip(request)
-        execute(
-            "UPDATE sessions SET device_name=%s, ip_address=%s, city=%s WHERE token_hash=%s",
-            (parse_device(ua), ip, get_city(ip), g.token_hash),
-        )
-
-    session_rows = fetch_all(
-        """
-        SELECT session_id, device_name, city, ip_address, created_at, token_hash
-        FROM sessions
-        WHERE u_id = %s
-          AND (expires_at IS NULL OR expires_at > (NOW() AT TIME ZONE 'utc'))
-        ORDER BY created_at DESC
-        """,
-        (u_id,),
-    )
-    current_hash = getattr(g, "token_hash", None)
-    sessions = [
-        {
-            "session_id":  r["session_id"],
-            "device_name": r["device_name"] or "",
-            "city":        r["city"] or "",
-            "ip_address":  r["ip_address"] or "",
-            "created_at":  r["created_at"].isoformat() if r["created_at"] else None,
-            "is_current":  r["token_hash"] == current_hash,
-        }
-        for r in session_rows
-    ]
+    # 2. Sessiyalar (token_hash bilan keshlanadi, is_current har so'rovda qo'yiladi)
+    sessions = session_rows(u_id)
 
     # 3. Invite token — mavjudini ishlatamiz, yangi yaratamasmiz
     now = naive_utc(utcnow())
@@ -170,16 +137,21 @@ def settings_me():
         "bot_username": Config.TG_BOT_USERNAME,
     }
     set_cache(key, data, ttl=120)  # 2 daqiqa (sessions o'zgaruvchan)
-    return ok(data)
+    return ok({**data, "sessions": present_sessions(sessions, g.token_hash)})
 
 
 @api_bp.get("/gardeners")
 def search_gardeners():
     """
-    Public: search of gardeners (bog'bonlar).
+    Directory of gardeners (bog'bonlar), for the web client.
     query params:
       - q: by u_id exact or u_name/u_username partial
       - limit: default 12 (max 50)
+
+    Returns u_id (the link to the gardener's page) and u_name only. Phone
+    numbers, usernames and photos are shown to partners through the
+    session-authenticated routes, never in a directory anyone can page
+    through.
     """
     q = (request.args.get("q") or "").strip()
     limit = request.args.get("limit", type=int) or 12
@@ -201,7 +173,7 @@ def search_gardeners():
 
     rows = fetch_all(
         f"""
-        SELECT u_id, u_name, u_username, u_phone, u_photo, added_at
+        SELECT u_id, u_name
         FROM users
         WHERE {' AND '.join(where)}
         ORDER BY added_at DESC

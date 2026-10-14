@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from typing import Optional, Any, Dict, List, Tuple
 import psycopg2
 
@@ -142,3 +143,57 @@ def fetch_all(query: str, params: Tuple[Any, ...] = ()) -> List[Dict[str, Any]]:
                     pass
             if conn is not None:
                 put_conn(conn)
+
+
+class _Tx:
+    """The cursor handed out by transaction(): the same two verbs as the module."""
+
+    def __init__(self, cur):
+        self._cur = cur
+
+    def execute(self, query: str, params: Tuple[Any, ...] = ()) -> int:
+        """Run a statement; returns the number of rows it affected."""
+        self._cur.execute(query, params)
+        return self._cur.rowcount
+
+    def fetch_one(self, query: str, params: Tuple[Any, ...] = ()) -> Optional[Dict[str, Any]]:
+        self._cur.execute(query, params)
+        row = self._cur.fetchone()
+        return _dict_from_cursor(self._cur, row) if row else None
+
+
+@contextmanager
+def transaction():
+    """
+    Several statements, one commit. Everything inside the `with` happens or
+    none of it does: an exception rolls the lot back and is re-raised.
+
+        with transaction() as tx:
+            tx.execute("UPDATE ...", (...))
+            tx.execute("INSERT ...", (...))
+
+    Unlike execute()/fetch_*, there is no retry on a dropped connection --
+    replaying half a transaction is not safe, so the caller sees the error.
+    """
+    conn = get_conn()
+    cur = None
+    try:
+        cur = conn.cursor()
+        yield _Tx(cur)
+        conn.commit()
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            # Cannot even roll back: the connection is broken, do not reuse it.
+            _discard_conn(conn)
+            conn = None
+        raise
+    finally:
+        if cur is not None:
+            try:
+                cur.close()
+            except Exception:
+                pass
+        if conn is not None:
+            put_conn(conn)

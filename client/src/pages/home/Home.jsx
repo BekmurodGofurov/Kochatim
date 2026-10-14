@@ -91,9 +91,7 @@ export default function Home() {
                                     onClick={() => navigate(`/gardeners/${g.u_id}`)}
                                 >
                                     <div className="gardener-title">{g.u_name || g.u_id}</div>
-                                    <div className="gardener-sub">
-                                        {g.u_username ? `@${g.u_username}` : "—"} • {g.u_id}
-                                    </div>
+                                    <div className="gardener-sub">Profilni ko'rish</div>
                                 </button>
                             ))}
                             {(!loadingGardeners && gardeners.length === 0) && (

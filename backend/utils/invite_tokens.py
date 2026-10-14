@@ -18,7 +18,7 @@ def _b64url_decode(s: str) -> bytes:
 
 
 def _sign(payload_b64: str) -> str:
-    secret = (Config.API_KEY or "").encode("utf-8")
+    secret = (Config.INVITE_SECRET or Config.API_KEY or "").encode("utf-8")
     return hmac.new(secret, payload_b64.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
@@ -47,7 +47,7 @@ def parse_partner_invite_token(token: str) -> Tuple[Optional[Dict[str, Any]], Op
     except Exception:
         return None, "INVALID_FORMAT"
 
-    if not Config.API_KEY:
+    if not (Config.INVITE_SECRET or Config.API_KEY):
         # Without a secret, invites are unsafe; fail closed.
         return None, "INVALID_SIGNATURE"
 

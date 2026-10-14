@@ -12,6 +12,7 @@ export default defineConfig({
       // https.js modul darajasida import.meta.env.VITE_API_BASE_URL ni
       // o'qiydi; bo'sh bo'lsa apiFetch darhol xato beradi.
       VITE_API_BASE_URL: "http://localhost:8000",
+      VITE_CLIENT_KEY: "test-client-key",
     },
   },
 });

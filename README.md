@@ -87,16 +87,15 @@ The primary user interface — responsive on both desktop and mobile, localized 
 
 **Stack:** Python 3.11, Flask, Psycopg2 (connection pool), Gunicorn
 
-The central API consumed by both the client and the bot. All routes are protected by either a **session token** (client) or an **API key** (bot).
+The central API consumed by both the client and the bot. Every request needs a key — the bot's `X-API-KEY` or the web client's `X-Client-Key` — and client calls to private data also need a **session token** bound to the browser's device key. See `docs/api.md` and `docs/security.md`.
 
 #### Authentication — `/auth`
 
 | Method | Endpoint | Caller | Description |
 |--------|----------|--------|-------------|
-| POST | `/auth/telegram-webapp` | Client, Bot | Login via Telegram WebApp `initData` |
-| POST | `/auth/user-id-login` | Bot | Exchange Telegram user ID for a session token |
-| POST | `/auth/request-code` | Client | Send an OTP code to the user's phone |
-| POST | `/auth/verify-code` | Client | Verify the OTP code and create a session |
+| POST | `/auth/telegram-webapp` | Client | Login via Telegram WebApp `initData` (+ the browser's `device_key`) |
+| POST | `/auth/request-code` | Bot | Create a one-time code for a user; the bot delivers it over Telegram |
+| POST | `/auth/verify-code` | Client | Redeem the OTP code (+ `device_key`) and create a session |
 
 #### Users
 

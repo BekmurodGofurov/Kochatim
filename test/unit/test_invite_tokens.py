@@ -229,3 +229,35 @@ class TestParseTokenRejection:
         token = f"{payload_b64}.{_sign(payload_b64)}"
         payload, err = parse_partner_invite_token(token)
         assert err is None and payload["inviter"] == INVITER
+
+
+# ─── INVITE_SECRET (separate from the rotatable bot key) ─────────────────────
+
+class TestInviteSecret:
+    def test_falls_back_to_the_api_key_when_no_invite_secret_is_set(self):
+        """Existing deployments sign with API_KEY; their links must keep working."""
+        with patch("utils.invite_tokens.Config.INVITE_SECRET", ""):
+            token = make_partner_invite_token(INVITER)
+            payload, err = parse_partner_invite_token(token)
+        assert err is None and payload["inviter"] == INVITER
+
+    def test_rotating_the_api_key_does_not_break_invites_once_a_secret_is_set(self):
+        with patch("utils.invite_tokens.Config.INVITE_SECRET", "stable-invite-secret"):
+            token = make_partner_invite_token(INVITER)
+            with patch("utils.invite_tokens.Config.API_KEY", "a-completely-new-bot-key"):
+                payload, err = parse_partner_invite_token(token)
+        assert err is None and payload["inviter"] == INVITER
+
+    def test_a_token_signed_with_the_api_key_is_rejected_once_a_secret_is_set(self):
+        with patch("utils.invite_tokens.Config.INVITE_SECRET", ""):
+            token = make_partner_invite_token(INVITER)
+        with patch("utils.invite_tokens.Config.INVITE_SECRET", "stable-invite-secret"):
+            _, err = parse_partner_invite_token(token)
+        assert err == "INVALID_SIGNATURE"
+
+    def test_fails_closed_when_neither_secret_is_configured(self):
+        token = make_partner_invite_token(INVITER)
+        with patch("utils.invite_tokens.Config.INVITE_SECRET", ""), \
+             patch("utils.invite_tokens.Config.API_KEY", ""):
+            payload, err = parse_partner_invite_token(token)
+        assert payload is None and err == "INVALID_SIGNATURE"

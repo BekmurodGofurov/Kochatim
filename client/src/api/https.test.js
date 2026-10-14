@@ -11,10 +11,20 @@
  *
  * FormData alohida yo'l: Content-Type qo'yilmaydi, brauzer o'zi
  * `multipart/form-data; boundary=...` ni qo'yadi.
+ *
+ * Qurilma kaliti: har so'rov `X-Client-Key` ko'taradi, token bor bo'lsa esa
+ * `X-Session-Proof` (token yolg'iz o'zi yetmaydi). deviceKey.js bu yerda
+ * soxta; uning haqiqiy kriptografiyasi deviceKey.test.js da sinaladi.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { API_BASE, apiFetch, getSessionToken } from "./https";
+vi.mock("./deviceKey", () => ({
+  signProof: vi.fn().mockResolvedValue("v1.123.nonce.sig"),
+  clearDeviceKey: vi.fn().mockResolvedValue(undefined),
+}));
+
+import { API_BASE, CLIENT_KEY, apiFetch, getSessionToken } from "./https";
+import { clearDeviceKey, signProof } from "./deviceKey";
 
 function mockFetch({ ok = true, status = 200, body = { ok: true, data: null }, throwOnJson = false } = {}) {
   const spy = vi.fn().mockResolvedValue({
@@ -30,6 +40,9 @@ function mockFetch({ ok = true, status = 200, body = { ok: true, data: null }, t
 
 beforeEach(() => {
   localStorage.clear();
+  signProof.mockClear();
+  clearDeviceKey.mockClear();
+  signProof.mockResolvedValue("v1.123.nonce.sig");
 });
 
 afterEach(() => {
@@ -40,6 +53,12 @@ afterEach(() => {
 describe("API_BASE", () => {
   it("is read from the environment", () => {
     expect(API_BASE).toBe("http://localhost:8000");
+  });
+});
+
+describe("CLIENT_KEY", () => {
+  it("is read from the environment", () => {
+    expect(CLIENT_KEY).toBe("test-client-key");
   });
 });
 
@@ -249,5 +268,126 @@ describe("apiFetch — sessiya eskirganda", () => {
     mockFetch({ ok: false, status: 500, body: { ok: false, error: { message: "boom" } } });
     await expect(apiFetch("/api/x")).rejects.toThrow();
     expect(localStorage.getItem("session_token")).toBe("tok-123");
+  });
+});
+
+describe("apiFetch — X-Client-Key", () => {
+  it("is sent on every request, signed in or not", async () => {
+    const spy = mockFetch({ body: { ok: true, data: 1 } });
+    await apiFetch("/api/gardeners");
+    localStorage.setItem("session_token", "tok-123");
+    await apiFetch("/api/me");
+    expect(spy.mock.calls[0][1].headers["X-Client-Key"]).toBe("test-client-key");
+    expect(spy.mock.calls[1][1].headers["X-Client-Key"]).toBe("test-client-key");
+  });
+
+  it("is sent with FormData uploads too", async () => {
+    const spy = mockFetch({ body: { ok: true, data: { url: "x" } } });
+    await apiFetch("/api/img/upload", { method: "POST", body: new FormData() });
+    expect(spy.mock.calls[0][1].headers["X-Client-Key"]).toBe("test-client-key");
+  });
+
+  it("is sent on login requests, which have no session yet", async () => {
+    const spy = mockFetch({ body: { ok: true, data: { session_token: "t" } } });
+    await apiFetch("/auth/verify-code", { method: "POST", body: { code: "123456" } });
+    expect(spy.mock.calls[0][1].headers["X-Client-Key"]).toBe("test-client-key");
+  });
+});
+
+describe("apiFetch — X-Session-Proof", () => {
+  it("is sent when a token is stored", async () => {
+    localStorage.setItem("session_token", "tok-123");
+    const spy = mockFetch({ body: { ok: true, data: 1 } });
+    await apiFetch("/api/me");
+    expect(spy.mock.calls[0][1].headers["X-Session-Proof"]).toBe("v1.123.nonce.sig");
+  });
+
+  it("signs the method, the path with its query string, and the token", async () => {
+    localStorage.setItem("session_token", "tok-123");
+    mockFetch({ body: { ok: true, data: 1 } });
+    await apiFetch("/api/seedlings?t_id=10&q=a%20b", { method: "post" });
+    expect(signProof).toHaveBeenCalledWith({
+      method: "post",
+      pathWithQuery: "/api/seedlings?t_id=10&q=a%20b",
+      token: "tok-123",
+    });
+  });
+
+  it("signs the path the URL parser will actually send", async () => {
+    localStorage.setItem("session_token", "tok-123");
+    mockFetch({ body: { ok: true, data: 1 } });
+    await apiFetch("/api/a/../me?x=1#frag");
+    expect(signProof.mock.calls[0][0].pathWithQuery).toBe("/api/me?x=1");
+  });
+
+  it("is not computed when there is no token", async () => {
+    const spy = mockFetch({ body: { ok: true, data: 1 } });
+    await apiFetch("/api/gardeners");
+    expect(signProof).not.toHaveBeenCalled();
+    expect(spy.mock.calls[0][1].headers["X-Session-Proof"]).toBeUndefined();
+  });
+
+  it("is left out when this browser has no key; the server then answers 401", async () => {
+    localStorage.setItem("session_token", "tok-123");
+    signProof.mockResolvedValue(null);
+    const spy = mockFetch({ body: { ok: true, data: 1 } });
+    await apiFetch("/api/me");
+    expect(spy.mock.calls[0][1].headers["X-Session-Proof"]).toBeUndefined();
+    expect(spy.mock.calls[0][1].headers.Authorization).toBe("Bearer tok-123");
+  });
+
+  it("is a fresh proof for every request", async () => {
+    localStorage.setItem("session_token", "tok-123");
+    mockFetch({ body: { ok: true, data: 1 } });
+    await apiFetch("/api/me");
+    await apiFetch("/api/me");
+    expect(signProof).toHaveBeenCalledTimes(2);
+  });
+
+  it("a caller cannot override the proof with its own headers by accident", async () => {
+    localStorage.setItem("session_token", "tok-123");
+    const spy = mockFetch({ body: { ok: true, data: 1 } });
+    await apiFetch("/api/me", { headers: { "X-Custom": "1" } });
+    expect(spy.mock.calls[0][1].headers["X-Session-Proof"]).toBe("v1.123.nonce.sig");
+  });
+});
+
+describe("apiFetch — rejected session also drops the device key", () => {
+  it("clears the key on HTTP 401", async () => {
+    localStorage.setItem("session_token", "tok-123");
+    mockFetch({ ok: false, status: 401, body: { ok: false, error: { message: "x", code: "UNAUTHORIZED" } } });
+    await expect(apiFetch("/api/me")).rejects.toThrow();
+    expect(clearDeviceKey).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears the key on an UNAUTHORIZED code even with HTTP 200", async () => {
+    localStorage.setItem("session_token", "tok-123");
+    mockFetch({ ok: true, status: 200, body: { ok: false, error: { message: "x", code: "UNAUTHORIZED" } } });
+    await expect(apiFetch("/api/me")).rejects.toThrow();
+    expect(clearDeviceKey).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the key when a Telegram login merely failed", async () => {
+    localStorage.setItem("session_token", "tok-123");
+    mockFetch({ ok: false, status: 401, body: { ok: false, error: { message: "x", code: "INVALID_INITDATA" } } });
+    await expect(apiFetch("/auth/telegram-webapp", { method: "POST", body: {} })).rejects.toThrow();
+    expect(clearDeviceKey).not.toHaveBeenCalled();
+  });
+
+  it("keeps the key on unrelated errors", async () => {
+    localStorage.setItem("session_token", "tok-123");
+    for (const [status, code] of [[400, "INVALID_CODE"], [429, "RATE_LIMITED"], [500, undefined]]) {
+      mockFetch({ ok: false, status, body: { ok: false, error: { message: "x", code } } });
+      await expect(apiFetch("/api/x")).rejects.toThrow();
+    }
+    expect(clearDeviceKey).not.toHaveBeenCalled();
+  });
+
+  it("surfaces the server error code to the caller", async () => {
+    mockFetch({ ok: false, status: 429, body: { ok: false, error: { message: "slow down", code: "RATE_LIMITED" } } });
+    await expect(apiFetch("/auth/verify-code", { method: "POST", body: {} })).rejects.toMatchObject({
+      status: 429,
+      code: "RATE_LIMITED",
+    });
   });
 });

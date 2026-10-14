@@ -204,11 +204,19 @@ def decline_partner_invite():
         return fail("token required", 400)
 
     invite = fetch_one(
-        "SELECT inviter_u_id FROM partner_invites WHERE token=%s",
+        "SELECT inviter_u_id, used_at FROM partner_invites WHERE token=%s",
         (token,),
     )
     if not invite:
         return fail("Invalid invite token", 400, code="INVALID_TOKEN")
+    if invite["used_at"] is not None:
+        return fail("Invite already used", 400, code="INVITE_USED")
+
+    # Burn the token, the way accept does. Before this, a declined invite
+    # stayed valid and could still be accepted later.
+    now = naive_utc(utcnow())
+    execute("UPDATE partner_invites SET used_at=%s WHERE token=%s AND used_at IS NULL", (now, token))
+    invalidate_cache(_invite_key(int(invite["inviter_u_id"])))
 
     inviter_u_id = int(invite["inviter_u_id"])
     return ok({"declined": True, "inviter_u_id": inviter_u_id, "invitee_u_id": invitee_u_id})

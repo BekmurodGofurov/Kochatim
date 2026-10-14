@@ -23,8 +23,12 @@ await apiFetch("/api/categories/me", { method: "POST", body: { c_name } });
 
 What it already does for you:
 
+- Sends `X-Client-Key` (from `VITE_CLIENT_KEY`) on every request.
 - Sends `Authorization: Bearer <token>` from `localStorage` when a
-  token exists, and omits the header entirely when it does not.
+  token exists, and omits the header entirely when it does not. With a
+  token it also sends `X-Session-Proof`, a signature from the device key
+  (`api/deviceKey.js`); the token alone is refused by the server. Do not
+  build requests with raw `fetch` — they would lack both.
 - **Throws when `ok: false`, even on HTTP 200.** The backend returns
   `{ok: false}` with a 200 in places, so the status code alone is not
   the result.
@@ -147,7 +151,18 @@ image in an array.
 `RequireAuth` checks for `session_token` in `localStorage` and
 redirects to `/login`. The actual enforcement is server-side on every
 `@require_session` endpoint — deleting the guard would expose no data,
-only show empty pages.
+only show empty pages. The token in `localStorage` is only half a
+credential: the other half is a non-extractable key in IndexedDB.
+
+Logging in is always: `generateDeviceKey()` → send `publicJwk` as
+`device_key` → on success `await deviceKey.save()` and then store the
+token. Logging out is `POST /api/logout` → `clearDeviceKey()` → remove
+the token.
+
+`VITE_CLIENT_KEY` is public by design. Never put a secret in any
+`VITE_*` variable. Build `<img>` URLs with `apiImgUrl()` /
+`toWebImgUrl()` (they add the key as `?k=`) and never put the session
+token in a URL.
 
 So: do not put anything secret in the client, and do not assume a
 component is unreachable because it is behind the guard.

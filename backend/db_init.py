@@ -145,7 +145,9 @@ def init_db():
             session_id SERIAL,
             device_name TEXT DEFAULT '',
             ip_address TEXT DEFAULT '',
-            city TEXT DEFAULT ''
+            city TEXT DEFAULT '',
+            device_key TEXT,
+            ua_fp TEXT
         );
         """)
 
@@ -161,6 +163,20 @@ def init_db():
             execute("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS city TEXT DEFAULT '';")
         except Exception:
             pass
+
+        # MIGRATION: device-bound sessions. device_key is the browser's public
+        # key (utils/device_proof.py); ua_fp is the browser+OS family the
+        # session was created from.
+        try:
+            execute("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS device_key TEXT;")
+            execute("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS ua_fp TEXT;")
+            # A session without a device key predates binding and can never
+            # pass require_session again. This also revokes every token that
+            # was ever minted by the removed /auth/user-id-login. Idempotent:
+            # a no-op once nothing unbound is left.
+            execute("DELETE FROM sessions WHERE device_key IS NULL;")
+        except Exception as e:
+            print(f"Sessions device-key migration xatosi: {e}")
 
         # 3.1) partners
         execute("""
@@ -209,6 +225,10 @@ def init_db():
             execute("CREATE INDEX IF NOT EXISTS idx_img_lookup ON img (t_id, i_id DESC);")
             execute("CREATE INDEX IF NOT EXISTS idx_types_lookup ON types (u_id, t_id DESC);")
             execute("CREATE INDEX IF NOT EXISTS idx_sessions_u_id ON sessions (u_id);")
+            execute("CREATE INDEX IF NOT EXISTS idx_login_codes_code_hash ON login_codes (code_hash);")
+            # /api/img/<file_id> checks the id against these before it calls Telegram
+            execute("CREATE INDEX IF NOT EXISTS idx_users_u_photo ON users (u_photo);")
+            execute("CREATE INDEX IF NOT EXISTS idx_img_i_url ON img (i_url);")
             execute("CREATE INDEX IF NOT EXISTS idx_partners_u_id ON partners (u_id);")
             execute("CREATE INDEX IF NOT EXISTS idx_partners_p_id ON partners (p_id);")
         except Exception as e:

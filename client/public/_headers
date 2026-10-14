@@ -1,0 +1,26 @@
+# Cloudflare Pages response headers (copied to dist/ by Vite).
+#
+# The Content-Security-Policy is REPORT-ONLY on purpose. Deploy it, use the
+# site (log in, open a gardener page, upload a photo, open it inside the
+# Telegram Mini App) with the browser console open, and look for
+# "Content-Security-Policy-Report-Only" warnings. When there are none, rename
+# the header to Content-Security-Policy to enforce it.
+#
+# Why it matters: the session token sits in localStorage, bound to a device
+# key. The key stops a *copied* token from working elsewhere, but script
+# running inside the page can still ask the browser to sign requests. A CSP
+# that only allows our own scripts (plus Telegram's SDK) is what keeps
+# injected script out.
+#
+# Allowed on purpose:
+#   telegram.org                    the Mini App SDK <script> in index.html
+#   api.kochatim.uz                 the API (fetch) and its image proxy (<img>)
+#   *.ibb.co                        ImgBB, where uploaded photos live
+#   images.unsplash.com             the picture on the landing page
+#   frame-ancestors telegram        the Mini App is embedded by Telegram clients
+#   style-src 'unsafe-inline'       React sets style="" attributes
+/*
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://api.kochatim.uz https://*.ibb.co https://images.unsplash.com; connect-src 'self' https://api.kochatim.uz; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self' https://web.telegram.org https://*.telegram.org
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()

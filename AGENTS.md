@@ -46,6 +46,11 @@ Run the whole stack with `docker compose up --build`. See
   assembled dynamically (`api/users.py:search_gardeners`,
   `api/dashboard.py:partner_dashboards`) still passes values as
   params — only the number of placeholders is built, never a value.
+- **Nothing answers without a key.** `middleware/client_gate.py` runs
+  before every route and returns a bare 401 unless the request carries
+  the bot key (`X-API-KEY`) or the web client key (`X-Client-Key`).
+  `/health` and CORS preflights are the only exceptions. Do not add a
+  route that bypasses it.
 - **Extend, don't replace.** The existing structure (`api/`, `auth/`,
   `middleware/`, `utils/`) is the shape to work within.
 - **Schema changes go in `backend/db_init.py`.** There is no migration
@@ -67,6 +72,15 @@ Run the whole stack with `docker compose up --build`. See
 - `g.u_id` is set by `require_session` and is the only trustworthy
   identity on a session route. Never read `u_id` from the request body
   on a session-authenticated endpoint — that is an IDOR.
+- **The server decides the caller's IP and browser; the caller does
+  not.** `utils/device.get_client_ip` believes only the TCP peer and,
+  from our own nginx, `X-Real-IP`. It never reads `X-Forwarded-For`.
+  Do not add a function that takes `ip` or `user_agent` as a parameter
+  or reads them from a body or query string.
+- Never put `str(e)` in a response. It can contain SQL, a DSN, or a URL
+  with the bot token in it. Log it; return a fixed message.
+- Stock and money changes are one statement or one `db.transaction()`.
+  Read-check-write across separate calls is a race.
 - Cache writes must be paired with invalidation. Mutating categories,
   types, seedlings or sales calls `invalidate_dashboard_cache(u_id)`.
   Mutating partners calls `_invalidate_partners(u_id)` for **both**
@@ -75,49 +89,89 @@ Run the whole stack with `docker compose up --build`. See
   `utils/images_v2.py` and `utils/telegram_notify.py` sit on the login
   and write paths; a hanging call there stalls a request.
 
-## Two Authentication Paths
+## Access control: one gate, two credentials
 
-Every protected route uses exactly one of these. Which one is a design
-decision, not a detail — pick deliberately.
+Three layers, outermost first. A request must pass all that apply.
 
-### `@require_api_key` — the bot
-`X-API-KEY` header, compared against `Config.API_KEY`. This is a
+### 1. The client gate — `middleware/client_gate.py`
+Every request carries one of two keys:
+
+| Header | Config | Who | Sets |
+|---|---|---|---|
+| `X-API-KEY` | `API_KEY` | the bot (secret) | `g.client = "bot"` |
+| `X-Client-Key` | `WEB_CLIENT_KEY` | the web client | `g.client = "web"` |
+
+**The web key is not a secret** — it ships in the browser bundle
+(`VITE_CLIENT_KEY`). It keeps scanners and `curl` out; it protects no
+user's data on its own. Never treat holding it as proof of anything.
+
+The two stay apart on purpose. `@require_api_key` accepts the bot key
+only; `@require_session` accepts `g.client == "web"` only. If the web
+key were accepted on a bot route it would be a master key, because bot
+routes take `u_id` from the caller.
+
+`test/integration/test_client_gate.py` walks every registered route. A
+new route with neither decorator must be added to its `PUBLIC_ENDPOINTS`
+with a reason, or the test fails.
+
+### 2. `@require_api_key` — the bot
+`X-API-KEY`, compared in constant time against `Config.API_KEY`. A
 **service** credential: it identifies the bot process, not a person.
-Routes behind it take `u_id` as a parameter, so the caller chooses
-whose data it touches. Never expose such a route to the browser.
+Routes behind it take `u_id` as a parameter, so the caller chooses whose
+data it touches. Never expose such a route to the browser.
 
-### `@require_session` — the web client
-`Authorization: Bearer <token>`. The token is hashed
-(`sha256_hex`) and looked up in `sessions`; the result is cached in
-Redis for 120s. Sets `g.u_id` and `g.token_hash`. This is a **user**
-credential — scope every query by `g.u_id`.
+### 3. `@require_session` — the web client
+`Authorization: Bearer <token>` **and** `X-Session-Proof`. The token is
+hashed (`sha256_hex`) and looked up in `sessions`; the cache entry
+(120 s) holds the session's device key. Sets `g.u_id` and `g.token_hash`.
+A **user** credential — scope every query by `g.u_id`.
 
-A route with neither decorator is public. There are eight. Three are
-the login endpoints themselves and have to be
-(`/auth/verify-code`, `/auth/telegram-webapp`, `/auth/user-id-login` —
-though the last one should not exist at all). Of the remaining five,
-three are deliberate (`/health`, the Telegram image proxy, the public
-category list) and two leak phone numbers — see `docs/security.md`
-before adding a ninth.
+The token is bound to a key pair the browser made at login
+(`extractable=false`, so neither page script nor a copy of localStorage
+can read the private half). Every request carries a fresh ECDSA signature
+over method + path + query + nonce + the token's hash
+(`utils/device_proof.py`, `client/src/api/deviceKey.js`). A token pasted
+into another browser has no key to sign with and gets a 401. Proofs are
+single-use (Redis nonce) and valid for `PROOF_MAX_SKEW_SECONDS`.
+
+A session is also tied to the browser + OS family it was created from;
+a different one ends it. Sessions with no device key are never honoured.
+
+**Logging in** always needs the browser's public key (`device_key`) and
+ends in `auth/session_service.create_session(u_id, device_key)`:
+`POST /auth/verify-code` (OTP the bot delivered) or
+`POST /auth/telegram-webapp` (HMAC-verified initData, at most
+`INITDATA_MAX_AGE_SECONDS` old). **Knowing a `u_id` is not enough to get a
+session** — there is no route that mints one from a user id.
+
+`get_viewer()` is the soft version for public routes that show more to a
+signed-in viewer: it returns the `u_id` or `None` and never rejects.
+
+A route with no decorator is public *to holders of a key*. There are
+seven: `/health`, the two login endpoints, the gardener directory and
+profile (names only unless the viewer is a partner), the image proxy, and
+the public category list.
 
 ## Known Security Issues
 
-These are real, unfixed, and in a **public** repository. Do not treat
-them as examples to follow, and do not add code that depends on them.
+Fixed (see `docs/security.md` for what changed and why):
+the `u_id`-only login, token portability, the open API, spoofable client
+IP, `str(e)` leaks, public phone numbers, the admin panel's missing auth
+and stored XSS, OTP guessing, stale initData, the stock race, the
+non-transactional sale, and three smaller logic bugs.
 
-1. **`POST /auth/user-id-login` is an authentication bypass.** It
-   issues a valid session token for any `u_id` that exists, with no
-   password, OTP or signature. A Telegram user ID is not a secret.
-2. **The admin panel has no authentication.** Anything that can reach
-   port 9000 reads the traffic stats.
-3. **`@app.errorhandler(Exception)` returns `str(e)`** to the client in
-   `error.extra`, which can include SQL and connection strings.
-4. **`GET /api/gardeners` and `GET /api/users/<u_id>/dashboard`** are
-   public and return `u_phone`.
+Still open, and in a **public** repository — do not write exploit code
+for them here:
 
-`docs/security.md` has the detail and the fix for each. Do not write
-the exploit for any of these into the repo — the local audit notes
-(`hacking_map.md`) are gitignored for that reason, and must stay so.
+1. **Nothing prunes `sessions` or `login_codes`.** Expired rows pile up.
+2. **`price` is `REAL`** (a float) in `sales` and `seedlings_logs`.
+3. **The web client key is public by design.** Rotate it by changing
+   `WEB_CLIENT_KEY` and `VITE_CLIENT_KEY` together and redeploying both.
+4. **Telegram/ImgBB URLs are logged with secrets** in a few `print`
+   calls in `utils/images_v2.py`. Not returned to clients; still in logs.
+
+Local audit notes (`hacking_map.md`, `hacking_map_advanced.md`) are
+gitignored for that reason and must stay so.
 
 ## Testing
 
@@ -169,16 +223,21 @@ that; it is the existing convention here.
 Never commit:
 
 - `API_KEY` (the bot ↔ backend shared secret)
+- `INVITE_SECRET`, `ADMIN_PASSWORD`
 - `BOT_TOKEN`
 - database or Redis passwords
 - `IMGBB_API_KEY`
+
+`WEB_CLIENT_KEY` / `VITE_CLIENT_KEY` are not secrets (the browser ships
+them) but must still differ from `API_KEY`; a production backend refuses
+to start otherwise (`Config.validate`).
 
 `.env` files are gitignored and must stay that way. Every service has a
 committed `.env.example` with placeholder values — when you add a
 setting, add it there too.
 
-`hacking_map.md` is gitignored: it is a working exploit guide for the
-issues above, and this repository is public.
+`hacking_map.md` and `hacking_map_advanced.md` are gitignored: they are
+working exploit guides, and this repository is public.
 
 ## Documentation Map
 

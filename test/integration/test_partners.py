@@ -7,13 +7,14 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
+from conftest import SESSION_HEADERS, WEB_HEADERS
 from conftest import (
     TEST_API_KEY, TEST_TOKEN, TEST_U_ID,
-    FAKE_PARTNER, FAKE_INVITE, NOW,
+    FAKE_PARTNER, FAKE_INVITE, NOW, FAR_FUTURE,
 )
 
 API_H = {"X-API-KEY": TEST_API_KEY, "Content-Type": "application/json"}
-SESSION_H = {"Authorization": f"Bearer {TEST_TOKEN}", "Content-Type": "application/json"}
+SESSION_H = dict(SESSION_HEADERS)
 
 PARTNER_U_ID = 987654321
 
@@ -264,33 +265,68 @@ class TestAcceptPartnerInvite:
 
 # ─── POST /api/partners/decline (API key) ────────────────────────────────────
 
+
 class TestDeclinePartnerInvite:
     URL = "/api/partners/decline"
 
+    def _post(self, client, invite, body=None):
+        with patch("api.partners.fetch_one", return_value=invite), \
+             patch("api.partners.execute") as ex, \
+             patch("api.partners.invalidate_cache") as inv:
+            resp = client.post(self.URL, json=body or {"token": "some-token", "u_id": TEST_U_ID}, headers=API_H)
+        return resp, ex, inv
+
     def test_success(self, client):
-        invite = {"inviter_u_id": PARTNER_U_ID}
-        with patch("api.partners.fetch_one", return_value=invite):
-            resp = client.post(self.URL, json={
-                "token": "some-token", "u_id": TEST_U_ID,
-            }, headers=API_H)
+        resp, ex, _ = self._post(client, {"inviter_u_id": PARTNER_U_ID, "used_at": None})
         assert resp.status_code == 200
         data = resp.get_json()["data"]
         assert data["declined"] is True
         assert data["inviter_u_id"] == PARTNER_U_ID
         assert data["invitee_u_id"] == TEST_U_ID
 
+    def test_declining_burns_the_invite_so_it_cannot_be_accepted_later(self, client):
+        _, ex, inv = self._post(client, {"inviter_u_id": PARTNER_U_ID, "used_at": None})
+        sql, params = ex.call_args[0]
+        assert "UPDATE partner_invites SET used_at" in sql and "used_at IS NULL" in sql
+        assert params[1] == "some-token"
+        inv.assert_called()
+
+    def test_a_declined_invite_is_then_refused_by_accept(self, client):
+        """End to end: after decline marks it used, accept answers INVITE_USED."""
+        used = {"inviter_u_id": PARTNER_U_ID, "expires_at": FAR_FUTURE, "used_at": NOW}
+        with patch("api.partners.fetch_one", return_value=used):
+            resp = client.post("/api/partners/accept", json={"token": "some-token", "u_id": TEST_U_ID}, headers=API_H)
+        assert resp.status_code == 400
+        assert resp.get_json()["error"]["code"] == "INVITE_USED"
+
+    def test_already_used_invite_cannot_be_declined_again(self, client):
+        resp, ex, _ = self._post(client, {"inviter_u_id": PARTNER_U_ID, "used_at": NOW})
+        assert resp.status_code == 400
+        assert resp.get_json()["error"]["code"] == "INVITE_USED"
+        ex.assert_not_called()
+
     def test_invalid_token_returns_400(self, client):
-        with patch("api.partners.fetch_one", return_value=None):
-            resp = client.post(self.URL, json={
-                "token": "invalid", "u_id": TEST_U_ID,
-            }, headers=API_H)
+        resp, ex, _ = self._post(client, None, {"token": "invalid", "u_id": TEST_U_ID})
         assert resp.status_code == 400
         assert resp.get_json()["error"]["code"] == "INVALID_TOKEN"
+        ex.assert_not_called()
 
     def test_missing_token_returns_400(self, client):
         resp = client.post(self.URL, json={"u_id": TEST_U_ID}, headers=API_H)
         assert resp.status_code == 400
 
+    @pytest.mark.parametrize("u_id", [None, "abc", [1]])
+    def test_bad_u_id_returns_400(self, client, u_id):
+        resp = client.post(self.URL, json={"token": "t", "u_id": u_id}, headers=API_H)
+        assert resp.status_code == 400
+
     def test_no_api_key_returns_401(self, client):
-        resp = client.post(self.URL, json={"token": "t", "u_id": TEST_U_ID})
-        assert resp.status_code == 401
+        assert client.post(self.URL, json={"token": "t", "u_id": TEST_U_ID}).status_code == 401
+
+    def test_database_failure_returns_generic_500(self, client):
+        with patch("api.partners.fetch_one", side_effect=RuntimeError("dsn=postgres://u:hunter2@db")):
+            resp = client.post(self.URL, json={"token": "t", "u_id": TEST_U_ID}, headers=API_H)
+        assert resp.status_code == 500
+        assert "hunter2" not in resp.get_data(as_text=True)
+
+

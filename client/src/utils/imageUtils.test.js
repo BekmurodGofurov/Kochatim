@@ -8,8 +8,11 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { pickImagesFromType, toWebImgUrl } from "./imageUtils";
-import { API_BASE } from "../api/https";
+import { apiImgUrl, pickImagesFromType, toWebImgUrl } from "./imageUtils";
+import { API_BASE, CLIENT_KEY } from "../api/https";
+
+// <img src> cannot send headers, so the proxy route takes the client key as ?k=
+const K = `?k=${CLIENT_KEY}`;
 
 describe("toWebImgUrl", () => {
   it("passes an https URL through untouched", () => {
@@ -23,15 +26,15 @@ describe("toWebImgUrl", () => {
   });
 
   it("routes a Telegram file_id through the backend proxy", () => {
-    expect(toWebImgUrl("AgACAgIAAxk")).toBe(`${API_BASE}/api/img/AgACAgIAAxk`);
+    expect(toWebImgUrl("AgACAgIAAxk")).toBe(`${API_BASE}/api/img/AgACAgIAAxk${K}`);
   });
 
   it("url-encodes a file_id containing slashes", () => {
-    expect(toWebImgUrl("abc/def")).toBe(`${API_BASE}/api/img/abc%2Fdef`);
+    expect(toWebImgUrl("abc/def")).toBe(`${API_BASE}/api/img/abc%2Fdef${K}`);
   });
 
   it("url-encodes a file_id containing a question mark", () => {
-    expect(toWebImgUrl("abc?x=1")).toBe(`${API_BASE}/api/img/abc%3Fx%3D1`);
+    expect(toWebImgUrl("abc?x=1")).toBe(`${API_BASE}/api/img/abc%3Fx%3D1${K}`);
   });
 
   it("returns an empty string for an empty input", () => {
@@ -52,7 +55,7 @@ describe("toWebImgUrl", () => {
   });
 
   it("stringifies a numeric file_id", () => {
-    expect(toWebImgUrl(12345)).toBe(`${API_BASE}/api/img/12345`);
+    expect(toWebImgUrl(12345)).toBe(`${API_BASE}/api/img/12345${K}`);
   });
 
   it("treats an uppercase scheme as a file_id", () => {
@@ -64,6 +67,34 @@ describe("toWebImgUrl", () => {
     const out = toWebImgUrl("AgACAgIAAxk");
     expect(out.startsWith("/")).toBe(API_BASE === "");
     expect(out).toContain("/api/img/");
+  });
+});
+
+describe("apiImgUrl", () => {
+  it("addresses the proxy and carries the client key as ?k=", () => {
+    expect(apiImgUrl("AgACAgIAAxk")).toBe(`${API_BASE}/api/img/AgACAgIAAxk?k=test-client-key`);
+  });
+
+  it("encodes the file_id so it cannot break out of the path", () => {
+    const url = apiImgUrl("a/b?c=d#e");
+    expect(url).toContain("/api/img/a%2Fb%3Fc%3Dd%23e?k=");
+    expect(url.split("?")).toHaveLength(2); // exactly one query string
+  });
+
+  it("is the single place that knows the key goes in the URL", () => {
+    expect(toWebImgUrl("AgACAgIAAxk")).toBe(apiImgUrl("AgACAgIAAxk"));
+  });
+
+  it("returns an empty string for a missing file_id", () => {
+    expect(apiImgUrl("")).toBe("");
+    expect(apiImgUrl(null)).toBe("");
+    expect(apiImgUrl(undefined)).toBe("");
+  });
+
+  it("never puts a session token in the URL", () => {
+    localStorage.setItem("session_token", "tok-123");
+    expect(apiImgUrl("AgACAgIAAxk")).not.toContain("tok-123");
+    localStorage.clear();
   });
 });
 

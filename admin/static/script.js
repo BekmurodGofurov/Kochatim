@@ -97,20 +97,38 @@ document.addEventListener('DOMContentLoaded', () => {
         loadChart.update();
     }
 
+    // Everything below puts server-supplied text on the page with textContent.
+    // Request paths are chosen by whoever sends the request, so they are
+    // untrusted: never build markup from them.
+    function cell(text, tag = 'td') {
+        const el = document.createElement(tag);
+        el.textContent = text;
+        return el;
+    }
+
     function renderTable(endpoints) {
         const tbody = document.querySelector('#api-table tbody');
-        tbody.innerHTML = '';
+        tbody.replaceChildren();
         if (endpoints.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="2">Hozircha ma\'lumot yo\'q</td></tr>';
+            const tr = document.createElement('tr');
+            const td = cell("Hozircha ma'lumot yo'q");
+            td.colSpan = 2;
+            tr.appendChild(td);
+            tbody.appendChild(tr);
             return;
         }
-        
+
         endpoints.forEach(ep => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${ep.path}</td>
-                <td><strong style="color:var(--primary-color)">${ep.count}</strong> marta</td>
-            `;
+            tr.appendChild(cell(ep.path));
+
+            const count = document.createElement('td');
+            const strong = document.createElement('strong');
+            strong.style.color = 'var(--primary-color)';
+            strong.textContent = ep.count;
+            count.append(strong, ' marta');
+            tr.appendChild(count);
+
             tbody.appendChild(tr);
         });
     }
@@ -134,20 +152,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderMetrics() {
         const container = document.getElementById('metrics-container');
-        container.innerHTML = '';
-        
+        container.replaceChildren();
+
         Object.values(serverMetrics).forEach(m => {
-            const cpuColor = m.cpu > 90 ? 'red' : 'var(--primary-color)';
-            const ramColor = m.ram > 90 ? 'red' : 'var(--primary-color)';
-            
+            const cpu = Number(m.cpu);
+            const ram = Number(m.ram);
+
             const box = document.createElement('div');
             box.className = 'stat-box';
-            box.innerHTML = `
-                <h3>${m.server}</h3>
-                <p>CPU: <span style="color:${cpuColor}; font-weight:bold;">${m.cpu}%</span></p>
-                <p>RAM: <span style="color:${ramColor}; font-weight:bold;">${m.ram}%</span></p>
-                <small style="color:#888;">${m.time.split('T')[1].split('.')[0]}</small>
-            `;
+
+            const title = document.createElement('h3');
+            title.textContent = m.server;
+
+            const line = (label, value) => {
+                const p = document.createElement('p');
+                const span = document.createElement('span');
+                span.style.color = value > 90 ? 'red' : 'var(--primary-color)';
+                span.style.fontWeight = 'bold';
+                span.textContent = `${value}%`;
+                p.append(`${label}: `, span);
+                return p;
+            };
+
+            const stamp = document.createElement('small');
+            stamp.style.color = '#888';
+            stamp.textContent = String(m.time).split('T')[1]?.split('.')[0] ?? '';
+
+            box.append(title, line('CPU', cpu), line('RAM', ram), stamp);
             container.appendChild(box);
         });
     }
@@ -157,15 +188,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     socket.on('live_request', (data) => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${data.time}</td>
-            <td>${data.server}</td>
-            <td><strong>${data.method}</strong></td>
-            <td>${data.path}</td>
-            <td>${data.status}</td>
-        `;
+        tr.appendChild(cell(data.time));
+        tr.appendChild(cell(data.server));
+
+        const method = document.createElement('td');
+        const strong = document.createElement('strong');
+        strong.textContent = data.method;
+        method.appendChild(strong);
+        tr.appendChild(method);
+
+        tr.appendChild(cell(data.path));
+        tr.appendChild(cell(data.status));
         liveTbody.insertBefore(tr, liveTbody.firstChild);
-        
+
         // limit rows
         while(liveTbody.children.length > maxLiveRows) {
             liveTbody.removeChild(liveTbody.lastChild);

@@ -145,3 +145,93 @@ class TestDefaults:
         env = {k: v for k, v in os.environ.items() if k != "FLASK_ENV"}
         with patch.dict(os.environ, env, clear=True):
             assert importlib.reload(config_module).Config.FLASK_ENV == "production"
+
+
+# ─── Web client key, trusted proxies, production validation ───────────────────
+
+def reload_without(*names):
+    """
+    Reload Config with these variables unset *and* backend/.env ignored, so a
+    developer's local .env (which may set DB_POOL_MAX=120, say) cannot change
+    what the built-in defaults are asserted to be.
+    """
+    env = {k: v for k, v in os.environ.items() if k not in names}
+    with patch.dict(os.environ, env, clear=True), patch("dotenv.load_dotenv"):
+        return importlib.reload(config_module).Config
+
+
+class TestClientKeysAndProxies:
+    def test_web_client_key_is_read_and_stripped(self):
+        assert reload_config(WEB_CLIENT_KEY="  web-key  ").WEB_CLIENT_KEY == "web-key"
+
+    def test_web_client_key_defaults_to_empty_so_nothing_matches(self):
+        assert reload_without("WEB_CLIENT_KEY").WEB_CLIENT_KEY == ""
+
+    def test_pool_default_is_20_per_worker(self):
+        """4 gunicorn workers x 100 would overrun Postgres' default 100 connections."""
+        assert reload_without("DB_POOL_MAX").DB_POOL_MAX == 20
+
+    def test_trusted_proxies_default_covers_loopback_and_docker(self):
+        cfg = reload_without("TRUSTED_PROXIES")
+        assert "127.0.0.1" in cfg.TRUSTED_PROXIES and "172.16.0.0/12" in cfg.TRUSTED_PROXIES
+
+    def test_trusted_proxies_are_split_and_stripped(self):
+        cfg = reload_config(TRUSTED_PROXIES=" 10.0.0.1 , 192.168.0.0/16,, ")
+        assert cfg.TRUSTED_PROXIES == ("10.0.0.1", "192.168.0.0/16")
+
+    def test_empty_trusted_proxies_trusts_nobody(self):
+        assert reload_config(TRUSTED_PROXIES="").TRUSTED_PROXIES == ()
+
+    def test_proof_and_initdata_windows_have_safe_defaults(self):
+        cfg = reload_without("PROOF_MAX_SKEW_SECONDS", "INITDATA_MAX_AGE_SECONDS")
+        assert cfg.PROOF_MAX_SKEW_SECONDS == 60
+        assert cfg.INITDATA_MAX_AGE_SECONDS == 3600
+
+
+class TestValidate:
+    GOOD = dict(API_KEY="bot-secret-" + "a" * 30, WEB_CLIENT_KEY="web-public-" + "b" * 30)
+
+    def test_accepts_two_distinct_real_keys(self):
+        reload_config(**self.GOOD).validate()
+
+    @pytest.mark.parametrize("env,fragment", [
+        ({"API_KEY": ""}, "API_KEY is empty"),
+        ({"WEB_CLIENT_KEY": ""}, "WEB_CLIENT_KEY is empty"),
+        ({"API_KEY": "same", "WEB_CLIENT_KEY": "same"}, "must differ"),
+        ({"API_KEY": "change_me"}, "API_KEY is still the placeholder"),
+        ({"WEB_CLIENT_KEY": "change_me"}, "WEB_CLIENT_KEY is still the placeholder"),
+    ])
+    def test_refuses_unsafe_keys(self, env, fragment):
+        cfg = reload_config(**{**self.GOOD, **env})
+        with pytest.raises(RuntimeError, match=fragment):
+            cfg.validate()
+
+    def test_reports_every_problem_at_once(self):
+        cfg = reload_config(API_KEY="", WEB_CLIENT_KEY="")
+        with pytest.raises(RuntimeError) as e:
+            cfg.validate()
+        assert "API_KEY is empty" in str(e.value) and "WEB_CLIENT_KEY is empty" in str(e.value)
+
+    def test_a_production_app_refuses_to_boot_with_bad_keys(self):
+        from unittest.mock import patch as _patch
+        import app as app_module
+        with _patch("app.Config.FLASK_ENV", "production"), \
+             _patch("app.Config.WEB_CLIENT_KEY", ""), \
+             _patch("extensions.init_pool"), _patch("db_init.init_db"):
+            with pytest.raises(RuntimeError, match="WEB_CLIENT_KEY is empty"):
+                app_module.create_app()
+
+    def test_a_production_app_boots_with_good_keys(self):
+        import app as app_module
+        with patch("app.Config.FLASK_ENV", "production"), \
+             patch("app.Config.API_KEY", self.GOOD["API_KEY"]), \
+             patch("app.Config.WEB_CLIENT_KEY", self.GOOD["WEB_CLIENT_KEY"]), \
+             patch("extensions.init_pool"), patch("db_init.init_db"):
+            assert app_module.create_app() is not None
+
+    def test_tests_and_dev_are_not_blocked_by_validation(self):
+        import app as app_module
+        with patch("app.Config.FLASK_ENV", "development"), \
+             patch("app.Config.WEB_CLIENT_KEY", ""), \
+             patch("extensions.init_pool"), patch("db_init.init_db"):
+            assert app_module.create_app() is not None
