@@ -24,7 +24,13 @@ export default function PieCard({
   return (
     <div className="pie-card">
       <div className="pie-card__chart">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer
+          width="100%"
+          height="100%"
+          minWidth={0}
+          minHeight={0}
+          initialDimension={{ width: 100, height: 100 }}
+        >
           <PieChart>
             <Pie
               data={data}

@@ -14,13 +14,14 @@
 #
 # Allowed on purpose:
 #   telegram.org                    the Mini App SDK <script> in index.html
+#   static.cloudflareinsights.com   Cloudflare Pages web analytics beacon
 #   api.kochatim.uz                 the API (fetch) and its image proxy (<img>)
 #   *.ibb.co                        ImgBB, where uploaded photos live
 #   images.unsplash.com             the picture on the landing page
 #   frame-ancestors telegram        the Mini App is embedded by Telegram clients
 #   style-src 'unsafe-inline'       React sets style="" attributes
 /*
-  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://api.kochatim.uz https://*.ibb.co https://images.unsplash.com; connect-src 'self' https://api.kochatim.uz; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self' https://web.telegram.org https://*.telegram.org
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' https://telegram.org https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://api.kochatim.uz https://*.ibb.co https://images.unsplash.com; connect-src 'self' https://api.kochatim.uz https://cloudflareinsights.com; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self' https://web.telegram.org https://*.telegram.org
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
